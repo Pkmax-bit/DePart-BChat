@@ -45,6 +45,7 @@ export default function LoginPage() {
       if (checkResponse.ok) {
         const userData = await checkResponse.json();
         console.log('User login successful:', userData);
+        console.log('User ID:', userData.user.id); // Log user ID để debug
 
         // Lưu thông tin user vào localStorage (cho User/Manager)
         localStorage.setItem('user_session', JSON.stringify({
@@ -63,9 +64,8 @@ export default function LoginPage() {
             },
             body: JSON.stringify({
               user_id: userData.user.id,
-              chatflow_id: 0,  // 0 = login activity
-              action_type: "login",
-              online_status: true
+              chatflow_id: null,  // null for login activity
+              online: true  // true for login
             })
           });
           console.log('Login activity logged');

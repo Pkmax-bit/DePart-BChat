@@ -9,6 +9,8 @@ load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), '.env'))
 url: str = os.environ.get("SUPABASE_URL")
 key: str = os.environ.get("SUPABASE_SERVICE_KEY")
 
+SUPABASE_AVAILABLE = bool(url and key)
+
 if not url:
     raise ValueError("SUPABASE_URL environment variable is not set")
 if not key:

@@ -12,6 +12,7 @@ import random
 import string
 import time
 from email_utils import send_verification_code
+from typing import Optional
 
 router = APIRouter(
     prefix="/users",
@@ -96,6 +97,17 @@ def login_user(login: LoginRequest):
         except Exception as e:
             print(f"Failed to log login activity: {e}")
 
+        # Đồng bộ conversation IDs từ Dify khi đăng nhập
+        # TEMPORARILY DISABLED for testing
+        try:
+            print("Conversation sync disabled for testing")
+            # from dify_api_service import dify_service
+            # from routers.user_chat_sessions_direct import create_or_update_session_direct
+            # ... rest of sync logic
+        except Exception as e:
+            print(f"Failed to sync conversations on login: {e}")
+            # Không raise error để không làm gián đoạn login
+
         return {
             "message": "Đăng nhập thành công",
             "user": {
@@ -106,7 +118,11 @@ def login_user(login: LoginRequest):
                 "role_id": user['role_id'],
                 "department_id": user.get('department_id')
             },
-            "role": role_name
+            "role": role_name,
+            "conversation_sync": {
+                "synced_count": 0,  # Disabled for testing
+                "conversation_ids": {}
+            }
         }
 
     except HTTPException:

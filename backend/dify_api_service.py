@@ -3,6 +3,10 @@ import requests
 import os
 from typing import List, Dict, Optional
 from datetime import datetime
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), '.env'))
 
 class DifyAPIService:
     def __init__(self):
@@ -93,7 +97,7 @@ class DifyAPIService:
         """
         try:
             # Get user info for API call
-            from .supabase_client import supabase
+            from supabase_client import supabase
             user_result = supabase.table('users').select('username').eq('id', user_id).execute()
 
             if not user_result.data:
@@ -140,7 +144,7 @@ class DifyAPIService:
         """
         try:
             # Get user info
-            from .supabase_client import supabase
+            from supabase_client import supabase
             user_result = supabase.table('users').select('username, email').eq('id', user_id).execute()
 
             if not user_result.data:

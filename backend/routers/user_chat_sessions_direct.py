@@ -378,30 +378,39 @@ def delete_session_direct(user_id: int, chatflow_id: int):
 def sync_conversation_id(user_id: int, chatflow_id: int):
     """
     Đồng bộ conversation_id từ Dify cho user và chatflow cụ thể
+    Nếu không có từ Dify, tạo conversation_id local
     """
     try:
         from dify_api_service import dify_service
 
         # Lấy conversation_id từ Dify
-        conversation_id = dify_service.get_or_create_conversation_id(user_id, chatflow_id)
+        dify_conversation_id = dify_service.get_or_create_conversation_id(user_id, chatflow_id)
+        is_from_dify = bool(dify_conversation_id)
 
-        if conversation_id:
-            # Cập nhật hoặc tạo session trong database
-            session_data = UserChatSessionCreate(
-                user_id=user_id,
-                chatflow_id=chatflow_id,
-                conversation_id=conversation_id,
-                session_data={"synced_from_dify": True, "sync_time": datetime.now().isoformat()}
-            )
+        if not dify_conversation_id:
+            # Nếu không có từ Dify, tạo conversation_id local
+            dify_conversation_id = f"conv_{user_id}_{chatflow_id}_{int(datetime.now().timestamp())}"
+            print(f"Created local conversation_id: {dify_conversation_id}")
 
-            result = create_or_update_session_direct(session_data)
-            return {
-                "message": "Conversation ID synced successfully",
-                "conversation_id": conversation_id,
-                "session": result
+        # Cập nhật hoặc tạo session trong database
+        session_data = UserChatSessionCreate(
+            user_id=user_id,
+            chatflow_id=chatflow_id,
+            conversation_id=dify_conversation_id,
+            session_data={
+                "synced_from_dify": True,
+                "sync_time": datetime.now().isoformat(),
+                "is_local_conversation": not is_from_dify
             }
-        else:
-            return {"message": "No conversation found in Dify", "conversation_id": None}
+        )
+
+        result = create_or_update_session_direct(session_data)
+        return {
+            "message": "Conversation ID synced successfully",
+            "conversation_id": dify_conversation_id,
+            "session": result,
+            "source": "dify" if is_from_dify else "local"
+        }
 
     except Exception as e:
         print(f"Error syncing conversation: {str(e)}")

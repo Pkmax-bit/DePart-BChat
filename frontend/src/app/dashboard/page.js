@@ -264,6 +264,19 @@ export default function DashboardPage() {
   const [userSessions, setUserSessions] = useState([]);
   const [chatHistory, setChatHistory] = useState([]);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
+  // useEffect để gửi conversation_id vào iframe khi nó thay đổi
+  useEffect(() => {
+    if (currentConversationId && selectedChatflow) {
+      console.log('Conversation ID changed, sending to iframe:', currentConversationId);
+      const iframe = document.querySelector('iframe');
+      if (iframe && iframe.contentWindow) {
+        iframe.contentWindow.postMessage({
+          type: 'SET_CONVERSATION_ID',
+          conversationId: currentConversationId
+        }, '*');
+      }
+    }
+  }, [currentConversationId, selectedChatflow]);
 
   const router = useRouter();
 
@@ -271,6 +284,19 @@ export default function DashboardPage() {
     checkUser();
     fetchChatflows();
   }, []);
+
+  // Reset state khi user thay đổi
+  useEffect(() => {
+    if (user) {
+      console.log('User changed, resetting dashboard state for:', user.id);
+      setSelectedChatflow(null);
+      setCurrentConversationId(null);
+      setChatHistory([]);
+      setUserSessions([]);
+      setShowConversationControls(false);
+      setManualConversationId('');
+    }
+  }, [user?.id]);
 
   // useEffect để listen for messages từ iframe
   useEffect(() => {
@@ -283,6 +309,24 @@ export default function DashboardPage() {
         if (event.data && event.data.conversationId) {
           syncConversationFromIframe(event.data.conversationId);
         }
+
+        // Check if iframe is ready
+        if (event.data && event.data.type === 'dify-chatbot-iframe-ready') {
+          console.log('Iframe is ready, sending conversation_id:', currentConversationId);
+          // Send conversation_id to iframe
+          const iframe = document.querySelector('iframe');
+          if (iframe && iframe.contentWindow && currentConversationId) {
+            iframe.contentWindow.postMessage({
+              type: 'SET_CONVERSATION_ID',
+              conversationId: currentConversationId
+            }, '*');
+          }
+        }
+
+        // Check if message is FIRST_MESSAGE_SENT
+        if (event.data && event.data.type === 'FIRST_MESSAGE_SENT') {
+          handleFirstMessageSent();
+        }
       }
     };
 
@@ -292,6 +336,29 @@ export default function DashboardPage() {
       window.removeEventListener('message', handleMessage);
     };
   }, [selectedChatflow, currentConversationId]);
+
+  const handleFirstMessageSent = async () => {
+    if (!selectedChatflow) return;
+
+    console.log('First message sent - session already created on chatflow selection');
+
+    // Session đã được tạo khi chọn chatflow, chỉ cần đảm bảo conversation_id được sync
+    const localSession = localStorage.getItem('user_session');
+    if (localSession) {
+      const sessionData = JSON.parse(localSession);
+      const userId = sessionData.user.id;
+
+      // Đảm bảo session được cập nhật với conversation_id hiện tại
+      if (currentConversationId) {
+        try {
+          await initializeUserSession(userId, selectedChatflow.id, currentConversationId);
+          console.log('Session updated with current conversation ID:', currentConversationId);
+        } catch (error) {
+          console.error('Failed to update session on first message:', error);
+        }
+      }
+    }
+  };
 
   const checkUser = async () => {
     try {
@@ -417,12 +484,11 @@ export default function DashboardPage() {
 
       console.log('Initializing session:', requestData);
 
-      const response = await fetch('http://localhost:8001/api/v1/user-chat-sessions/initialize-session', {
+      const response = await fetch(`http://localhost:8001/api/v1/user-chat-sessions/initialize-session?user_id=${userId}&chatflow_id=${chatflowId}${conversationId ? `&conversation_id=${conversationId}` : ''}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(requestData)
+        }
       });
 
       if (response.ok) {
@@ -450,24 +516,35 @@ export default function DashboardPage() {
 
       console.log(`User ${userId} selecting chatflow ${chatflow.id}`);
 
-      // Luôn khởi tạo session trước (để đảm bảo session tồn tại)
-      await initializeUserSession(userId, chatflow.id);
+      // Gọi first-chat endpoint để tạo session và lấy conversation_id từ chat_history
+      try {
+        const response = await fetch(`http://localhost:8001/api/v1/user-chat-sessions/first-chat/${userId}/${chatflow.id}`, {
+          method: 'POST'
+        });
 
-      // Sau đó cố gắng tải session từ server để sync với các thiết bị khác
-      const sessionDataFromBackend = await loadUserSession(userId, chatflow.id);
+        if (response.ok) {
+          const result = await response.json();
+          console.log('First chat session created on chatflow selection:', result);
 
-      if (sessionDataFromBackend && sessionDataFromBackend.conversation_id) {
-        // Có session cũ với conversation_id - sử dụng conversation_id từ server
-        console.log('Using existing conversation from server:', sessionDataFromBackend.conversation_id);
-        // Không cần lưu lại vì đã được update last_accessed trong loadUserSession
-      } else {
-        // Không có conversation_id - tạo conversation_id mới
-        const newConversationId = `conv_${userId}_${chatflow.id}_${Date.now()}`;
-        console.log('Creating new conversation:', newConversationId);
-        setCurrentConversationId(newConversationId);
+          // Cập nhật conversation_id từ server
+          if (result.conversation_id) {
+            console.log('Setting conversation ID from first chat:', result.conversation_id);
+            setCurrentConversationId(result.conversation_id);
 
-        // Cập nhật session với conversation_id mới
-        await initializeUserSession(userId, chatflow.id, newConversationId);
+            // Tải lịch sử chat nếu có conversation_id
+            await loadChatHistory(result.conversation_id);
+          }
+        } else {
+          console.error('Failed to create first chat session on selection:', response.status, await response.text());
+          // Fallback: tạo session rỗng
+          await initializeUserSession(userId, chatflow.id);
+          setCurrentConversationId(null);
+        }
+      } catch (error) {
+        console.error('Error creating first chat session on selection:', error);
+        // Fallback: tạo session rỗng
+        await initializeUserSession(userId, chatflow.id);
+        setCurrentConversationId(null);
       }
     }
 
@@ -604,6 +681,22 @@ export default function DashboardPage() {
         }
       }
 
+      // Reset dashboard state trước khi logout
+      setSelectedChatflow(null);
+      setCurrentConversationId(null);
+      setChatHistory([]);
+      setUserSessions([]);
+      setShowConversationControls(false);
+      setManualConversationId('');
+
+      // Clear iframe messages để tránh conflict với user mới
+      const iframe = document.querySelector('iframe');
+      if (iframe && iframe.contentWindow) {
+        iframe.contentWindow.postMessage({
+          type: 'CLEAR_CONVERSATION'
+        }, '*');
+      }
+
       // Đăng xuất Supabase session (cho Admin)
       await supabase.auth.signOut();
 
@@ -647,6 +740,7 @@ export default function DashboardPage() {
           <div className="h-full">
 
             <iframe
+              key={`${user?.id || 'no-user'}-${selectedChatflow.id}-${currentConversationId || 'no-conversation'}`}
               src={currentConversationId
                 ? `${selectedChatflow.embed_url}?conversationId=${currentConversationId}`
                 : selectedChatflow.embed_url
@@ -654,7 +748,7 @@ export default function DashboardPage() {
               className="w-full h-full border-0 transition-opacity duration-300"
               title={selectedChatflow.name}
               onLoad={() => {
-                console.log('Chatbot loaded successfully');
+                console.log('Chatbot loaded successfully with conversation:', currentConversationId);
 
                 // Inject script để monitor conversation_id changes trong iframe
                 try {

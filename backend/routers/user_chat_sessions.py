@@ -170,21 +170,154 @@ def update_session(user_id: int, chatflow_id: int, update_data: UserChatSessionU
         print(f"Error updating session: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.delete("/user/{user_id}/chatflow/{chatflow_id}")
-def delete_session(user_id: int, chatflow_id: int):
+@router.post("/first-chat/{user_id}/{chatflow_id}")
+def handle_first_chat(user_id: int, chatflow_id: int):
     """
-    Xóa session chat của user với chatflow
+    Xử lý khi user lần đầu chat với chatflow
+    Lấy conversation_id từ chat_history nếu có, hoặc tạo mới nếu chưa có
     """
     try:
-        result = supabase.table('user_chat_sessions').delete().eq('user_id', user_id).eq('chatflow_id', chatflow_id).execute()
+        # Kiểm tra xem session đã tồn tại chưa
+        existing = supabase.table('user_chat_sessions').select('*').eq('user_id', user_id).eq('chatflow_id', chatflow_id).execute()
 
-        if not result.data or len(result.data) == 0:
-            raise HTTPException(status_code=404, detail="Session not found")
+        current_time = datetime.now().isoformat()
 
-        return {"message": "Session deleted successfully"}
+        if existing.data and len(existing.data) > 0:
+            # Session đã tồn tại - kiểm tra xem có conversation_id chưa
+            session = existing.data[0]
+            if session.get('conversation_id'):
+                # Đã có conversation_id - không cần làm gì
+                print(f"Session already has conversation_id for user {user_id}, chatflow {chatflow_id}")
+                return {
+                    "message": "Session already exists with conversation_id",
+                    "conversation_id": session['conversation_id'],
+                    "session": session
+                }
+            else:
+                # Session tồn tại nhưng chưa có conversation_id
+                # Tìm conversation_id từ chat_history
+                conversation_id = get_conversation_id_from_chat_history(user_id, chatflow_id)
 
-    except HTTPException:
-        raise
+                if conversation_id:
+                    # Cập nhật session với conversation_id từ chat_history
+                    # Merge với session_data hiện có
+                    existing_session_data = session.get('session_data', {})
+
+                    update_data = {
+                        'conversation_id': conversation_id,
+                        'last_accessed': current_time,
+                        'updated_at': current_time,
+                        'session_data': {
+                            **existing_session_data,  # Keep existing data
+                            'first_chat_time': current_time,
+                            'is_first_chat': True,
+                            'conversation_source': 'chat_history'
+                        }
+                    }
+
+                    result = supabase.table('user_chat_sessions').update(update_data).eq('user_id', user_id).eq('chatflow_id', chatflow_id).execute()
+
+                    print(f"Updated existing session with conversation_id from chat_history for user {user_id}, chatflow {chatflow_id}: {conversation_id}")
+
+                    return {
+                        "message": "Session updated with conversation_id from chat_history successfully",
+                        "conversation_id": conversation_id,
+                        "session": result.data[0] if result.data else None
+                    }
+                else:
+                    # Không tìm thấy conversation_id trong chat_history - tạo mới
+                    conversation_id = f"conv_{user_id}_{chatflow_id}_{int(datetime.now().timestamp())}"
+
+                    # Merge với session_data hiện có
+                    existing_session_data = session.get('session_data', {})
+
+                    update_data = {
+                        'conversation_id': conversation_id,
+                        'last_accessed': current_time,
+                        'updated_at': current_time,
+                        'session_data': {
+                            **existing_session_data,  # Keep existing data
+                            'first_chat_time': current_time,
+                            'is_first_chat': True,
+                            'conversation_source': 'local'
+                        }
+                    }
+
+                    result = supabase.table('user_chat_sessions').update(update_data).eq('user_id', user_id).eq('chatflow_id', chatflow_id).execute()
+
+                    print(f"Updated existing session with new conversation_id for user {user_id}, chatflow {chatflow_id}: {conversation_id}")
+
+                    return {
+                        "message": "Session updated with new conversation_id successfully",
+                        "conversation_id": conversation_id,
+                        "session": result.data[0] if result.data else None
+                    }
+        else:
+            # Tạo session mới
+            # Tìm conversation_id từ chat_history trước
+            existing_conversation_id = get_conversation_id_from_chat_history(user_id, chatflow_id)
+
+            if existing_conversation_id:
+                # Sử dụng conversation_id từ chat_history
+                conversation_id = existing_conversation_id
+                source = 'chat_history'
+            else:
+                # Không tìm thấy trong chat_history - tạo mới
+                conversation_id = f"conv_{user_id}_{chatflow_id}_{int(datetime.now().timestamp())}"
+                source = 'local'
+
+            session_data = {
+                'user_id': user_id,
+                'chatflow_id': chatflow_id,
+                'conversation_id': conversation_id,
+                'last_accessed': current_time,
+                'created_at': current_time,
+                'updated_at': current_time,
+                'session_data': {
+                    'first_chat_time': current_time,
+                    'is_first_chat': True,
+                    'conversation_source': source
+                }
+            }
+
+            result = supabase.table('user_chat_sessions').insert(session_data).execute()
+
+            print(f"First chat session created for user {user_id}, chatflow {chatflow_id}: {conversation_id} (source: {source})")
+
+            return {
+                "message": "First chat session created successfully",
+                "conversation_id": conversation_id,
+                "session": result.data[0] if result.data else None
+            }
+
     except Exception as e:
-        print(f"Error deleting session: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        print(f"Error creating first chat session: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to create first chat session: {str(e)}")
+
+def get_conversation_id_from_chat_history(user_id: int, chatflow_id: int) -> Optional[str]:
+    """
+    Lấy conversation_id từ chat_history cho user và chatflow cụ thể
+    """
+    try:
+        # Lấy tên chatflow từ chatflow_id
+        chatflow_result = supabase.table('chatflows').select('name').eq('id', chatflow_id).execute()
+        if not chatflow_result.data or len(chatflow_result.data) == 0:
+            return None
+
+        chatflow_name = chatflow_result.data[0]['name']
+
+        # Tìm conversation_id từ chat_history
+        chat_history_result = supabase.table('chat_history').select('conversation_id').eq('user_id', user_id).eq('name_app', chatflow_name).execute()
+
+        if chat_history_result.data and len(chat_history_result.data) > 0:
+            # Lấy conversation_id từ record đầu tiên (mới nhất)
+            conversation_id = chat_history_result.data[0]['conversation_id']
+            if conversation_id:
+                print(f"Found conversation_id from chat_history: {conversation_id}")
+                return conversation_id
+
+        return None
+
+    except Exception as e:
+        print(f"Error getting conversation_id from chat_history: {str(e)}")
+        return None

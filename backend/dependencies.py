@@ -1,7 +1,7 @@
 # dependencies.py
 from fastapi import HTTPException, Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from .supabase_client import supabase
+from supabase_client import supabase
 
 security = HTTPBearer()
 
@@ -36,7 +36,7 @@ async def get_current_admin_user(current_user = Depends(get_current_user)):
     """
     try:
         # Kiểm tra vai trò admin từ database users table
-        from .supabase_client import supabase
+        from supabase_client import supabase
 
         # Tìm user trong bảng users theo email
         result = supabase.table('users').select('role_id, email').eq('email', current_user.email).execute()
