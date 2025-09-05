@@ -1,0 +1,191 @@
+/* ========================================
+   TYPOGRAPHY SYSTEM - GEIST FONT FAMILY
+   ========================================
+   
+   Font Family: Geist Sans & Geist Mono
+   - Primary: var(--font-geist-sans) - Modern, clean sans-serif
+   - Monospace: var(--font-geist-mono) - For code and technical text
+   
+   Font Weights:
+   - 400: Regular (font-body, font-label)
+   - 500: Medium (font-button, font-label)
+   - 600: Semibold (font-heading)
+   - 700: Bold (font-display)
+   
+   Usage Guidelines:
+   - font-display: Main headings, titles (700)
+   - font-heading: Section headings, labels (600)
+   - font-button: Button text, interactive elements (500)
+   - font-label: Form labels, small headings (500)
+   - font-body: Regular text content (400)
+   
+   ======================================== */
+
+@import "tailwindcss";
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+  --font-geist-sans: 'Geist', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-geist-mono: 'Geist Mono', "SF Mono", Monaco, "Cascadia Code", "Roboto Mono", Consolas, "Courier New", monospace;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a0a0a;
+    --foreground: #ededed;
+  }
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-geist-sans);
+  font-feature-settings: "rlig" 1, "calt" 1;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Typography Scale */
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-geist-sans);
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: -0.025em;
+}
+
+h1 {
+  font-size: 2.25rem;
+  font-weight: 700;
+}
+
+h2 {
+  font-size: 1.875rem;
+  font-weight: 600;
+}
+
+h3 {
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+h4 {
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+h5 {
+  font-size: 1.125rem;
+  font-weight: 600;
+}
+
+h6 {
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+/* Text elements */
+p {
+  line-height: 1.6;
+  font-weight: 400;
+}
+
+code, pre {
+  font-family: var(--font-geist-mono);
+  font-feature-settings: normal;
+  font-weight: 400;
+}
+
+/* Button consistency */
+button {
+  font-family: inherit;
+  font-weight: 500;
+  letter-spacing: 0.025em;
+}
+
+/* Input consistency */
+input, textarea, select {
+  font-family: inherit;
+  font-weight: 400;
+}
+
+/* Custom font weight utilities */
+.font-display {
+  font-weight: 700;
+  letter-spacing: -0.025em;
+}
+
+.font-heading {
+  font-weight: 600;
+  letter-spacing: -0.025em;
+}
+
+.font-body {
+  font-weight: 400;
+  line-height: 1.6;
+}
+
+.font-label {
+  font-weight: 500;
+  letter-spacing: 0.025em;
+}
+
+.font-button {
+  font-weight: 500;
+  letter-spacing: 0.025em;
+}
+
+/* Text size utilities */
+.text-display-lg {
+  font-size: 3rem;
+  line-height: 1.1;
+  font-weight: 700;
+  letter-spacing: -0.05em;
+}
+
+.text-display-md {
+  font-size: 2.25rem;
+  line-height: 1.2;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+}
+
+.text-heading-lg {
+  font-size: 1.875rem;
+  line-height: 1.2;
+  font-weight: 600;
+  letter-spacing: -0.025em;
+}
+
+.text-heading-md {
+  font-size: 1.5rem;
+  line-height: 1.3;
+  font-weight: 600;
+  letter-spacing: -0.025em;
+}
+
+.text-body-lg {
+  font-size: 1.125rem;
+  line-height: 1.6;
+  font-weight: 400;
+}
+
+.text-body-md {
+  font-size: 1rem;
+  line-height: 1.6;
+  font-weight: 400;
+}
+
+.text-body-sm {
+  font-size: 0.875rem;
+  line-height: 1.5;
+  font-weight: 400;
+}
+
+.text-label {
+  font-size: 0.875rem;
+  line-height: 1.4;
+  font-weight: 500;
+  letter-spacing: 0.025em;
+}
