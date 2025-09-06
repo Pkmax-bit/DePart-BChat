@@ -392,7 +392,10 @@ export default function DashboardPage() {
       setShowConversationControls(false);
       setManualConversationId('');
       // Load user chat history
+      console.log('About to call loadUserChatHistory with user.id:', user.id);
       loadUserChatHistory(user.id);
+    } else {
+      console.log('User is null, not loading chat history');
     }
   }, [user?.id]);
 

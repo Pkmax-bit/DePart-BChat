@@ -201,10 +201,7 @@ const UserChatHistory = ({ userChatHistory, loading, onRefresh }) => {
                       }`}>
                         <p className="text-sm text-gray-800 whitespace-pre-wrap break-words leading-relaxed">
                           {message.content && typeof message.content === 'string'
-                            ? (() => {
-                                const questionCount = (message.content.match(/\?/g) || []).length;
-                                return questionCount > 0 ? `${questionCount} câu hỏi` : 'Không có câu hỏi';
-                              })()
+                            ? message.content
                             : 'No content available'
                           }
                         </p>
@@ -289,10 +286,9 @@ const UserChatHistory = ({ userChatHistory, loading, onRefresh }) => {
                                 </div>
                                 <p className="text-sm text-gray-700 mt-1 break-words">
                                   {message.content && typeof message.content === 'string'
-                                    ? (() => {
-                                        const questionCount = (message.content.match(/\?/g) || []).length;
-                                        return questionCount > 0 ? `${questionCount} câu hỏi` : 'Không có câu hỏi';
-                                      })()
+                                    ? message.content.length > 100 
+                                      ? `${message.content.substring(0, 100)}...` 
+                                      : message.content
                                     : 'No content available'
                                   }
                                 </p>
