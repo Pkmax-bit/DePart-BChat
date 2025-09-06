@@ -59,13 +59,14 @@ def get_user_chat_by_user(user_id: int):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.get("/email/{email}")
-def get_user_chat_by_email(email: str):
+@router.get("/admin/all-users")
+def get_all_users_chat_history():
     """
-    Lấy user_chat records theo email
+    Lấy lịch sử chat của tất cả users cho admin (bao gồm thông tin user)
     """
     try:
-        result = supabase.table('user_chat').select('*').eq('email', email).order('created_at', desc=True).execute()
+        # Lấy tất cả user_chat records
+        result = supabase.table('user_chat').select('*').order('created_at', desc=True).execute()
 
         if isinstance(result.data, list) and len(result.data) > 0:
             records = result.data
@@ -74,6 +75,38 @@ def get_user_chat_by_email(email: str):
         else:
             records = []
 
-        return records
+        # Group by user_id và enrich với thông tin user
+        user_groups = {}
+        for record in records:
+            user_id = record['user_id']
+            if user_id not in user_groups:
+                # Lấy thông tin user
+                user_result = supabase.table('users').select('*').eq('id', user_id).execute()
+                user_info = user_result.data[0] if user_result.data else None
+
+                user_groups[user_id] = {
+                    'user': user_info,
+                    'conversations': []
+                }
+
+            # Thêm conversation vào group
+            user_groups[user_id]['conversations'].append({
+                'conversation_id': record['conversation_id'],
+                'name_app': record['name_app'],
+                'app_id': record['app_id'],
+                'email': record['email'],
+                'created_at': record['created_at']
+            })
+
+        # Convert to list format
+        result_list = []
+        for user_id, data in user_groups.items():
+            result_list.append({
+                'user': data['user'],
+                'conversations': data['conversations']
+            })
+
+        return {'users': result_list}
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

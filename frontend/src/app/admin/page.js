@@ -2034,6 +2034,10 @@ function UserChatHistoryManagement() {
   const [selectedChatflow, setSelectedChatflow] = useState('');
   const [chatflows, setChatflows] = useState([]);
   const [expandedUsers, setExpandedUsers] = useState(new Set());
+  const [selectedConversation, setSelectedConversation] = useState(null);
+  const [conversationDetails, setConversationDetails] = useState([]);
+  const [loadingDetails, setLoadingDetails] = useState(false);
+  const [showDetailsModal, setShowDetailsModal] = useState(false);
 
   useEffect(() => {
     fetchAllUserChatHistory();
@@ -2043,7 +2047,7 @@ function UserChatHistoryManagement() {
   const fetchAllUserChatHistory = async () => {
     try {
       setLoading(true);
-      const response = await fetch('http://localhost:8001/api/v1/user-chat-sessions/admin/all-users');
+      const response = await fetch('http://localhost:8001/api/v1/user-chat/admin/all-users');
       if (response.ok) {
         const data = await response.json();
         setAllUserChatHistory(data.users || []);
@@ -2077,6 +2081,33 @@ function UserChatHistoryManagement() {
     setExpandedUsers(newExpanded);
   };
 
+  const fetchConversationDetails = async (conversationId) => {
+    setLoadingDetails(true);
+    try {
+      const response = await fetch(`http://localhost:8001/api/v1/chat-history/conversation/${conversationId}`);
+      if (response.ok) {
+        const data = await response.json();
+        setConversationDetails(data);
+        setSelectedConversation(conversationId);
+        setShowDetailsModal(true);
+      } else {
+        console.error('Failed to fetch conversation details');
+        alert('Không thể tải chi tiết cuộc trò chuyện');
+      }
+    } catch (error) {
+      console.error('Error fetching conversation details:', error);
+      alert('Lỗi kết nối khi tải chi tiết cuộc trò chuyện');
+    } finally {
+      setLoadingDetails(false);
+    }
+  };
+
+  const closeDetailsModal = () => {
+    setShowDetailsModal(false);
+    setSelectedConversation(null);
+    setConversationDetails([]);
+  };
+
   const filteredUsers = allUserChatHistory.filter(userData => {
     const user = userData.user || {};
     const matchesSearch = !searchTerm || 
@@ -2085,7 +2116,7 @@ function UserChatHistoryManagement() {
       user.username?.toLowerCase().includes(searchTerm.toLowerCase());
     
     const matchesChatflow = !selectedChatflow || 
-      userData.sessions?.some(session => session.chatflow?.id == selectedChatflow);
+      userData.conversations?.some(conversation => conversation.app_id == selectedChatflow);
     
     return matchesSearch && matchesChatflow;
   });
@@ -2163,7 +2194,7 @@ function UserChatHistoryManagement() {
         ) : (
           filteredUsers.map((userData) => {
             const user = userData.user || {};
-            const sessions = userData.sessions || [];
+            const conversations = userData.conversations || [];
             const isExpanded = expandedUsers.has(user.id);
             
             return (
@@ -2184,13 +2215,13 @@ function UserChatHistoryManagement() {
                         {user.full_name || user.username || 'Unknown User'}
                       </h3>
                       <p className="text-sm text-gray-500">
-                        {user.email} • {sessions.length} cuộc trò chuyện
+                        {user.email} • {conversations.length} cuộc trò chuyện
                       </p>
                     </div>
                   </div>
                   <div className="flex items-center space-x-2">
                     <span className="text-sm text-gray-500">
-                      Lần truy cập cuối: {sessions.length > 0 ? new Date(Math.max(...sessions.map(s => new Date(s.session?.last_accessed || 0)))).toLocaleDateString('vi-VN') : 'N/A'}
+                      Lần truy cập cuối: {conversations.length > 0 ? new Date(Math.max(...conversations.map(c => new Date(c.created_at || 0)))).toLocaleDateString('vi-VN') : 'N/A'}
                     </span>
                     <div className={`transform transition-transform ${isExpanded ? 'rotate-180' : ''}`}>
                       <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -2200,19 +2231,16 @@ function UserChatHistoryManagement() {
                   </div>
                 </div>
 
-                {/* User Sessions */}
+                {/* User Conversations */}
                 {isExpanded && (
                   <div className="border-t border-gray-200">
-                    {sessions.length === 0 ? (
+                    {conversations.length === 0 ? (
                       <div className="p-4 text-center text-gray-500">
                         Không có lịch sử chat cho user này
                       </div>
                     ) : (
                       <div className="divide-y divide-gray-200">
-                        {sessions.map((sessionData, index) => {
-                          const session = sessionData.session || {};
-                          const chatflow = sessionData.chatflow || {};
-                          
+                        {conversations.map((conversation, index) => {
                           return (
                             <div key={index} className="p-4 hover:bg-gray-50">
                               <div className="flex items-center justify-between">
@@ -2224,20 +2252,25 @@ function UserChatHistoryManagement() {
                                   </div>
                                   <div>
                                     <h4 className="font-medium text-gray-900">
-                                      {chatflow.name || 'Unknown Chatbot'}
+                                      {conversation.name_app || 'Unknown Chatbot'}
                                     </h4>
                                     <p className="text-sm text-gray-500">
-                                      Conversation ID: {session.conversation_id ? session.conversation_id.substring(0, 8) + '...' : 'N/A'}
+                                      Conversation ID: {conversation.conversation_id ? conversation.conversation_id.substring(0, 8) + '...' : 'N/A'}
                                     </p>
                                   </div>
                                 </div>
-                                <div className="text-right">
+                                <div className="flex items-center space-x-2">
                                   <p className="text-sm text-gray-900">
-                                    {session.last_accessed ? new Date(session.last_accessed).toLocaleString('vi-VN') : 'N/A'}
+                                    {conversation.created_at ? new Date(conversation.created_at).toLocaleString('vi-VN') : 'N/A'}
                                   </p>
-                                  <p className="text-xs text-gray-500">
-                                    Tạo: {session.created_at ? new Date(session.created_at).toLocaleDateString('vi-VN') : 'N/A'}
-                                  </p>
+                                  <button
+                                    onClick={() => fetchConversationDetails(conversation.conversation_id)}
+                                    disabled={loadingDetails}
+                                    className="px-3 py-1 text-xs bg-green-100 text-green-700 rounded hover:bg-green-200 transition-colors disabled:opacity-50"
+                                    title="Xem chi tiết cuộc trò chuyện"
+                                  >
+                                    {loadingDetails ? '⏳' : '👁️ Chi tiết'}
+                                  </button>
                                 </div>
                               </div>
                             </div>
@@ -2255,7 +2288,92 @@ function UserChatHistoryManagement() {
 
       {filteredUsers.length > 0 && (
         <div className="mt-4 text-sm text-gray-600">
-          Tổng cộng: {filteredUsers.length} users • {filteredUsers.reduce((sum, user) => sum + (user.sessions?.length || 0), 0)} cuộc trò chuyện
+          Tổng cộng: {filteredUsers.length} users • {filteredUsers.reduce((sum, user) => sum + (user.conversations?.length || 0), 0)} cuộc trò chuyện
+        </div>
+      )}
+
+      {/* Conversation Details Modal */}
+      {showDetailsModal && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
+            <div className="p-6 border-b border-gray-200">
+              <div className="flex justify-between items-center">
+                <h3 className="text-lg font-semibold">Chi tiết cuộc trò chuyện</h3>
+                <button
+                  onClick={closeDetailsModal}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+              <p className="text-sm text-gray-600 mt-1">
+                Conversation ID: {selectedConversation}
+              </p>
+            </div>
+
+            <div className="p-6 max-h-96 overflow-y-auto">
+              {loadingDetails ? (
+                <div className="text-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+                  <p className="mt-2 text-sm text-gray-600">Đang tải chi tiết...</p>
+                </div>
+              ) : conversationDetails.length === 0 ? (
+                <div className="text-center py-8 text-gray-500">
+                  Không có tin nhắn nào trong cuộc trò chuyện này
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {conversationDetails
+                    .sort((a, b) => new Date(a.created_at || a.timestamp) - new Date(b.created_at || b.timestamp))
+                    .map((message, index) => (
+                      <div key={message.log_id || message.id || index} className="space-y-3">
+                        {/* User Input */}
+                        <div className="flex justify-end">
+                          <div className="max-w-2xl w-full">
+                            <div className="bg-blue-50 border-l-4 border-blue-500 p-3 rounded-lg">
+                              <div className="flex items-center space-x-2 mb-2">
+                                <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center">
+                                  <span className="text-xs font-bold text-white">👤</span>
+                                </div>
+                                <span className="text-sm font-medium text-blue-700">User Input</span>
+                              </div>
+                              <div className="text-sm text-gray-900 bg-white p-3 rounded border whitespace-pre-wrap break-words overflow-wrap-anywhere">
+                                {message.input_text || message.user_message || 'N/A'}
+                              </div>
+                              <div className="text-xs text-gray-500 mt-2">
+                                {message.created_at ? new Date(message.created_at).toLocaleString('vi-VN') : 'N/A'}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Bot Response */}
+                        <div className="flex justify-start">
+                          <div className="max-w-2xl w-full">
+                            <div className="bg-green-50 border-l-4 border-green-500 p-3 rounded-lg">
+                              <div className="flex items-center space-x-2 mb-2">
+                                <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
+                                  <span className="text-xs font-bold text-white">🤖</span>
+                                </div>
+                                <span className="text-sm font-medium text-green-700">Bot Response</span>
+                              </div>
+                              <div className="text-sm text-gray-900 bg-white p-3 rounded border whitespace-pre-wrap break-words overflow-wrap-anywhere">
+                                {message.output_text || message.bot_response || 'N/A'}
+                              </div>
+                              <div className="text-xs text-gray-500 mt-2">
+                                {message.created_at ? new Date(message.created_at).toLocaleString('vi-VN') : 'N/A'}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       )}
     </div>
