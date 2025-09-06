@@ -132,6 +132,21 @@ export default function AdminLayout({ user, activeTab, onTabChange, children }) 
 
           <button
             onClick={() => {
+              onTabChange('user-chat-history');
+              setSidebarOpen(false);
+            }}
+            className={`w-full text-left px-3 py-2 rounded-md text-sm font-medium mb-2 flex items-center ${
+              activeTab === 'user-chat-history'
+                ? 'bg-blue-100 text-blue-700'
+                : 'text-gray-900 hover:bg-gray-100'
+            }`}
+          >
+            <History className="w-4 h-4 mr-2" />
+            User Chat History
+          </button>
+
+          <button
+            onClick={() => {
               onTabChange('chat-history');
               setSidebarOpen(false);
             }}
@@ -186,6 +201,7 @@ export default function AdminLayout({ user, activeTab, onTabChange, children }) 
                  activeTab === 'chatflows' ? 'Quản lý Chatflow' :
                  activeTab === 'departments' ? 'Quản lý Phòng ban' :
                  activeTab === 'feedback' ? 'Quản lý Góp Ý' :
+                 activeTab === 'user-chat-history' ? 'User Chat History' :
                  activeTab === 'chat-history' ? 'Lịch sử Trò chuyện' : 'Admin Panel'}
               </h1>
             </div>

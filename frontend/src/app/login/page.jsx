@@ -55,6 +55,12 @@ export default function LoginPage() {
           login_time: new Date().toISOString()
         }));
 
+        console.log('User session saved to localStorage:', {
+          userId: userData.user.id,
+          role: userData.role,
+          department_id: userData.user.department_id
+        });
+
         // Log activity khi đăng nhập
         try {
           await fetch('http://localhost:8001/api/v1/users/activity/log', {

@@ -1,11 +1,103 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '../../lib/supabaseClient';
 import DashboardLayout from '../../components/DashboardLayout';
 
-// Password Change Modal Component
+// DashboardContent Component
+function DashboardContent({ selectedChatflow, currentConversationId, user, sidebarWidth, onSidebarWidthChange }) {
+  // Update local sidebarWidth when prop changes
+  React.useEffect(() => {
+    onSidebarWidthChange(sidebarWidth);
+  }, [sidebarWidth, onSidebarWidthChange]);
+
+  return (
+    <div className="h-full">
+      {selectedChatflow ? (
+        <iframe
+          key={`${user?.id || 'no-user'}-${selectedChatflow.id}-${currentConversationId || 'no-conversation'}`}
+          src={currentConversationId
+            ? `${selectedChatflow.embed_url}?conversationId=${currentConversationId}`
+            : selectedChatflow.embed_url
+          }
+          className="w-full h-full border-0 transition-opacity duration-300"
+          title={selectedChatflow.name}
+          onLoad={() => {
+            console.log('Chatbot loaded successfully with conversation:', currentConversationId);
+
+            // Inject script để monitor conversation_id changes trong iframe
+            try {
+              const iframe = document.querySelector('iframe');
+              if (iframe && iframe.contentWindow) {
+                // Send message to iframe để setup monitoring
+                iframe.contentWindow.postMessage({
+                  type: 'INIT_CONVERSATION_MONITOR',
+                  parentOrigin: window.location.origin
+                }, '*');
+              }
+            } catch (error) {
+              console.log('Could not inject monitoring script:', error);
+            }
+          }}
+          onError={(e) => {
+            console.error('Failed to load chatbot:', e);
+            // Có thể hiển thị error message ở đây
+          }}
+        />
+      ) : (
+        <div className="flex items-center justify-center h-full bg-gradient-to-br from-blue-50 via-white to-purple-50">
+          <div className="text-center max-w-md mx-auto px-6">
+            <div className="mb-8">
+              <div className="w-20 h-20 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg">
+                <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                </svg>
+              </div>
+              <h2 className="text-3xl font-bold text-gray-800 mb-3">
+                Chào mừng đến với Chatbot
+              </h2>
+              <p className="text-gray-600 text-lg leading-relaxed">
+                Chọn một chatbot từ sidebar để bắt đầu cuộc trò chuyện thú vị của bạn
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+              <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100">
+                <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center mb-2">
+                  <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+                <h3 className="font-semibold text-gray-800 text-sm">Thông Minh</h3>
+                <p className="text-gray-500 text-xs">AI tiên tiến hỗ trợ 24/7</p>
+              </div>
+
+              <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100">
+                <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center mb-2">
+                  <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                  </svg>
+                </div>
+                <h3 className="font-semibold text-gray-800 text-sm">Nhanh Chóng</h3>
+                <p className="text-gray-500 text-xs">Phản hồi tức thời</p>
+              </div>
+            </div>
+
+            <div className="text-center">
+              <div className="inline-flex items-center text-sm text-gray-500 bg-white px-4 py-2 rounded-full shadow-sm border border-gray-100">
+                <svg className="w-4 h-4 mr-2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4" />
+                </svg>
+                Chọn chatbot từ menu bên trái để bắt đầu
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 function PasswordChangeModal({ isOpen, onClose, userEmail }) {
   const [step, setStep] = useState('email'); // 'email', 'code', 'success'
   const [email, setEmail] = useState(userEmail || '');
@@ -264,6 +356,9 @@ export default function DashboardPage() {
   const [userSessions, setUserSessions] = useState([]);
   const [chatHistory, setChatHistory] = useState([]);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [userChatHistory, setUserChatHistory] = useState([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
+  const [sidebarWidth, setSidebarWidth] = useState(320); // Default width matching DashboardLayout
   // useEffect để gửi conversation_id vào iframe khi nó thay đổi
   useEffect(() => {
     if (currentConversationId && selectedChatflow) {
@@ -288,13 +383,16 @@ export default function DashboardPage() {
   // Reset state khi user thay đổi
   useEffect(() => {
     if (user) {
-      console.log('User changed, resetting dashboard state for:', user.id);
+      console.log('User changed, resetting dashboard state for:', user);
+      console.log('User ID:', user.id, 'Type:', typeof user.id);
       setSelectedChatflow(null);
       setCurrentConversationId(null);
       setChatHistory([]);
       setUserSessions([]);
       setShowConversationControls(false);
       setManualConversationId('');
+      // Load user chat history
+      loadUserChatHistory(user.id);
     }
   }, [user?.id]);
 
@@ -340,31 +438,23 @@ export default function DashboardPage() {
   const handleFirstMessageSent = async () => {
     if (!selectedChatflow) return;
 
-    console.log('First message sent - session already created on chatflow selection');
+    console.log('First message sent - conversation tracking handled by sync');
 
-    // Session đã được tạo khi chọn chatflow, chỉ cần đảm bảo conversation_id được sync
-    const localSession = localStorage.getItem('user_session');
-    if (localSession) {
-      const sessionData = JSON.parse(localSession);
-      const userId = sessionData.user.id;
-
-      // Đảm bảo session được cập nhật với conversation_id hiện tại
-      if (currentConversationId) {
-        try {
-          await initializeUserSession(userId, selectedChatflow.id, currentConversationId);
-          console.log('Session updated with current conversation ID:', currentConversationId);
-        } catch (error) {
-          console.error('Failed to update session on first message:', error);
-        }
-      }
-    }
+    // Conversation ID will be synced from iframe messages
+    // No need to manually update sessions anymore
   };
 
   const checkUser = async () => {
     try {
+      console.log('Checking user authentication...');
+
       // Kiểm tra Supabase session (cho Admin)
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session) {
+      const { data: { session }, error } = await supabase.auth.getSession();
+      console.log('Supabase session check:', { session: !!session, error });
+
+      if (session && !error) {
+        console.log('Admin session found:', session.user);
+        console.log('Admin user ID:', session.user.id, 'Type:', typeof session.user.id);
         setUser(session.user);
         setLoading(false);
         return;
@@ -372,18 +462,33 @@ export default function DashboardPage() {
 
       // Kiểm tra localStorage session (cho User/Manager)
       const localSession = localStorage.getItem('user_session');
+      console.log('Local session check:', !!localSession);
+
       if (localSession) {
         const sessionData = JSON.parse(localSession);
+        console.log('Local session data:', sessionData);
+        console.log('Local user ID:', sessionData.user?.id, 'Type:', typeof sessionData.user?.id);
+
+        // Kiểm tra session expiry (24 giờ)
+        const loginTime = new Date(sessionData.login_time);
+        const now = new Date();
+        const hoursDiff = (now - loginTime) / (1000 * 60 * 60);
+
+        if (hoursDiff > 24) {
+          console.log('Session expired, clearing...');
+          localStorage.removeItem('user_session');
+          router.push('/login');
+          return;
+        }
+
         setUser(sessionData.user);
         setLoading(false);
-
-        // Load tất cả sessions của user
-        await loadUserSessions(sessionData.user.id);
 
         return;
       }
 
       // Không có session hợp lệ
+      console.log('No valid session found, redirecting to login');
       router.push('/login');
     } catch (error) {
       console.error('Auth check error:', error);
@@ -444,63 +549,24 @@ export default function DashboardPage() {
 
   const loadUserSession = async (userId, chatflowId) => {
     try {
-      const response = await fetch(`http://localhost:8001/api/v1/user-chat-sessions/user/${userId}/chatflow/${chatflowId}`);
-      if (response.ok) {
-        const sessionData = await response.json();
-        console.log('Loaded session data:', sessionData);
-
-        if (sessionData.conversation_id) {
-          setCurrentConversationId(sessionData.conversation_id);
-          console.log('Loaded conversation ID:', sessionData.conversation_id);
-
-          // Tải lịch sử chat nếu có conversation_id
-          await loadChatHistory(sessionData.conversation_id);
-        }
-
-        return sessionData;
-      } else if (response.status === 404) {
-        console.log('No existing session found for this user+chatflow');
-        return null;
-      } else {
-        console.error('Failed to load user session:', response.status);
-        return null;
-      }
+      // Since we moved to user-chat table, this function is no longer needed
+      // Return null to indicate no session found
+      console.log('loadUserSession: Function deprecated, using user-chat table instead');
+      return null;
     } catch (error) {
-      console.error('Error loading user session:', error);
+      console.error('Error in deprecated loadUserSession:', error);
       return null;
     }
   };
 
   const initializeUserSession = async (userId, chatflowId, conversationId = null) => {
     try {
-      const requestData = {
-        user_id: userId,
-        chatflow_id: chatflowId
-      };
-
-      if (conversationId) {
-        requestData.conversation_id = conversationId;
-      }
-
-      console.log('Initializing session:', requestData);
-
-      const response = await fetch(`http://localhost:8001/api/v1/user-chat-sessions/initialize-session?user_id=${userId}&chatflow_id=${chatflowId}${conversationId ? `&conversation_id=${conversationId}` : ''}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        }
-      });
-
-      if (response.ok) {
-        const result = await response.json();
-        console.log('Session initialized:', result);
-        return result;
-      } else {
-        console.error('Failed to initialize session:', response.status, await response.text());
-        return null;
-      }
+      // Since we moved to user-chat table, session initialization is handled differently
+      // This function is now deprecated
+      console.log('initializeUserSession: Function deprecated, using user-chat table instead');
+      return null;
     } catch (error) {
-      console.error('Error initializing session:', error);
+      console.error('Error in deprecated initializeUserSession:', error);
       return null;
     }
   };
@@ -514,38 +580,10 @@ export default function DashboardPage() {
       const sessionData = JSON.parse(localSession);
       const userId = sessionData.user.id;
 
+      // Since we moved to user-chat table, session creation is handled by sync
+      // Just set the conversation ID if available
       console.log(`User ${userId} selecting chatflow ${chatflow.id}`);
-
-      // Gọi first-chat endpoint để tạo session và lấy conversation_id từ chat_history
-      try {
-        const response = await fetch(`http://localhost:8001/api/v1/user-chat-sessions/first-chat/${userId}/${chatflow.id}`, {
-          method: 'POST'
-        });
-
-        if (response.ok) {
-          const result = await response.json();
-          console.log('First chat session created on chatflow selection:', result);
-
-          // Cập nhật conversation_id từ server
-          if (result.conversation_id) {
-            console.log('Setting conversation ID from first chat:', result.conversation_id);
-            setCurrentConversationId(result.conversation_id);
-
-            // Tải lịch sử chat nếu có conversation_id
-            await loadChatHistory(result.conversation_id);
-          }
-        } else {
-          console.error('Failed to create first chat session on selection:', response.status, await response.text());
-          // Fallback: tạo session rỗng
-          await initializeUserSession(userId, chatflow.id);
-          setCurrentConversationId(null);
-        }
-      } catch (error) {
-        console.error('Error creating first chat session on selection:', error);
-        // Fallback: tạo session rỗng
-        await initializeUserSession(userId, chatflow.id);
-        setCurrentConversationId(null);
-      }
+      setCurrentConversationId(null); // Will be set by iframe or manual input
     }
 
     // Log activity khi user chọn chatflow
@@ -573,35 +611,21 @@ export default function DashboardPage() {
   const updateConversationId = async (newConversationId) => {
     if (!selectedChatflow) return;
 
-    const localSession = localStorage.getItem('user_session');
-    if (localSession) {
-      const sessionData = JSON.parse(localSession);
-      const userId = sessionData.user.id;
+    setCurrentConversationId(newConversationId);
 
-      setCurrentConversationId(newConversationId);
-      await initializeUserSession(userId, selectedChatflow.id, newConversationId);
+    // Tải lịch sử chat cho conversation mới
+    await loadChatHistory(newConversationId);
 
-      // Tải lịch sử chat cho conversation mới
-      await loadChatHistory(newConversationId);
-
-      console.log('Conversation ID updated:', newConversationId);
-    }
+    console.log('Conversation ID updated:', newConversationId);
   };
 
   const resetConversation = async () => {
     if (!selectedChatflow) return;
 
-    const localSession = localStorage.getItem('user_session');
-    if (localSession) {
-      const sessionData = JSON.parse(localSession);
-      const userId = sessionData.user.id;
-
-      const newConversationId = `conv_${userId}_${selectedChatflow.id}_${Date.now()}`;
-      setCurrentConversationId(newConversationId);
-      setChatHistory([]); // Xóa lịch sử chat cũ
-      await initializeUserSession(userId, selectedChatflow.id, newConversationId);
-      console.log('Conversation reset:', newConversationId);
-    }
+    const newConversationId = `conv_${Date.now()}`;
+    setCurrentConversationId(newConversationId);
+    setChatHistory([]); // Xóa lịch sử chat cũ
+    console.log('Conversation reset:', newConversationId);
   };
 
   const loadChatHistory = async (conversationId) => {
@@ -624,39 +648,139 @@ export default function DashboardPage() {
   const syncConversationFromIframe = async (detectedConversationId) => {
     if (!selectedChatflow || !detectedConversationId) return;
 
-    const localSession = localStorage.getItem('user_session');
-    if (localSession) {
-      const sessionData = JSON.parse(localSession);
-      const userId = sessionData.user.id;
+    // Chỉ cập nhật nếu conversation_id khác với hiện tại
+    if (detectedConversationId !== currentConversationId) {
+      console.log('Syncing conversation ID from iframe:', detectedConversationId);
+      setCurrentConversationId(detectedConversationId);
 
-      // Chỉ cập nhật nếu conversation_id khác với hiện tại
-      if (detectedConversationId !== currentConversationId) {
-        console.log('Syncing conversation ID from iframe:', detectedConversationId);
-        setCurrentConversationId(detectedConversationId);
-
-        // Cập nhật session với conversation_id mới từ iframe
-        await initializeUserSession(userId, selectedChatflow.id, detectedConversationId);
-
-        // Tải lịch sử chat cho conversation mới
-        await loadChatHistory(detectedConversationId);
-      }
+      // Tải lịch sử chat cho conversation mới
+      await loadChatHistory(detectedConversationId);
     }
   };
 
-  const loadUserSessions = async (userId) => {
+  const loadUserChatHistory = async (userId) => {
     try {
-      const response = await fetch(`http://localhost:8001/api/v1/user-chat-sessions/user/${userId}`);
+      console.log('=== STARTING loadUserChatHistory for userId:', userId, 'Type:', typeof userId);
+
+      // Convert userId to number if it's a string
+      const numericUserId = typeof userId === 'string' ? parseInt(userId) : userId;
+      console.log('Using numeric userId:', numericUserId);
+
+      setLoadingHistory(true);
+
+      // Test basic connectivity first
+      console.log('Testing basic API connectivity...');
+      try {
+        const testResponse = await fetch('http://localhost:8001/');
+        console.log('Basic API test status:', testResponse.status);
+      } catch (testError) {
+        console.error('Basic API test failed:', testError);
+      }
+
+      // Sử dụng endpoint user-chat thay vì user-chat-sessions
+      const apiUrl = `http://localhost:8001/api/v1/user-chat/user/${numericUserId}`;
+      console.log('Calling API:', apiUrl);
+
+      const response = await fetch(apiUrl);
+      console.log('User-chat API response status:', response.status);
+
       if (response.ok) {
-        const sessions = await response.json();
-        setUserSessions(sessions);
-        console.log('User sessions loaded:', sessions.length, 'sessions');
+        const userChatRecords = await response.json();
+        console.log('User-chat records received:', userChatRecords);
+
+        // Transform user-chat data để phù hợp với UserChatHistory component
+        const transformedData = [];
+
+        for (const record of userChatRecords) {
+          console.log('Processing record:', record);
+
+          // Lấy thông tin user từ email
+          const userResponse = await fetch('http://localhost:8001/api/v1/users/');
+          let userInfo = null;
+
+          if (userResponse.ok) {
+            const usersData = await userResponse.json();
+            const users = usersData.users || [];
+            userInfo = users.find(u => u.id === record.user_id);
+            console.log('Found user info:', userInfo);
+          } else {
+            console.error('Users API failed:', userResponse.status);
+          }
+
+          // Lấy chat history cho conversation này
+          const chatResponse = await fetch(`http://localhost:8001/api/v1/chat-history/conversation/${record.conversation_id}`);
+          console.log('Chat history API response status for', record.conversation_id, ':', chatResponse.status);
+
+          let messages = [];
+
+          if (chatResponse.ok) {
+            const chatData = await chatResponse.json();
+            console.log('Chat data received:', chatData);
+
+            // Transform từng record thành messages
+            chatData.forEach(msg => {
+              console.log('Processing message:', msg);
+
+              // Tạo message cho input (user)
+              if (msg.input_text) {
+                const userMessage = {
+                  id: `input_${msg.log_id}`,
+                  role: 'user',
+                  content: msg.input_text,
+                  created_at: msg.created_at,
+                  conversation_id: record.conversation_id,
+                  chatflow_name: record.name_app,
+                  chatflow_id: record.app_id,
+                  user_name: userInfo ? userInfo.full_name : 'Unknown User',
+                  user_email: record.email
+                };
+                messages.push(userMessage);
+                console.log('Created user message:', userMessage);
+              }
+
+              // Tạo message cho output (assistant)
+              if (msg.output_text) {
+                const botMessage = {
+                  id: `output_${msg.log_id}`,
+                  role: 'assistant',
+                  content: msg.output_text,
+                  created_at: msg.created_at,
+                  conversation_id: record.conversation_id,
+                  chatflow_name: record.name_app,
+                  chatflow_id: record.app_id,
+                  user_name: userInfo ? userInfo.full_name : 'Unknown User',
+                  user_email: record.email
+                };
+                messages.push(botMessage);
+                console.log('Created bot message:', botMessage);
+              }
+            });
+          } else {
+            console.error('Chat history API failed for', record.conversation_id, ':', chatResponse.status);
+          }
+
+          // Group messages by conversation
+          if (messages.length > 0) {
+            // Sort messages by time
+            messages.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+            transformedData.push(...messages);
+            console.log('Added messages to transformed data:', messages.length);
+          }
+        }
+
+        console.log('Final transformed data:', transformedData);
+        setUserChatHistory(transformedData);
       } else {
-        console.error('Failed to load user sessions');
-        setUserSessions([]);
+        console.error('Failed to load user chat history - status:', response.status);
+        const errorText = await response.text();
+        console.error('Error response:', errorText);
+        setUserChatHistory([]);
       }
     } catch (error) {
-      console.error('Error loading user sessions:', error);
-      setUserSessions([]);
+      console.error('Error loading user chat history:', error);
+      setUserChatHistory([]);
+    } finally {
+      setLoadingHistory(false);
     }
   };
 
@@ -734,99 +858,16 @@ export default function DashboardPage() {
       onSelectChatflow={handleSelectChatflow}
       onLogout={handleLogout}
       onPasswordChange={() => setShowPasswordModal(true)}
+      userChatHistory={userChatHistory}
+      loadingHistory={loadingHistory}
+      onRefreshHistory={() => user && loadUserChatHistory(user.id)}
     >
-      <div className="h-full">
-        {selectedChatflow ? (
-          <div className="h-full">
-
-            <iframe
-              key={`${user?.id || 'no-user'}-${selectedChatflow.id}-${currentConversationId || 'no-conversation'}`}
-              src={currentConversationId
-                ? `${selectedChatflow.embed_url}?conversationId=${currentConversationId}`
-                : selectedChatflow.embed_url
-              }
-              className="w-full h-full border-0 transition-opacity duration-300"
-              title={selectedChatflow.name}
-              onLoad={() => {
-                console.log('Chatbot loaded successfully with conversation:', currentConversationId);
-
-                // Inject script để monitor conversation_id changes trong iframe
-                try {
-                  const iframe = document.querySelector('iframe');
-                  if (iframe && iframe.contentWindow) {
-                    // Send message to iframe để setup monitoring
-                    iframe.contentWindow.postMessage({
-                      type: 'INIT_CONVERSATION_MONITOR',
-                      parentOrigin: window.location.origin
-                    }, '*');
-                  }
-                } catch (error) {
-                  console.log('Could not inject monitoring script:', error);
-                }
-              }}
-              onError={(e) => {
-                console.error('Failed to load chatbot:', e);
-                // Có thể hiển thị error message ở đây
-              }}
-            />
-          </div>
-        ) : (
-          <div className="flex items-center justify-center h-full bg-gradient-to-br from-blue-50 via-white to-purple-50">
-            <div className="text-center max-w-md mx-auto px-6">
-              <div className="mb-8">
-                <div className="w-20 h-20 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg">
-                  <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                  </svg>
-                </div>
-                <h2 className="text-3xl font-bold text-gray-800 mb-3">
-                  Chào mừng đến với Chatbot
-                </h2>
-                <p className="text-gray-600 text-lg leading-relaxed">
-                  Chọn một chatbot từ sidebar để bắt đầu cuộc trò chuyện thú vị của bạn
-                </p>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
-                <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100">
-                  <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center mb-2">
-                    <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                  </div>
-                  <h3 className="font-semibold text-gray-800 text-sm">Thông Minh</h3>
-                  <p className="text-gray-500 text-xs">AI tiên tiến hỗ trợ 24/7</p>
-                </div>
-
-                <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100">
-                  <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center mb-2">
-                    <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                    </svg>
-                  </div>
-                  <h3 className="font-semibold text-gray-800 text-sm">Nhanh Chóng</h3>
-                  <p className="text-gray-500 text-xs">Phản hồi tức thời</p>
-                </div>
-              </div>
-
-              <div className="text-center">
-                <div className="inline-flex items-center text-sm text-gray-500 bg-white px-4 py-2 rounded-full shadow-sm border border-gray-100">
-                  <svg className="w-4 h-4 mr-2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4" />
-                  </svg>
-                  Chọn chatbot từ menu bên trái để bắt đầu
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Password Change Modal */}
-      <PasswordChangeModal
-        isOpen={showPasswordModal}
-        onClose={() => setShowPasswordModal(false)}
-        userEmail={user?.email}
+      <DashboardContent 
+        selectedChatflow={selectedChatflow}
+        currentConversationId={currentConversationId}
+        user={user}
+        sidebarWidth={sidebarWidth}
+        onSidebarWidthChange={setSidebarWidth}
       />
     </DashboardLayout>
   );

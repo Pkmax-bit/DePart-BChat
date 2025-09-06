@@ -1,6 +1,7 @@
 import React from 'react';
-import { LogOut, Settings, Menu, X, ChevronLeft, ChevronRight, MessageCircle } from 'lucide-react';
+import { LogOut, Settings, Menu, X, ChevronLeft, ChevronRight, MessageCircle, History } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
+import UserChatHistory from './UserChatHistory';
 
 export default function DashboardLayout({
   user,
@@ -9,9 +10,51 @@ export default function DashboardLayout({
   onSelectChatflow,
   onLogout,
   onPasswordChange,
-  children
+  children,
+  userChatHistory = [],
+  loadingHistory = false,
+  onRefreshHistory
 }) {
   const [sidebarCollapsed, setSidebarCollapsed] = React.useState(false);
+  const [chatHistorySidebarOpen, setChatHistorySidebarOpen] = React.useState(false);
+  const [sidebarWidth, setSidebarWidth] = React.useState(320); // Default width in pixels
+  const [isResizing, setIsResizing] = React.useState(false);
+
+  // Handle mouse down on resize handle
+  const handleMouseDown = (e) => {
+    setIsResizing(true);
+    e.preventDefault();
+  };
+
+  // Handle mouse move for resizing
+  React.useEffect(() => {
+    const handleMouseMove = (e) => {
+      if (!isResizing) return;
+      
+      const newWidth = window.innerWidth - e.clientX;
+      // Limit width between 280px and 600px
+      const clampedWidth = Math.max(280, Math.min(600, newWidth));
+      setSidebarWidth(clampedWidth);
+    };
+
+    const handleMouseUp = () => {
+      setIsResizing(false);
+    };
+
+    if (isResizing) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+      document.body.style.cursor = 'col-resize';
+      document.body.style.userSelect = 'none';
+    }
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    };
+  }, [isResizing]);
   // Kiểm tra admin từ cả Supabase session và localStorage session
   const isAdmin = user?.email === 'backen@vanphuthanh.net' ||
                   (localStorage.getItem('user_session') &&
@@ -40,9 +83,9 @@ export default function DashboardLayout({
                 )}
               </button>
               <div>
-                <h1 className="text-2xl font-display text-gray-900">
+                <h2 className="text-2xl font-display text-gray-900">
                   {selectedChatflow ? selectedChatflow.name : 'Dashboard'}
-                </h1>
+                </h2>
                 {selectedChatflow?.description && (
                   <p className="text-sm text-gray-600 mt-1">
                     {selectedChatflow.description}
@@ -57,7 +100,19 @@ export default function DashboardLayout({
                 </svg>
                 <span>{new Date().toLocaleDateString('vi-VN')}</span>
               </div>
-              {/* Nút góp ý */}
+              
+              {/* Nút toggle Chat History Sidebar */}
+              <button
+                onClick={() => setChatHistorySidebarOpen(!chatHistorySidebarOpen)}
+                className={`p-2 rounded-lg transition-colors ${
+                  chatHistorySidebarOpen 
+                    ? 'text-blue-600 bg-blue-50' 
+                    : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'
+                }`}
+                title="Lịch sử chat"
+              >
+                <History className="w-5 h-5" />
+              </button>
              
               <div className="flex items-center space-x-3">
                 <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
@@ -89,7 +144,7 @@ export default function DashboardLayout({
                 </div>
                 {!sidebarCollapsed && (
                   <div className="min-w-0 flex-1">
-                    <h1 className="text-sm font-heading text-white truncate">Chat System</h1>
+                    <h3 className="text-xs font-heading text-white truncate">Chat System</h3>
                     <p className="text-xs text-blue-100">AI Assistant</p>
                   </div>
                 )}
@@ -100,10 +155,10 @@ export default function DashboardLayout({
             <div className="flex-1 p-4 overflow-y-auto">
               <div className="mb-6">
                 {!sidebarCollapsed && (
-                  <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3 flex items-center">
+                  <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3 flex items-center">
                     <MessageCircle className="w-4 h-4 mr-2 text-gray-400" />
                     Chatbots ({chatflows.length})
-                  </h2>
+                  </h3>
                 )}
                 <div className="space-y-2">
                   {chatflows.length === 0 ? (
@@ -165,6 +220,7 @@ export default function DashboardLayout({
                   )}
                 </div>
               </div>
+
             </div>
 
             {/* User Section & Admin */}
@@ -239,9 +295,60 @@ export default function DashboardLayout({
 
           {/* Main Content */}
           <div className="flex-1 flex flex-col overflow-hidden">
-            <main className="flex-1 overflow-hidden bg-gray-50">
-              {children}
+            <main className="flex-1 overflow-hidden bg-gray-50 transition-all duration-300">
+              {React.isValidElement(children) 
+                ? React.cloneElement(children, { sidebarWidth })
+                : children
+              }
             </main>
+          </div>
+
+          {/* Chat History Sidebar */}
+          <div 
+            className={`fixed right-0 top-0 h-full bg-white border-l border-gray-200 flex flex-col transition-all duration-300 ease-in-out z-40 overflow-hidden shadow-xl ${
+              chatHistorySidebarOpen ? '' : 'w-0'
+            }`}
+            style={{ width: chatHistorySidebarOpen ? `${sidebarWidth}px` : '0px' }}
+          >
+            {chatHistorySidebarOpen && (
+              <>
+                {/* Resize Handle */}
+                <div
+                  className="absolute left-0 top-0 w-1 h-full bg-gray-300 hover:bg-blue-400 cursor-col-resize transition-colors z-50"
+                  onMouseDown={handleMouseDown}
+                />
+                
+                {/* Header */}
+                <div className="p-4 border-b border-gray-200 bg-gradient-to-r from-blue-600 to-purple-600">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-8 h-8 bg-white bg-opacity-20 rounded-lg flex items-center justify-center">
+                        <History className="w-5 h-5 text-white" />
+                      </div>
+                      <div>
+                        <h1 className="text-sm font-heading text-white">Lịch sử chat</h1>
+                        <p className="text-xs text-blue-100">Cuộc trò chuyện của bạn</p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => setChatHistorySidebarOpen(false)}
+                      className="p-1 rounded-lg text-white hover:bg-white hover:bg-opacity-20 transition-colors"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Content */}
+                <div className="flex-1 overflow-hidden">
+                  <UserChatHistory
+                    userChatHistory={userChatHistory}
+                    loading={loadingHistory}
+                    onRefresh={onRefreshHistory}
+                  />
+                </div>
+              </>
+            )}
           </div>
         </div>
       </div>

@@ -294,6 +294,54 @@ def handle_first_chat(user_id: int, chatflow_id: int):
         print(f"Error creating first chat session: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to create first chat session: {str(e)}")
 
+@router.get("/admin/all-users")
+def get_all_users_chat_history(limit: int = 100):
+    """
+    Lấy tất cả lịch sử chat của tất cả users (cho admin)
+    """
+    try:
+        # Lấy tất cả user chat sessions với thông tin user và chatflow
+        result = supabase.table('user_chat_sessions').select('''
+            *,
+            users!fk_user(id, username, full_name, email),
+            chatflows!fk_chatflow(id, name, description)
+        ''').order('last_accessed', desc=True).limit(limit).execute()
+
+        if isinstance(result.data, list) and len(result.data) > 0:
+            records = result.data
+        elif hasattr(result.data, 'data') and isinstance(result.data.data, list):
+            records = result.data.data
+        else:
+            records = []
+
+        # Group by user
+        users_data = {}
+        for record in records:
+            user_id = record.get('user_id')
+            if not user_id:
+                continue
+                
+            if user_id not in users_data:
+                users_data[user_id] = {
+                    'user': record.get('users', {}),
+                    'sessions': []
+                }
+            
+            users_data[user_id]['sessions'].append({
+                'session': record,
+                'chatflow': record.get('chatflows', {})
+            })
+
+        return {
+            'total_users': len(users_data),
+            'total_sessions': len(records),
+            'users': list(users_data.values())
+        }
+
+    except Exception as e:
+        print(f"Error getting all users chat history: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 def get_conversation_id_from_chat_history(user_id: int, chatflow_id: int) -> Optional[str]:
     """
     Lấy conversation_id từ chat_history cho user và chatflow cụ thể

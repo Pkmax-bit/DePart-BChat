@@ -106,11 +106,11 @@ class FeedbackResponse(BaseModel):
 # Model cho Chat History
 class ChatHistoryCreate(BaseModel):
     name_app: str
-    user_message: str
-    bot_response: str
+    input_text: str
+    output_text: str
     user_id: Optional[int] = None
-    session_id: Optional[str] = None
     conversation_id: Optional[str] = None
+    email: Optional[str] = None
 
 class ChatHistoryResponse(BaseModel):
     id: int
@@ -142,3 +142,20 @@ class UserChatSessionResponse(BaseModel):
     last_accessed: Optional[str]
     created_at: Optional[str]
     updated_at: Optional[str]
+
+# Model cho User Chat
+class UserChatCreate(BaseModel):
+    app_id: Optional[str] = None
+    conversation_id: Optional[str] = None
+    email: str
+    user_id: Optional[int] = None
+    name_app: str
+
+class UserChatResponse(BaseModel):
+    id: int
+    app_id: Optional[str]
+    conversation_id: Optional[str]
+    email: str
+    user_id: Optional[int]
+    name_app: str
+    created_at: Optional[str]

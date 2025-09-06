@@ -1,7 +1,8 @@
 # main.py
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from routers import users, chatflows, feedback, departments, chat_history, sample_files, user_chat_sessions, user_chat_sessions_direct, test_router, conversation_sync
+from routers import users, chatflows, feedback, departments, chat_history, sample_files, user_chat_sessions, user_chat_sessions_direct, test_router, conversation_sync, user_chat
+# Removed: from email_sync_service import start_email_sync_service
 
 app = FastAPI(title="Admin Management API")
 
@@ -25,6 +26,13 @@ app.include_router(user_chat_sessions.router, prefix="/api/v1")
 app.include_router(user_chat_sessions_direct.router, prefix="/api/v1")
 app.include_router(conversation_sync.router, prefix="/api/v1")
 app.include_router(test_router.router, prefix="/api/v1")
+app.include_router(user_chat.router, prefix="/api/v1")
+
+# Removed: Khởi động email sync service khi app start
+# @app.on_event("startup")
+# async def startup_event():
+#     """Khởi động email sync service khi app start"""
+#     start_email_sync_service()
 
 @app.get("/")
 def root():

@@ -16,25 +16,55 @@ export default function AdminPage() {
 
   const checkAuth = async () => {
     try {
+      console.log('Checking admin authentication...');
+
       // Kiểm tra Supabase session (cho Admin)
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session) {
+      const { data: { session }, error } = await supabase.auth.getSession();
+      console.log('Supabase session check:', { session: !!session, error });
+
+      if (session && !error) {
+        console.log('Admin session found:', session.user.email);
         setUser(session.user);
         return;
       }
 
       // Kiểm tra localStorage session (cho User/Manager)
       const localSession = localStorage.getItem('user_session');
+      console.log('Local session check:', !!localSession);
+
       if (localSession) {
         const sessionData = JSON.parse(localSession);
+        console.log('Local session data:', {
+          userId: sessionData.user?.id,
+          role: sessionData.role,
+          loginTime: sessionData.login_time
+        });
+
         // Kiểm tra role admin
         if (sessionData.role === 'admin') {
+          // Kiểm tra session expiry (24 giờ)
+          const loginTime = new Date(sessionData.login_time);
+          const now = new Date();
+          const hoursDiff = (now - loginTime) / (1000 * 60 * 60);
+
+          if (hoursDiff > 24) {
+            console.log('Session expired, clearing...');
+            localStorage.removeItem('user_session');
+            router.push('/login');
+            return;
+          }
+
           setUser(sessionData.user);
+          return;
+        } else {
+          console.log('User is not admin, redirecting to dashboard');
+          router.push('/dashboard');
           return;
         }
       }
 
       // Không có session hợp lệ
+      console.log('No valid admin session found, redirecting to login');
       router.push('/login');
     } catch (error) {
       console.error('Auth check error:', error);
@@ -56,6 +86,7 @@ export default function AdminPage() {
       {activeTab === 'chatflows' && <ChatflowManagement />}
       {activeTab === 'departments' && <DepartmentManagement />}
       {activeTab === 'feedback' && <FeedbackManagement />}
+      {activeTab === 'user-chat-history' && <UserChatHistoryManagement />}
       {activeTab === 'chat-history' && <ChatHistoryManagement />}
     </AdminLayout>
   );
@@ -1995,6 +2026,241 @@ function ChatHistoryManagement() {
   );
 }
 
+
+function UserChatHistoryManagement() {
+  const [allUserChatHistory, setAllUserChatHistory] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedChatflow, setSelectedChatflow] = useState('');
+  const [chatflows, setChatflows] = useState([]);
+  const [expandedUsers, setExpandedUsers] = useState(new Set());
+
+  useEffect(() => {
+    fetchAllUserChatHistory();
+    fetchChatflows();
+  }, []);
+
+  const fetchAllUserChatHistory = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch('http://localhost:8001/api/v1/user-chat-sessions/admin/all-users');
+      if (response.ok) {
+        const data = await response.json();
+        setAllUserChatHistory(data.users || []);
+      }
+    } catch (error) {
+      console.error('Error fetching all user chat history:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchChatflows = async () => {
+    try {
+      const response = await fetch('http://localhost:8001/api/v1/chatflows/');
+      if (response.ok) {
+        const data = await response.json();
+        setChatflows(data);
+      }
+    } catch (error) {
+      console.error('Error fetching chatflows:', error);
+    }
+  };
+
+  const toggleUserExpansion = (userId) => {
+    const newExpanded = new Set(expandedUsers);
+    if (newExpanded.has(userId)) {
+      newExpanded.delete(userId);
+    } else {
+      newExpanded.add(userId);
+    }
+    setExpandedUsers(newExpanded);
+  };
+
+  const filteredUsers = allUserChatHistory.filter(userData => {
+    const user = userData.user || {};
+    const matchesSearch = !searchTerm || 
+      user.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      user.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      user.username?.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    const matchesChatflow = !selectedChatflow || 
+      userData.sessions?.some(session => session.chatflow?.id == selectedChatflow);
+    
+    return matchesSearch && matchesChatflow;
+  });
+
+  if (loading) {
+    return <div className="p-6">Đang tải lịch sử chat của tất cả users...</div>;
+  }
+
+  return (
+    <div className="p-6">
+      <div className="flex justify-between items-center mb-4">
+        <h2 className="text-2xl font-bold">Lịch sử Chat của tất cả Users</h2>
+        <button
+          onClick={fetchAllUserChatHistory}
+          className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+        >
+          Làm mới
+        </button>
+      </div>
+
+      {/* Search and Filter */}
+      <div className="bg-white rounded-lg shadow p-4 mb-4">
+        <div className="flex flex-col sm:flex-row gap-4 items-end">
+          <div className="flex-1">
+            <label className="block text-sm font-medium text-gray-700 mb-1">Tìm kiếm User</label>
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Tìm theo tên, username hoặc email..."
+              className="w-full border border-gray-300 rounded-md shadow-sm p-2 text-black focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+          </div>
+          <div className="flex-1">
+            <label className="block text-sm font-medium text-gray-700 mb-1">Lọc theo Chatbot</label>
+            <select
+              value={selectedChatflow}
+              onChange={(e) => setSelectedChatflow(e.target.value)}
+              className="w-full border border-gray-300 rounded-md shadow-sm p-2 text-black focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              <option value="">Tất cả chatbot</option>
+              {chatflows.map((chatflow) => (
+                <option key={chatflow.id} value={chatflow.id}>
+                  {chatflow.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={() => {
+                setSearchTerm('');
+                setSelectedChatflow('');
+              }}
+              className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600 text-sm"
+            >
+              Xóa bộ lọc
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Users Chat History */}
+      <div className="space-y-4">
+        {filteredUsers.length === 0 ? (
+          <div className="bg-white rounded-lg shadow p-8 text-center">
+            <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+              </svg>
+            </div>
+            <h3 className="text-lg font-medium text-gray-900 mb-2">Không tìm thấy lịch sử chat</h3>
+            <p className="text-gray-600">Hãy thử tìm kiếm với từ khóa khác hoặc xóa bộ lọc</p>
+          </div>
+        ) : (
+          filteredUsers.map((userData) => {
+            const user = userData.user || {};
+            const sessions = userData.sessions || [];
+            const isExpanded = expandedUsers.has(user.id);
+            
+            return (
+              <div key={user.id} className="bg-white rounded-lg shadow overflow-hidden">
+                {/* User Header */}
+                <div 
+                  onClick={() => toggleUserExpansion(user.id)}
+                  className="flex items-center justify-between p-4 bg-gray-50 hover:bg-gray-100 cursor-pointer transition-colors"
+                >
+                  <div className="flex items-center space-x-3">
+                    <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
+                      <span className="text-white font-semibold text-sm">
+                        {(user.full_name || user.username || 'U').charAt(0).toUpperCase()}
+                      </span>
+                    </div>
+                    <div>
+                      <h3 className="font-medium text-gray-900">
+                        {user.full_name || user.username || 'Unknown User'}
+                      </h3>
+                      <p className="text-sm text-gray-500">
+                        {user.email} • {sessions.length} cuộc trò chuyện
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <span className="text-sm text-gray-500">
+                      Lần truy cập cuối: {sessions.length > 0 ? new Date(Math.max(...sessions.map(s => new Date(s.session?.last_accessed || 0)))).toLocaleDateString('vi-VN') : 'N/A'}
+                    </span>
+                    <div className={`transform transition-transform ${isExpanded ? 'rotate-180' : ''}`}>
+                      <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </div>
+                  </div>
+                </div>
+
+                {/* User Sessions */}
+                {isExpanded && (
+                  <div className="border-t border-gray-200">
+                    {sessions.length === 0 ? (
+                      <div className="p-4 text-center text-gray-500">
+                        Không có lịch sử chat cho user này
+                      </div>
+                    ) : (
+                      <div className="divide-y divide-gray-200">
+                        {sessions.map((sessionData, index) => {
+                          const session = sessionData.session || {};
+                          const chatflow = sessionData.chatflow || {};
+                          
+                          return (
+                            <div key={index} className="p-4 hover:bg-gray-50">
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center space-x-3">
+                                  <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
+                                    <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                                    </svg>
+                                  </div>
+                                  <div>
+                                    <h4 className="font-medium text-gray-900">
+                                      {chatflow.name || 'Unknown Chatbot'}
+                                    </h4>
+                                    <p className="text-sm text-gray-500">
+                                      Conversation ID: {session.conversation_id ? session.conversation_id.substring(0, 8) + '...' : 'N/A'}
+                                    </p>
+                                  </div>
+                                </div>
+                                <div className="text-right">
+                                  <p className="text-sm text-gray-900">
+                                    {session.last_accessed ? new Date(session.last_accessed).toLocaleString('vi-VN') : 'N/A'}
+                                  </p>
+                                  <p className="text-xs text-gray-500">
+                                    Tạo: {session.created_at ? new Date(session.created_at).toLocaleDateString('vi-VN') : 'N/A'}
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })
+        )}
+      </div>
+
+      {filteredUsers.length > 0 && (
+        <div className="mt-4 text-sm text-gray-600">
+          Tổng cộng: {filteredUsers.length} users • {filteredUsers.reduce((sum, user) => sum + (user.sessions?.length || 0), 0)} cuộc trò chuyện
+        </div>
+      )}
+    </div>
+  );
+}
 
 function DepartmentManagement() {
   const [departments, setDepartments] = useState([]);
