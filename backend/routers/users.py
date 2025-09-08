@@ -502,76 +502,38 @@ def verify_code_and_reset_password(request: VerifyCodeRequest):
         print(f"Error verifying code: {str(e)}")
         raise HTTPException(status_code=500, detail="Lỗi server")
 
-@router.post("/bulk-upload")
-def bulk_upload_users(file: UploadFile = File(...)):
+@router.get("/me")
+def get_current_user_info():
     """
-    Upload file Excel hoặc CSV để tạo nhân viên hàng loạt.
-    File phải có các cột: username, email, password, full_name, department
+    Lấy thông tin user hiện tại dựa trên Supabase session
     """
     try:
-        # Đọc file
-        contents = file.file.read()
-        
-        # Xác định loại file và đọc
-        if file.filename.endswith('.csv'):
-            df = pd.read_csv(io.StringIO(contents.decode('utf-8')))
-        elif file.filename.endswith(('.xlsx', '.xls')):
-            df = pd.read_excel(io.BytesIO(contents))
-        else:
-            raise HTTPException(status_code=400, detail="Chỉ hỗ trợ file CSV hoặc Excel")
-        
-        # Kiểm tra các cột bắt buộc
-        required_columns = ['username', 'email', 'password', 'full_name', 'department']
-        missing_columns = [col for col in required_columns if col not in df.columns]
-        if missing_columns:
-            raise HTTPException(status_code=400, detail=f"Thiếu các cột: {', '.join(missing_columns)}")
-        
-        # Lấy danh sách departments để map tên thành id
-        dept_result = supabase.table('departments').select('id, name').execute()
-        dept_map = {dept['name'].lower(): dept['id'] for dept in dept_result.data}
-        
-        created_users = []
-        errors = []
-        
-        for index, row in df.iterrows():
-            try:
-                # Map department name to id
-                dept_name = str(row['department']).strip().lower()
-                department_id = dept_map.get(dept_name)
-                
-                if not department_id and dept_name:
-                    errors.append(f"Hàng {index+2}: Phòng ban '{row['department']}' không tồn tại")
-                    continue
-                
-                # Tạo user
-                user_data = UserCreate(
-                    username=str(row['username']).strip(),
-                    email=str(row['email']).strip(),
-                    password=str(row['password']).strip(),
-                    full_name=str(row['full_name']).strip(),
-                    role_id=2,  # Default to user
-                    department_id=department_id
-                )
-                
-                # Gọi hàm tạo user
-                result = create_new_user(user_data)
-                created_users.append({
-                    "username": user_data.username,
-                    "email": user_data.email,
-                    "full_name": user_data.full_name,
-                    "department": row['department']
-                })
-                
-            except Exception as e:
-                errors.append(f"Hàng {index+2}: {str(e)}")
-        
+        # Lấy user từ Supabase auth
+        user_response = supabase.auth.get_user()
+        if not user_response.user:
+            raise HTTPException(status_code=401, detail="Không tìm thấy user")
+
+        supabase_user = user_response.user
+
+        # Tìm user trong database dựa trên email
+        result = supabase.table('users').select('*').eq('email', supabase_user.email).execute()
+
+        if not result.data or len(result.data) == 0:
+            raise HTTPException(status_code=404, detail="User không tồn tại trong database")
+
+        user = result.data[0]
+
         return {
-            "message": f"Tạo thành công {len(created_users)} nhân viên",
-            "created_count": len(created_users),
-            "created_users": created_users,
-            "errors": errors
+            "id": user['id'],
+            "username": user['username'],
+            "email": user['email'],
+            "full_name": user['full_name'],
+            "role_id": user['role_id'],
+            "department_id": user.get('department_id')
         }
-        
+
+    except HTTPException:
+        raise
     except Exception as e:
-        print(f"Error in bulk upload: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        print(f"Error getting current user: {str(e)}")
+        raise HTTPException(status_code=500, detail="Lỗi server")

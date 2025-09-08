@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'; // Import client mới
-import { LogOut, ChevronFirst, ChevronLast, Bot } from "lucide-react";
+import { LogOut, ChevronFirst, ChevronLast, Bot, DollarSign } from "lucide-react";
+import Link from 'next/link';
 
 // Thay vì import từ file helper cũ, chúng ta có thể tạo client trực tiếp ở đây
 // Hoặc bạn có thể cập nhật file lib/supabaseClient.js để dùng createClientComponentClient
@@ -13,12 +14,29 @@ export default function DashboardLayout({ children }) {
   const [loading, setLoading] = useState(true);
   const [sidebarExpanded, setSidebarExpanded] = useState(false);
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
+  const [role, setRole] = useState(null);
 
   useEffect(() => {
     const getUser = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       setUser(user);
       setLoading(false);
+
+      // Fetch role if user exists
+      if (user) {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) {
+          try {
+            const response = await fetch('http://localhost:8001/api/v1/users/me', {
+              headers: { Authorization: `Bearer ${session.access_token}` }
+            });
+            const userData = await response.json();
+            setRole(userData.role_id);
+          } catch (error) {
+            console.error('Error fetching role:', error);
+          }
+        }
+      }
     };
     getUser();
   }, []);
@@ -54,6 +72,12 @@ export default function DashboardLayout({ children }) {
                  <Bot className="w-6 h-6 mr-3 text-blue-700 flex-shrink-0" />
                  <span className={`overflow-hidden transition-all font-heading text-blue-900 ${sidebarExpanded ? "w-52 ml-3" : "w-0"}`}>Chatflows</span>
              </li>
+             <Link href="/dashboard/accounting">
+               <li className="relative flex items-center py-2 px-3 my-1 font-medium rounded-md cursor-pointer transition-colors text-gray-600 hover:bg-blue-50 group">
+                 <DollarSign className="w-6 h-6 mr-3 text-gray-700 group-hover:text-blue-600 group-hover:scale-110 transition-all duration-200 flex-shrink-0" />
+                 <span className={`overflow-hidden transition-all font-heading text-gray-800 ${sidebarExpanded ? "w-52 ml-3" : "w-0"}`}>Quản lý Tài chính</span>
+               </li>
+             </Link>
              <li className="relative flex items-center py-2 px-3 my-1 font-medium rounded-md cursor-pointer transition-colors text-gray-600 hover:bg-blue-50 group" onClick={() => setShowFeedbackModal(true)}>
                  <svg className="w-6 h-6 mr-3 text-gray-700 group-hover:text-blue-600 group-hover:scale-110 transition-all duration-200 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
