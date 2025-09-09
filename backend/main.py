@@ -28,6 +28,7 @@ app.include_router(conversation_sync.router, prefix="/api/v1")
 app.include_router(test_router.router, prefix="/api/v1")
 app.include_router(user_chat.router, prefix="/api/v1")
 # app.include_router(accounting.router, prefix="/api/v1")  # Temporarily commented out
+app.include_router(accounting.router, prefix="/api/v1")
 
 # Removed: Khởi động email sync service khi app start
 # @app.on_event("startup")

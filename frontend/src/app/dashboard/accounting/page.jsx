@@ -4,14 +4,14 @@ import { useState, useEffect } from 'react';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import AccountingLayout from '../../../components/AccountingLayout';
-import { Plus, Edit, Trash2, TrendingUp, TrendingDown, DollarSign, Package, Receipt, CreditCard, FileText, Info, Calendar, BarChart3, History, Settings } from 'lucide-react';
+import { Plus, Edit, Trash2, TrendingUp, TrendingDown, DollarSign, Package, Receipt, CreditCard, FileText, Info, Calendar, BarChart3, History, Settings, RotateCcw, Save, RefreshCw } from 'lucide-react';
 
 const supabase = createClientComponentClient();
 
 export default function AccountingPage() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('dashboard');
+  const [activeTab, setActiveTab] = useState('invoices');
 
   // Mock data for demonstration
   const [salesData, setSalesData] = useState([]);
@@ -66,30 +66,7 @@ export default function AccountingPage() {
     }
   };
 
-  const loadMockData = () => {
-    setProducts([
-      { id: 1, name: 'Sản phẩm A', unit_price: 150, cost_price: 70 },
-      { id: 2, name: 'Dịch vụ B', unit_price: 500, cost_price: 200 }
-    ]);
-    setExpenseCategories([
-      { id: 1, name: 'Tiền thuê nhà', type: 'fixed' },
-      { id: 2, name: 'Lương nhân viên', type: 'fixed' },
-      { id: 3, name: 'Chi phí Marketing', type: 'variable' },
-      { id: 4, name: 'Nguyên vật liệu', type: 'variable' }
-    ]);
-    setSalesData([
-      { id: 1, product_id: 1, quantity: 10, price_at_transaction: 150, total_revenue: 1500, transaction_date: '2023-09-01' },
-      { id: 2, product_id: 2, quantity: 2, price_at_transaction: 500, total_revenue: 1000, transaction_date: '2023-09-05' }
-    ]);
-    setExpensesData([
-      { id: 1, category_id: 1, amount: 5000, expense_date: '2023-09-01', description: 'Thuê nhà tháng 9' },
-      { id: 2, category_id: 2, amount: 10000, expense_date: '2023-09-01', description: 'Lương nhân viên' }
-    ]);
-    setReportsData([
-      { id: 1, report_month: '2023-09-01', total_revenue: 2500, total_expense: 15000, profit: -12500 },
-      { id: 2, report_month: '2023-08-01', total_revenue: 3000, total_expense: 14000, profit: -11000 }
-    ]);
-  };
+  
 
   if (loading) {
     return (
@@ -104,14 +81,962 @@ export default function AccountingPage() {
 
   return (
     <AccountingLayout user={user} activeTab={activeTab} onTabChange={setActiveTab}>
-      {activeTab === 'dashboard' && <DashboardTab reportsData={reportsData} salesData={salesData} expensesData={expensesData} />}
-      {activeTab === 'revenue' && <RevenueTab salesData={salesData} products={products} setSalesData={setSalesData} />}
-      {activeTab === 'expenses' && <ExpensesTab expensesData={expensesData} expenseCategories={expenseCategories} setExpensesData={setExpensesData} />}
-      {activeTab === 'products' && <ProductsTab products={products} setProducts={setProducts} />}
-      {activeTab === 'categories' && <ExpenseCategoriesTab expenseCategories={expenseCategories} setExpenseCategories={setExpenseCategories} />}
-      {activeTab === 'generate' && <GenerateReportTab reportsData={reportsData} setReportsData={setReportsData} />}
-      {activeTab === 'history' && <HistoryTab reportsData={reportsData} />}
+      <InvoicesTab />
     </AccountingLayout>
+  );
+}
+
+function InvoicesTab() {
+  const [sanphamList, setSanphamList] = useState([]);
+  const [chitietsanphamList, setChitietsanphamList] = useState([]);
+  const [loainhomList, setLoainhomList] = useState([]);
+  const [loaikinhList, setLoaikinhList] = useState([]);
+  const [loaitaynamList, setLoaitaynamList] = useState([]);
+  const [bophanList, setBophanList] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedBophans, setSelectedBophans] = useState([]);
+  const [customerName, setCustomerName] = useState('');
+  const [invoiceDate, setInvoiceDate] = useState(new Date().toISOString().split('T')[0]);
+  const [invoiceTime, setInvoiceTime] = useState(new Date().toTimeString().split(' ')[0]);
+  const [invoiceItems, setInvoiceItems] = useState([]);
+  const [globalNhom, setGlobalNhom] = useState('');
+  const [globalKinh, setGlobalKinh] = useState('');
+  const [globalTaynam, setGlobalTaynam] = useState('');
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const fetchData = async () => {
+    try {
+      const [sanphamRes, chitietsanphamRes, loainhomRes, loaikinhRes, loaitaynamRes, bophanRes] = await Promise.all([
+        fetch('http://localhost:8001/api/v1/sanpham/'),
+        fetch('http://localhost:8001/api/v1/chitietsanpham/'),
+        fetch('http://localhost:8001/api/v1/loainhom/'),
+        fetch('http://localhost:8001/api/v1/loaikinh/'),
+        fetch('http://localhost:8001/api/v1/loaitaynam/'),
+        fetch('http://localhost:8001/api/v1/bophan/')
+      ]);
+
+      if (sanphamRes.ok) setSanphamList(await sanphamRes.json());
+      if (chitietsanphamRes.ok) setChitietsanphamList(await chitietsanphamRes.json());
+      if (loainhomRes.ok) setLoainhomList(await loainhomRes.json());
+      if (loaikinhRes.ok) setLoaikinhList(await loaikinhRes.json());
+      if (loaitaynamRes.ok) setLoaitaynamList(await loaitaynamRes.json());
+      if (bophanRes.ok) setBophanList(await bophanRes.json());
+    } catch (error) {
+      console.error('Error fetching data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const addInvoiceItem = () => {
+    const newItem = {
+      id: Date.now(),
+      id_nhom: '',
+      id_kinh: '',
+      id_taynam: '',
+      id_bophan: '',
+      sanpham: null,
+      ngang: 0,
+      cao: 0,
+      sau: 0,
+      so_luong: 1,
+      don_gia: 0,
+      dien_tich_ke_hoach: 0,
+      dien_tich_thuc_te: 0,
+      ti_le: 0,
+      thanh_tien: 0
+    };
+    setInvoiceItems([...invoiceItems, newItem]);
+  };
+
+  const removeInvoiceItem = (id) => {
+    setInvoiceItems(invoiceItems.filter(item => item.id !== id));
+  };
+
+  const toggleBophan = (bophanId) => {
+    setSelectedBophans(prev => {
+      if (prev.includes(bophanId)) {
+        return prev.filter(id => id !== bophanId);
+      } else {
+        return [...prev, bophanId];
+      }
+    });
+  };
+
+  const applyGlobalSelections = () => {
+    if (selectedBophans.length === 0) {
+      alert('Vui lòng chọn ít nhất một bộ phận trước khi áp dụng');
+      return;
+    }
+
+    setInvoiceItems(prevItems => {
+      const updatedItems = [...prevItems];
+      
+      selectedBophans.forEach(bophanId => {
+        let item = updatedItems.find(item => item.id_bophan === bophanId);
+        
+        if (!item) {
+          // Tạo item mới nếu chưa có
+          item = {
+            id: bophanId,
+            id_nhom: globalNhom,
+            id_kinh: globalKinh,
+            id_taynam: globalTaynam,
+            id_bophan: bophanId,
+            sanpham: null,
+            ngang: 0,
+            cao: 0,
+            sau: 0,
+            so_luong: 1,
+            don_gia: 0,
+            dien_tich_ke_hoach: 0,
+            dien_tich_thuc_te: 0,
+            ti_le: 0,
+            thanh_tien: 0
+          };
+          updatedItems.push(item);
+        } else {
+          // Cập nhật item hiện có
+          item.id_nhom = globalNhom;
+          item.id_kinh = globalKinh;
+          item.id_taynam = globalTaynam;
+        }
+
+        // Tự động tìm sản phẩm và cập nhật thông tin
+        if (item.id_nhom && item.id_kinh && item.id_taynam && item.id_bophan) {
+          const foundSanpham = sanphamList.find(sp => 
+            sp.id_nhom === item.id_nhom && 
+            sp.id_kinh === item.id_kinh && 
+            sp.id_taynam === item.id_taynam && 
+            sp.id_bophan === item.id_bophan
+          );
+          
+          if (foundSanpham) {
+            item.sanpham = foundSanpham;
+            const foundDetail = chitietsanphamList.find(detail => detail.id_sanpham === foundSanpham.id);
+            if (foundDetail) {
+              const isSpecialDepartment = item.id_bophan === 'TN' || item.id_bophan === 'MC' || item.id_bophan === 'TL';
+              const minSize = isSpecialDepartment ? 1 : 300;
+              const maxSize = item.id_bophan === 'TL' ? 1000 : 900;
+              
+              item.ngang = foundDetail.ngang;
+              item.cao = Math.max(minSize, Math.min(maxSize, foundDetail.cao));
+              item.sau = Math.max(minSize, Math.min(maxSize, foundDetail.sau));
+              item.don_gia = foundDetail.don_gia;
+              item.dien_tich_ke_hoach = (foundDetail.ngang * foundDetail.cao + foundDetail.ngang * foundDetail.sau + foundDetail.cao * foundDetail.sau) * 2;
+              
+              const dien_tich_thuc_te = (item.ngang * item.cao + item.ngang * item.sau + item.cao * item.sau) * 2;
+              item.dien_tich_thuc_te = dien_tich_thuc_te;
+              item.ti_le = item.dien_tich_ke_hoach > 0 ? (dien_tich_thuc_te / item.dien_tich_ke_hoach) : 0;
+              item.thanh_tien = item.ti_le * item.don_gia * item.so_luong;
+            }
+          } else {
+            item.sanpham = null;
+            item.ngang = 0;
+            item.cao = 0;
+            item.sau = 0;
+            item.don_gia = 0;
+            item.dien_tich_ke_hoach = 0;
+            item.dien_tich_thuc_te = 0;
+            item.ti_le = 0;
+            item.thanh_tien = 0;
+          }
+        }
+      });
+
+      return updatedItems;
+    });
+  };
+
+  const loadBophanData = (bophanId) => {
+    setInvoiceItems(prevItems => {
+      const updatedItems = [...prevItems];
+      let item = updatedItems.find(item => item.id_bophan === bophanId);
+      
+      if (!item) {
+        // Tạo item mới nếu chưa có
+        item = {
+          id: bophanId,
+          id_nhom: globalNhom,
+          id_kinh: globalKinh,
+          id_taynam: globalTaynam,
+          id_bophan: bophanId,
+          sanpham: null,
+          ngang: 0,
+          cao: 0,
+          sau: 0,
+          so_luong: 1,
+          don_gia: 0,
+          dien_tich_ke_hoach: 0,
+          dien_tich_thuc_te: 0,
+          ti_le: 0,
+          thanh_tien: 0
+        };
+        updatedItems.push(item);
+      }
+      // Không reset lại id_nhom, id_kinh, id_taynam - giữ nguyên giá trị hiện tại
+
+      // Tự động tìm sản phẩm và cập nhật thông tin với các lựa chọn hiện tại
+      if (item.id_nhom && item.id_kinh && item.id_taynam && item.id_bophan) {
+        const foundSanpham = sanphamList.find(sp => 
+          sp.id_nhom === item.id_nhom && 
+          sp.id_kinh === item.id_kinh && 
+          sp.id_taynam === item.id_taynam && 
+          sp.id_bophan === item.id_bophan
+        );
+        
+        if (foundSanpham) {
+          item.sanpham = foundSanpham;
+          const foundDetail = chitietsanphamList.find(detail => detail.id_sanpham === foundSanpham.id);
+          if (foundDetail) {
+            const isSpecialDepartment = item.id_bophan === 'TN' || item.id_bophan === 'MC' || item.id_bophan === 'TL';
+            const minSize = isSpecialDepartment ? 1 : 300;
+            const maxSize = item.id_bophan === 'TL' ? 1000 : 900;
+            
+            item.ngang = foundDetail.ngang;
+            item.cao = Math.max(minSize, Math.min(maxSize, foundDetail.cao));
+            item.sau = Math.max(minSize, Math.min(maxSize, foundDetail.sau));
+            item.don_gia = foundDetail.don_gia;
+            item.dien_tich_ke_hoach = (foundDetail.ngang * foundDetail.cao + foundDetail.ngang * foundDetail.sau + foundDetail.cao * foundDetail.sau) * 2;
+            
+            const dien_tich_thuc_te = (item.ngang * item.cao + item.ngang * item.sau + item.cao * item.sau) * 2;
+            item.dien_tich_thuc_te = dien_tich_thuc_te;
+            item.ti_le = item.dien_tich_ke_hoach > 0 ? (dien_tich_thuc_te / item.dien_tich_ke_hoach) : 0;
+            item.thanh_tien = item.ti_le * item.don_gia * item.so_luong;
+          }
+        } else {
+          item.sanpham = null;
+          item.ngang = 0;
+          item.cao = 0;
+          item.sau = 0;
+          item.don_gia = 0;
+          item.dien_tich_ke_hoach = 0;
+          item.dien_tich_thuc_te = 0;
+          item.ti_le = 0;
+          item.thanh_tien = 0;
+        }
+      }
+
+      return updatedItems;
+    });
+  };
+
+  const getSelectedBophansData = () => {
+    return bophanList.filter(bophan => selectedBophans.includes(bophan.id));
+  };
+
+  const resetDimensions = (id) => {
+    setInvoiceItems(invoiceItems.map(item => {
+      if (item.id === id && item.sanpham) {
+        const foundDetail = chitietsanphamList.find(detail => detail.id_sanpham === item.sanpham.id);
+        if (foundDetail) {
+          const updatedItem = { ...item };
+          // Cho phép bộ phận "Tầng nhôm" (TN) và "Mặc cánh" (MC) có kích thước nhỏ hơn 300mm
+          const isSpecialDepartment = item.id_bophan === 'TN' || item.id_bophan === 'MC'|| item.id_bophan === 'TL';
+          const minSize = isSpecialDepartment ? 1 : 300;
+          const maxSize = item.id_bophan === 'TL' ? 1000 : 900;
+          
+          updatedItem.cao = Math.max(minSize, Math.min(maxSize, foundDetail.cao));
+          updatedItem.sau = Math.max(minSize, Math.min(maxSize, foundDetail.sau));
+          calculateInvoiceItem(updatedItem);
+          return updatedItem;
+        }
+      }
+      return item;
+    }));
+  };
+
+  const updateInvoiceItem = (id, field, value) => {
+    setInvoiceItems(invoiceItems.map(item => {
+      if (item.id === id) {
+        const updatedItem = { ...item, [field]: value };
+        
+        // Khi chọn các loại, tìm sản phẩm tương ứng
+        if (['id_nhom', 'id_kinh', 'id_taynam', 'id_bophan'].includes(field)) {
+          // Nếu có bất kỳ loại nào được chọn rỗng, reset sản phẩm và các giá trị liên quan
+          const currentNhom = field === 'id_nhom' ? value : (updatedItem.id_nhom || globalNhom);
+          const currentKinh = field === 'id_kinh' ? value : (updatedItem.id_kinh || globalKinh);
+          const currentTaynam = field === 'id_taynam' ? value : (updatedItem.id_taynam || globalTaynam);
+          const currentBophan = field === 'id_bophan' ? value : updatedItem.id_bophan;
+
+          if (!currentNhom || !currentKinh || !currentTaynam || !currentBophan) {
+            updatedItem.sanpham = null;
+            updatedItem.ngang = 0;
+            updatedItem.cao = 0;
+            updatedItem.sau = 0;
+            updatedItem.don_gia = 0;
+            updatedItem.dien_tich_ke_hoach = 0;
+            updatedItem.dien_tich_thuc_te = 0;
+            updatedItem.ti_le = 0;
+            updatedItem.thanh_tien = 0;
+            calculateInvoiceItem(updatedItem);
+          } else {
+            // Nếu tất cả các loại đã được chọn, tìm sản phẩm
+            const foundSanpham = sanphamList.find(sp => 
+              sp.id_nhom === currentNhom && 
+              sp.id_kinh === currentKinh && 
+              sp.id_taynam === currentTaynam && 
+              sp.id_bophan === currentBophan
+            );
+            if (foundSanpham) {
+              updatedItem.sanpham = foundSanpham;
+              // Tìm chi tiết sản phẩm
+              const foundDetail = chitietsanphamList.find(detail => detail.id_sanpham === foundSanpham.id);
+              if (foundDetail) {
+                updatedItem.ngang = foundDetail.ngang;
+                // Cho phép bộ phận "Tầng nhôm" (TN) và "Mặc cánh" (MC) có kích thước nhỏ hơn 300mm
+                const isSpecialDepartment = updatedItem.id_bophan === 'TN' || updatedItem.id_bophan === 'MC' || updatedItem.id_bophan === 'TL';
+                const minSize = isSpecialDepartment ? 1 : 300;
+                const maxSize = updatedItem.id_bophan === 'TL' ? 1000 : 900;
+                
+                updatedItem.cao = Math.max(minSize, Math.min(maxSize, foundDetail.cao));
+                updatedItem.sau = Math.max(minSize, Math.min(maxSize, foundDetail.sau));
+                updatedItem.don_gia = foundDetail.don_gia;
+                // Tính diện tích kế hoạch với kích thước gốc
+                updatedItem.dien_tich_ke_hoach = (foundDetail.ngang * foundDetail.cao + foundDetail.ngang * foundDetail.sau + foundDetail.cao * foundDetail.sau) * 2;
+                // Tính lại diện tích thực tế và thành tiền
+                calculateInvoiceItem(updatedItem);
+              }
+            } else {
+              // Nếu không tìm thấy sản phẩm phù hợp, reset các giá trị
+              updatedItem.sanpham = null;
+              updatedItem.ngang = 0;
+              updatedItem.cao = 0;
+              updatedItem.sau = 0;
+              updatedItem.don_gia = 0;
+              updatedItem.dien_tich_ke_hoach = 0;
+              updatedItem.dien_tich_thuc_te = 0;
+              updatedItem.ti_le = 0;
+              updatedItem.thanh_tien = 0;
+              calculateInvoiceItem(updatedItem);
+            }
+          }
+        }
+        
+        // Tính toán khi thay đổi kích thước hoặc số lượng
+        if (['cao', 'sau'].includes(field)) {
+          // Cho phép bộ phận "Tầng nhôm" (TN), "Mặc cánh" (MC) và "Tủ lạnh" (TL) có kích thước nhỏ hơn 300mm
+          const isSpecialDepartment = updatedItem.id_bophan === 'TN' || updatedItem.id_bophan === 'MC' || updatedItem.id_bophan === 'TL';
+          const minSize = isSpecialDepartment ? 1 : 300;
+          const maxSize = updatedItem.id_bophan === 'TL' ? 1000 : 900;
+          const value = Math.max(minSize, Math.min(maxSize, updatedItem[field]));
+          updatedItem[field] = value;
+          calculateInvoiceItem(updatedItem);
+        }
+        if (field === 'so_luong') {
+          calculateInvoiceItem(updatedItem);
+        }
+        
+        return updatedItem;
+      }
+      return item;
+    }));
+  };
+
+  const calculateInvoiceItem = (item) => {
+    const ngang = item.ngang || 0;
+    const cao = item.cao || 0;
+    const sau = item.sau || 0;
+    const dien_tich_ke_hoach = item.dien_tich_ke_hoach || 0;
+    
+    // Diện tích thực tế với kích thước điều chỉnh
+    const dien_tich_thuc_te = (ngang * cao + ngang * sau + cao * sau) * 2;
+    
+    // Tỉ lệ
+    const ti_le = dien_tich_ke_hoach > 0 ? (dien_tich_thuc_te / dien_tich_ke_hoach) : 0;
+    
+    // Thành tiền
+    const thanh_tien = ti_le * (item.don_gia || 0) * (item.so_luong || 1);
+    
+    item.dien_tich_thuc_te = dien_tich_thuc_te;
+    item.ti_le = ti_le;
+    item.thanh_tien = thanh_tien;
+  };
+
+  const calculateTotal = () => {
+    return invoiceItems.reduce((sum, item) => sum + (item.thanh_tien || 0), 0);
+  };
+
+  const saveInvoice = async () => {
+    if (!customerName.trim()) {
+      alert('Vui lòng nhập tên khách hàng');
+      return;
+    }
+    
+    if (invoiceItems.length === 0) {
+      alert('Vui lòng thêm ít nhất một sản phẩm');
+      return;
+    }
+
+    // Kiểm tra xem có sản phẩm nào chưa được chọn đầy đủ không
+    const invalidItems = invoiceItems.filter(item => 
+      !(item.id_nhom || globalNhom) || !(item.id_kinh || globalKinh) || !(item.id_taynam || globalTaynam) || !item.id_bophan || !item.sanpham
+    );
+
+    if (invalidItems.length > 0) {
+      alert('Vui lòng chọn đầy đủ các loại (nhôm, kính, tay nắm) cho tất cả sản phẩm');
+      return;
+    }
+
+    try {
+      const invoiceData = {
+        customer_name: customerName,
+        invoice_date: `${invoiceDate}T${invoiceTime}`,
+        items: invoiceItems.map(item => ({
+          id_nhom: item.id_nhom,
+          id_kinh: item.id_kinh,
+          id_taynam: item.id_taynam,
+          id_bophan: item.id_bophan,
+          sanpham_id: item.sanpham?.id,
+          ngang: item.ngang,
+          cao: item.cao,
+          sau: item.sau,
+          so_luong: item.so_luong,
+          don_gia: item.don_gia,
+          dien_tich_ke_hoach: item.dien_tich_ke_hoach,
+          dien_tich_thuc_te: item.dien_tich_thuc_te,
+          ti_le: item.ti_le,
+          thanh_tien: item.thanh_tien
+        })),
+        total_amount: calculateTotal()
+      };
+
+      const response = await fetch('http://localhost:8001/api/v1/invoices/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(invoiceData)
+      });
+
+      if (response.ok) {
+        alert('Hóa đơn đã được lưu thành công!');
+        // Reset form
+        setCustomerName('');
+        setInvoiceItems([]);
+        setInvoiceDate(new Date().toISOString().split('T')[0]);
+        setInvoiceTime(new Date().toTimeString().split(' ')[0]);
+      } else {
+        const errorData = await response.json();
+        alert(`Có lỗi xảy ra khi lưu hóa đơn: ${errorData.detail || 'Lỗi không xác định'}`);
+      }
+    } catch (error) {
+      console.error('Error saving invoice:', error);
+      alert('Có lỗi xảy ra khi lưu hóa đơn');
+    }
+  };
+
+  if (loading) {
+    return <div className="p-6">Đang tải danh sách sản phẩm...</div>;
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex justify-between items-center">
+        <div>
+          <h2 className="text-2xl font-bold text-gray-900">Quản lý Hóa đơn</h2>
+          <p className="text-gray-600 mt-1">Tạo và quản lý hóa đơn sản phẩm</p>
+        </div>
+        <div className="flex items-center space-x-4">
+          <div className="text-right">
+            <p className="text-sm text-gray-600">Tổng tiền</p>
+            <p className="text-xl font-bold text-green-600">{calculateTotal().toLocaleString('vi-VN')} VND</p>
+          </div>
+          <button
+            onClick={saveInvoice}
+            className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 flex items-center space-x-2"
+          >
+            <FileText className="w-4 h-4" />
+            <span>Lưu Hóa đơn</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Invoice Info */}
+      <div className="bg-white rounded-lg shadow-sm border p-6">
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">Thông tin hóa đơn</h3>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Tên khách hàng</label>
+            <input
+              type="text"
+              value={customerName}
+              onChange={(e) => setCustomerName(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-green-100 text-black"
+              placeholder="Nhập tên khách hàng"
+              required
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Ngày hóa đơn</label>
+            <input
+              type="date"
+              value={invoiceDate}
+              onChange={(e) => setInvoiceDate(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-green-100 text-black"
+              required
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Giờ hóa đơn</label>
+            <input
+              type="time"
+              value={invoiceTime}
+              onChange={(e) => setInvoiceTime(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-green-100 text-black"
+              required
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Invoice Items */}
+      <div className="bg-white rounded-lg shadow-sm border p-6">
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-lg font-semibold text-gray-900">Chi tiết sản phẩm</h3>
+          <div className="flex items-center space-x-2">
+            <button
+              onClick={addInvoiceItem}
+              className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center space-x-2"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Thêm hóa đơn sản phẩm</span>
+            </button>
+            <button
+              onClick={addInvoiceItem}
+              className="bg-green-600 text-white px-3 py-2 rounded-lg hover:bg-green-700 flex items-center justify-center w-10 h-10"
+              title="Thêm sản phẩm nhanh"
+            >
+              <span className="text-lg font-bold">+</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Chọn bộ phận */}  
+        <div className="mb-6">
+          <h4 className="text-md font-medium text-gray-900 mb-3">Chọn bộ phận cần sản xuất:</h4>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+            {bophanList.map(bophan => (
+              <label key={bophan.id} className="flex items-center space-x-2 p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={selectedBophans.includes(bophan.id)}
+                  onChange={() => toggleBophan(bophan.id)}
+                  className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
+                />
+                <span className="text-sm font-medium text-gray-900">{bophan.tenloai}</span>
+              </label>
+            ))}
+          </div>
+        </div>
+
+        {/* Chọn loại vật liệu chung */}
+        {selectedBophans.length > 0 && (
+          <div className="mb-6 bg-blue-50 border border-blue-200 rounded-lg p-6">
+            <div className="flex justify-between items-center mb-4">
+              <h4 className="text-lg font-semibold text-gray-900">Chọn loại vật liệu chung</h4>
+              <button
+                onClick={applyGlobalSelections}
+                className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center space-x-2"
+              >
+                <span>Áp dụng cho tất cả bộ phận</span>
+              </button>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Loại nhôm chung</label>
+                <select
+                  value={globalNhom}
+                  onChange={(e) => setGlobalNhom(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-black"
+                >
+                  <option value="">Chọn loại nhôm</option>
+                  {loainhomList.map(nhom => (
+                    <option key={nhom.id} value={nhom.id}>{nhom.tenloai}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Loại kính chung</label>
+                <select
+                  value={globalKinh}
+                  onChange={(e) => setGlobalKinh(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-black"
+                >
+                  <option value="">Chọn loại kính</option>
+                  {loaikinhList.map(kinh => (
+                    <option key={kinh.id} value={kinh.id}>{kinh.tenloai}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Loại tay nắm chung</label>
+                <select
+                  value={globalTaynam}
+                  onChange={(e) => setGlobalTaynam(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-black"
+                >
+                  <option value="">Chọn loại tay nắm</option>
+                  {loaitaynamList.map(taynam => (
+                    <option key={taynam.id} value={taynam.id}>{taynam.tenloai}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            <div className="mt-4 p-3 bg-blue-100 rounded-lg">
+              <p className="text-sm text-blue-800">
+                💡 Chọn các loại vật liệu ở trên và nhấn "Áp dụng cho tất cả bộ phận" để tự động điền vào tất cả các bộ phận đã chọn.
+                Điều này giúp tiết kiệm thời gian và tránh phải chọn lại cho từng bộ phận.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Form chi tiết cho các bộ phận được chọn */}
+        {selectedBophans.length > 0 && (
+          <div className="space-y-4">
+            {selectedBophans.map((bophanId, index) => {
+              const bophan = bophanList.find(b => b.id === bophanId);
+              const item = invoiceItems.find(item => item.id_bophan === bophanId) || {
+                id: bophanId,
+                id_nhom: '',
+                id_kinh: '',
+                id_taynam: '',
+                id_bophan: bophanId,
+                sanpham: null,
+                ngang: 0,
+                cao: 0,
+                sau: 0,
+                so_luong: 1,
+                don_gia: 0,
+                dien_tich_ke_hoach: 0,
+                dien_tich_thuc_te: 0,
+                ti_le: 0,
+                thanh_tien: 0
+              };
+
+              return (
+                <div key={bophanId} className="border border-gray-200 rounded-lg p-4">
+                  <div className="flex justify-between items-center mb-4">
+                    <h4 className="font-medium text-gray-900">{bophan.tenloai} - Sản phẩm {index + 1}</h4>
+                    <div className="flex items-center space-x-2">
+                      <button
+                        onClick={() => loadBophanData(bophanId)}
+                        className="text-blue-600 hover:text-blue-900 p-1"
+                        title="Load lại dữ liệu bộ phận này"
+                      >
+                        <RefreshCw className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => toggleBophan(bophanId)}
+                        className="text-red-600 hover:text-red-900 p-1"
+                        title="Bỏ chọn bộ phận này"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Loại nhôm</label>
+                      <select
+                        value={item.id_nhom || globalNhom}
+                        onChange={(e) => updateInvoiceItem(item.id, 'id_nhom', e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-green-100 text-black"
+                        required
+                      >
+                        <option value="">Chọn loại nhôm</option>
+                        {loainhomList.map(nhom => (
+                          <option key={nhom.id} value={nhom.id}>{nhom.tenloai}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Loại kính</label>
+                      <select
+                        value={item.id_kinh || globalKinh}
+                        onChange={(e) => updateInvoiceItem(item.id, 'id_kinh', e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-green-100 text-black"
+                        required
+                      >
+                        <option value="">Chọn loại kính</option>
+                        {loaikinhList.map(kinh => (
+                          <option key={kinh.id} value={kinh.id}>{kinh.tenloai}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Loại tay nắm</label>
+                      <select
+                        value={item.id_taynam || globalTaynam}
+                        onChange={(e) => updateInvoiceItem(item.id, 'id_taynam', e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-green-100 text-black"
+                        required
+                      >
+                        <option value="">Chọn loại tay nắm</option>
+                        {loaitaynamList.map(taynam => (
+                          <option key={taynam.id} value={taynam.id}>{taynam.tenloai}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Bộ phận</label>
+                      <input
+                        type="text"
+                        value={bophan.tenloai}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-100 text-black"
+                        readOnly
+                      />
+                    </div>
+                  </div>
+
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Tên sản phẩm</label>
+                    <input
+                      type="text"
+                      value={item.sanpham ? item.sanpham.tensp : ''}
+                      className={`w-full px-3 py-2 border border-gray-300 rounded-lg ${
+                        !(item.id_nhom || globalNhom) || !(item.id_kinh || globalKinh) || !(item.id_taynam || globalTaynam) 
+                          ? 'bg-red-50 text-red-700' 
+                          : 'bg-white text-black'
+                      }`}
+                      readOnly
+                      placeholder={
+                        !(item.id_nhom || globalNhom) || !(item.id_kinh || globalKinh) || !(item.id_taynam || globalTaynam) 
+                          ? "Vui lòng chọn đầy đủ các loại (nhôm, kính, tay nắm)" 
+                          : "Sản phẩm sẽ được tự động chọn khi chọn đủ các loại"
+                      }
+                    />
+                    {(!(item.id_nhom || globalNhom) || !(item.id_kinh || globalKinh) || !(item.id_taynam || globalTaynam)) && (
+                      <p className="text-red-500 text-xs mt-1">⚠️ Chưa chọn đầy đủ các loại</p>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Chiều ngang (mm)</label>
+                      <input
+                        type="number"
+                        value={item.ngang}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-black"
+                        placeholder="Cố định"
+                        readOnly
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Chiều cao (mm)</label>
+                      <input
+                        type="number"
+                        min={item.id_bophan === 'TN' || item.id_bophan === 'MC' || item.id_bophan === 'TL' ? "1" : "300"}
+                        max={item.id_bophan === 'TL' ? "1000" : "900"}
+                        value={item.cao}
+                        onChange={(e) => {
+                          const isSpecialDepartment = item.id_bophan === 'TN' || item.id_bophan === 'MC' || item.id_bophan === 'TL';
+                          const minSize = isSpecialDepartment ? 1 : 300;
+                          const maxSize = item.id_bophan === 'TL' ? 1000 : 900;
+                          const value = Math.max(minSize, Math.min(maxSize, parseInt(e.target.value) || minSize));
+                          updateInvoiceItem(item.id, 'cao', value);
+                        }}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-yellow-100 text-black"
+                        placeholder={item.id_bophan === 'TN' || item.id_bophan === 'MC'|| item.id_bophan === 'TL' ? "1-1000" : "300-900"}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Chiều sâu (mm)</label>
+                      <input
+                        type="number"
+                        min={item.id_bophan === 'TN' || item.id_bophan === 'MC' || item.id_bophan === 'TL'? "1" : "300"}
+                        max={item.id_bophan === 'TL' ? "1000" : "900"}
+                        value={item.sau}
+                        onChange={(e) => {
+                          const isSpecialDepartment = item.id_bophan === 'TN' || item.id_bophan === 'MC'|| item.id_bophan === 'TL';
+                          const minSize = isSpecialDepartment ? 1 : 300;
+                          const maxSize = item.id_bophan === 'TL' ? 1000 : 900;
+                          const value = Math.max(minSize, Math.min(maxSize, parseInt(e.target.value) || minSize));
+                          updateInvoiceItem(item.id, 'sau', value);
+                        }}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-yellow-100 text-black"
+                        placeholder={item.id_bophan === 'TN' || item.id_bophan === 'MC'|| item.id_bophan === 'TL' ? "1-1000" : "300-900"}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Số lượng</label>
+                      <input
+                        type="number"
+                        min="1"
+                        value={item.so_luong}
+                        onChange={(e) => updateInvoiceItem(item.id, 'so_luong', parseInt(e.target.value) || 1)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-yellow-100 text-black"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Đơn giá (VND)</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={item.don_gia}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-black"
+                        readOnly
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Diện tích kế hoạch (mm²)</label>
+                      <input
+                        type="number"
+                        value={item.dien_tich_ke_hoach}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-black"
+                        readOnly
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Diện tích thực tế (mm²)</label>
+                      <input
+                        type="number"
+                        value={item.dien_tich_thuc_te}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-black"
+                        readOnly
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Tỉ lệ (%)</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={(item.ti_le * 100).toFixed(2)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-black"
+                        readOnly
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Tỉ lệ (%)</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={(item.ti_le * 100).toFixed(2)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-black"
+                        readOnly
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Thành tiền (VND)</label>
+                      <input
+                        type="text"
+                        value={`${item.thanh_tien.toLocaleString('vi-VN')} VND`}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-green-50 text-green-700 font-semibold"
+                        readOnly
+                      />
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {selectedBophans.length === 0 && (
+          <div className="text-center py-12">
+            <Package className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+            <p className="text-gray-500">Chưa có bộ phận nào được chọn</p>
+            <p className="text-sm text-gray-400 mt-1">Hãy tích chọn các bộ phận cần sản xuất ở trên</p>
+          </div>
+        )}
+
+        {/* Summary Section */}
+        {selectedBophans.length > 0 && (
+          <div className="bg-white rounded-lg shadow-sm border p-6 mt-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Tóm tắt đơn hàng</h3>
+            <div className="space-y-4">
+              {selectedBophans.map(bophanId => {
+                const bophan = bophanList.find(b => b.id === bophanId);
+                if (!bophan) return null;
+
+                // Find the invoice item for this department
+                const item = invoiceItems.find(item => item.id_bophan === bophanId);
+                if (!item || !item.sanpham) return null;
+
+                const totalPrice = item.thanh_tien || 0;
+
+                return (
+                  <div key={bophanId} className="border rounded-lg p-4 bg-gray-50">
+                    <div className="flex justify-between items-start mb-3">
+                      <div>
+                        <h4 className="font-medium text-gray-900">{item.sanpham.tensp}</h4>
+                        <p className="text-sm text-gray-600">Bộ phận: {bophan.tenloai}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-lg font-bold text-green-600">
+                          {totalPrice.toLocaleString('vi-VN')} VND
+                        </p>
+                        <p className="text-sm text-gray-500">
+                          Số lượng: {item.so_luong || 0}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                      <div>
+                        <span className="text-gray-600">Diện tích kế hoạch:</span>
+                        <p className="font-medium">{(item.dien_tich_ke_hoach || 0).toLocaleString('vi-VN')} mm²</p>
+                      </div>
+                      <div>
+                        <span className="text-gray-600">Diện tích thực tế:</span>
+                        <p className="font-medium">{(item.dien_tich_thuc_te || 0).toLocaleString('vi-VN')} mm²</p>
+                      </div>
+                      <div>
+                        <span className="text-gray-600">Tỉ lệ:</span>
+                        <p className="font-medium">{(item.ti_le * 100 || 0).toFixed(2)}%</p>
+                      </div>
+                      <div>
+                        <span className="text-gray-600">Đơn giá:</span>
+                        <p className="font-medium">{(item.don_gia || 0).toLocaleString('vi-VN')} VND</p>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Total Summary */}
+            <div className="mt-6 pt-4 border-t">
+              <div className="flex justify-between items-center">
+                <div>
+                  <h4 className="text-lg font-semibold text-gray-900">Tổng cộng</h4>
+                  <p className="text-sm text-gray-600">
+                    {selectedBophans.length} bộ phận • {invoiceItems.reduce((sum, item) => sum + (item.so_luong || 0), 0)} sản phẩm
+                  </p>
+                </div>
+                <div className="text-right">
+                  <p className="text-2xl font-bold text-green-600">
+                    {calculateTotal().toLocaleString('vi-VN')} VND
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Save Button */}
+            <div className="mt-6 flex justify-end">
+              <button
+                onClick={saveInvoice}
+                className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 font-medium flex items-center space-x-2"
+              >
+                <Save className="w-5 h-5" />
+                <span>Lưu đơn hàng</span>
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
   );
 }
 
@@ -326,7 +1251,7 @@ function RevenueTab({ salesData, products, setSalesData }) {
                 <select
                   value={formData.product_id}
                   onChange={(e) => setFormData({...formData, product_id: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black"
                   required
                 >
                   <option value="">Chọn sản phẩm</option>
@@ -342,7 +1267,7 @@ function RevenueTab({ salesData, products, setSalesData }) {
                   placeholder="Nhập số lượng"
                   value={formData.quantity}
                   onChange={(e) => setFormData({...formData, quantity: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black"
                   required
                 />
               </div>
@@ -354,7 +1279,7 @@ function RevenueTab({ salesData, products, setSalesData }) {
                   placeholder="Nhập đơn giá"
                   value={formData.price_at_transaction}
                   onChange={(e) => setFormData({...formData, price_at_transaction: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black"
                   required
                 />
               </div>
@@ -506,7 +1431,7 @@ function ExpensesTab({ expensesData, expenseCategories, setExpensesData }) {
                 <select
                   value={formData.category_id}
                   onChange={(e) => setFormData({...formData, category_id: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent text-black"
                   required
                 >
                   <option value="">Chọn danh mục</option>
@@ -523,7 +1448,7 @@ function ExpensesTab({ expensesData, expenseCategories, setExpensesData }) {
                   placeholder="Nhập số tiền"
                   value={formData.amount}
                   onChange={(e) => setFormData({...formData, amount: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent text-black"
                   required
                 />
               </div>
@@ -534,7 +1459,7 @@ function ExpensesTab({ expensesData, expenseCategories, setExpensesData }) {
                   placeholder="Nhập mô tả chi phí"
                   value={formData.description}
                   onChange={(e) => setFormData({...formData, description: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent text-black"
                   required
                 />
               </div>
@@ -735,7 +1660,7 @@ function ProductsTab({ products, setProducts }) {
                   placeholder="Nhập tên sản phẩm"
                   value={formData.name}
                   onChange={(e) => setFormData({...formData, name: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black"
                   required
                 />
               </div>
@@ -747,7 +1672,7 @@ function ProductsTab({ products, setProducts }) {
                   placeholder="Nhập giá bán"
                   value={formData.unit_price}
                   onChange={(e) => setFormData({...formData, unit_price: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black"
                   required
                 />
               </div>
@@ -759,7 +1684,7 @@ function ProductsTab({ products, setProducts }) {
                   placeholder="Nhập giá vốn"
                   value={formData.cost_price}
                   onChange={(e) => setFormData({...formData, cost_price: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black"
                   required
                 />
               </div>
@@ -987,7 +1912,7 @@ function ExpenseCategoriesTab({ expenseCategories, setExpenseCategories }) {
                   placeholder="Nhập tên danh mục"
                   value={formData.name}
                   onChange={(e) => setFormData({...formData, name: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-black"
                   required
                 />
               </div>
@@ -996,7 +1921,7 @@ function ExpenseCategoriesTab({ expenseCategories, setExpenseCategories }) {
                 <select
                   value={formData.type}
                   onChange={(e) => setFormData({...formData, type: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-black"
                 >
                   <option value="fixed">Chi phí cố định</option>
                   <option value="variable">Chi phí biến động</option>
@@ -1145,7 +2070,7 @@ function GenerateReportTab({ reportsData, setReportsData }) {
               type="month"
               value={selectedMonth}
               onChange={(e) => setSelectedMonth(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black"
               min="2020-01"
               max={new Date().toISOString().slice(0, 7)}
             />
