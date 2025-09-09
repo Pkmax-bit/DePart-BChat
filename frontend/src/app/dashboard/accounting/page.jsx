@@ -1531,24 +1531,77 @@ function RevenueTab({ salesData, products, setSalesData }) {
     const wb = XLSX.utils.book_new();
     const ws = XLSX.utils.aoa_to_sheet(excelData);
 
-    // Định dạng cột
+    // Định dạng cột với kích thước đồng bộ hơn
     const colWidths = [
-      { wch: 5 },  // STT
-      { wch: 20 }, // Khách hàng
-      { wch: 12 }, // Ngày
-      { wch: 10 }, // Giờ
-      { wch: 25 }, // Tên sản phẩm
-      { wch: 15 }, // Loại nhôm
-      { wch: 15 }, // Loại kính
-      { wch: 15 }, // Loại tay nắm
-      { wch: 15 }, // Bộ phận
-      { wch: 20 }, // Kích thước
-      { wch: 10 }, // Số lượng
-      { wch: 12 }, // Đơn giá
-      { wch: 12 }, // Thành tiền
-      { wch: 15 }  // Tổng hóa đơn
+      { wch: 6 },   // STT
+      { wch: 25 },  // Khách hàng
+      { wch: 12 },  // Ngày
+      { wch: 10 },  // Giờ
+      { wch: 30 },  // Tên sản phẩm
+      { wch: 20 },  // Loại nhôm
+      { wch: 20 },  // Loại kính
+      { wch: 20 },  // Loại tay nắm
+      { wch: 20 },  // Bộ phận
+      { wch: 25 },  // Kích thước
+      { wch: 12 },  // Số lượng
+      { wch: 15 },  // Đơn giá
+      { wch: 15 },  // Thành tiền
+      { wch: 18 }   // Tổng hóa đơn
     ];
     ws['!cols'] = colWidths;
+
+    // Thêm styling cho borders và header
+    const range = XLSX.utils.decode_range(ws['!ref']);
+    
+    // Tạo style cho header (dòng 3 - index 2)
+    const headerRow = 2; // Dòng header (0-indexed)
+    for (let col = 0; col <= range.e.c; col++) {
+      const cellAddress = XLSX.utils.encode_cell({ r: headerRow, c: col });
+      if (!ws[cellAddress]) continue;
+      
+      ws[cellAddress].s = {
+        fill: { fgColor: { rgb: "000000" } }, // Background đen
+        font: { color: { rgb: "FFFFFF" }, bold: true }, // Chữ trắng, in đậm
+        border: {
+          top: { style: "thin", color: { rgb: "000000" } },
+          bottom: { style: "thin", color: { rgb: "000000" } },
+          left: { style: "thin", color: { rgb: "000000" } },
+          right: { style: "thin", color: { rgb: "000000" } }
+        },
+        alignment: { horizontal: "center", vertical: "center" }
+      };
+    }
+
+    // Thêm borders cho tất cả các ô dữ liệu
+    for (let row = 0; row <= range.e.r; row++) {
+      for (let col = 0; col <= range.e.c; col++) {
+        const cellAddress = XLSX.utils.encode_cell({ r: row, c: col });
+        if (!ws[cellAddress]) continue;
+        
+        // Bỏ qua styling cho dòng trống
+        if (row === 1 || (row > 3 && excelData[row] && excelData[row].every(cell => cell === ''))) continue;
+        
+        // Nếu chưa có style, tạo mới
+        if (!ws[cellAddress].s) {
+          ws[cellAddress].s = {};
+        }
+        
+        // Thêm borders
+        ws[cellAddress].s.border = {
+          top: { style: "thin", color: { rgb: "000000" } },
+          bottom: { style: "thin", color: { rgb: "000000" } },
+          left: { style: "thin", color: { rgb: "000000" } },
+          right: { style: "thin", color: { rgb: "000000" } }
+        };
+        
+        // Căn giữa cho các cột số
+        if (col === 0 || col === 10 || col === 11 || col === 12 || col === 13) {
+          ws[cellAddress].s.alignment = { horizontal: "center", vertical: "center" };
+        } else {
+          ws[cellAddress].s.alignment = { horizontal: "left", vertical: "center" };
+        }
+      }
+    }
 
     // Thêm worksheet vào workbook
     XLSX.utils.book_append_sheet(wb, ws, 'HoaDon_Thang_' + selectedMonth);
