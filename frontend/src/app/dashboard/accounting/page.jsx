@@ -3,10 +3,69 @@
 import { useState, useEffect } from 'react';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
-import AccountingLayout from '../../../components/AccountingLayout';
-import { Plus, Edit, Trash2, TrendingUp, TrendingDown, DollarSign, Package, Receipt, CreditCard, FileText, Info, Calendar, BarChart3, History, Settings, RotateCcw, Save, RefreshCw } from 'lucide-react';
+import { Plus, Edit, Trash2, TrendingUp, TrendingDown, DollarSign, Package, Receipt, CreditCard, FileText, Info, Calendar, BarChart3, History, Settings, RotateCcw, Save, RefreshCw, Download } from 'lucide-react';
+import * as XLSX from 'xlsx';
 
 const supabase = createClientComponentClient();
+
+function AccountingLayout({ user, activeTab, onTabChange, children }) {
+  const tabs = [
+    { id: 'invoices', label: 'Hóa đơn', icon: FileText },
+    { id: 'revenue', label: 'Doanh thu', icon: TrendingUp }
+  ];
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      {/* Header */}
+      <div className="bg-white shadow-sm border-b">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center py-6">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900">Quản lý Tài chính</h1>
+              <p className="text-gray-600 mt-1">Quản lý hóa đơn và theo dõi doanh thu</p>
+            </div>
+            <div className="flex items-center space-x-4">
+              <div className="text-right">
+                <p className="text-sm text-gray-600">Xin chào</p>
+                <p className="text-lg font-semibold text-gray-900">{user?.email}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Tabs */}
+      <div className="bg-white shadow-sm">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex space-x-8">
+            {tabs.map((tab) => {
+              const Icon = tab.icon;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => onTabChange(tab.id)}
+                  className={`flex items-center space-x-2 py-4 px-1 border-b-2 font-medium text-sm ${
+                    activeTab === tab.id
+                      ? 'border-blue-500 text-blue-600'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }`}
+                >
+                  <Icon className="w-4 h-4" />
+                  <span>{tab.label}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+
+      {/* Content */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {children}
+      </div>
+    </div>
+  );
+}
 
 export default function AccountingPage() {
   const [user, setUser] = useState(null);
@@ -81,7 +140,8 @@ export default function AccountingPage() {
 
   return (
     <AccountingLayout user={user} activeTab={activeTab} onTabChange={setActiveTab}>
-      <InvoicesTab />
+      {activeTab === 'invoices' && <InvoicesTab />}
+      {activeTab === 'revenue' && <RevenueTab salesData={salesData} products={products} setSalesData={setSalesData} />}
     </AccountingLayout>
   );
 }
@@ -1181,181 +1241,450 @@ function DashboardTab({ reportsData, salesData, expensesData }) {
 }
 
 function RevenueTab({ salesData, products, setSalesData }) {
-  const [formData, setFormData] = useState({
-    product_id: '',
-    quantity: '',
-    price_at_transaction: ''
-  });
-  const [showForm, setShowForm] = useState(false);
+  const [invoices, setInvoices] = useState([]);
+  const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7));
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  useEffect(() => {
+    loadInvoices();
+  }, [selectedMonth]);
+
+  const loadInvoices = async () => {
+    setLoading(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
+      console.log('Loading invoices for month:', selectedMonth);
 
-      const response = await fetch('http://localhost:8001/api/v1/accounting/sales', {
-        method: 'POST',
+      const response = await fetch(`http://localhost:8001/api/v1/invoices?month=${selectedMonth}`, {
+        method: 'GET',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${session.access_token}`
         },
-        body: JSON.stringify({
-          product_id: parseInt(formData.product_id),
-          quantity: parseInt(formData.quantity),
-          price_at_transaction: parseFloat(formData.price_at_transaction),
-          transaction_date: new Date().toISOString().split('T')[0]
-        })
       });
 
       if (response.ok) {
-        const result = await response.json();
-        setSalesData([...salesData, result.sale]);
-        setFormData({ product_id: '', quantity: '', price_at_transaction: '' });
-        setShowForm(false);
+        const data = await response.json();
+        console.log('Invoices loaded successfully:', data);
+        setInvoices(data.invoices || []);
+      } else {
+        const errorText = await response.text();
+        console.error('Error loading invoices:', {
+          status: response.status,
+          statusText: response.statusText,
+          error: errorText
+        });
+        alert(`Không thể tải danh sách hóa đơn: ${response.status} ${response.statusText}`);
+        setInvoices([]);
       }
     } catch (error) {
-      console.error('Error creating sale:', error);
+      console.error('Network error loading invoices:', error);
+      alert('Lỗi kết nối mạng. Vui lòng kiểm tra backend server.');
+      setInvoices([]);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const totalRevenue = salesData.reduce((sum, sale) => sum + sale.total_revenue, 0);
+  const printInvoice = (invoice) => {
+    const printWindow = window.open('', '_blank');
+    const invoiceHtml = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Hóa đơn - ${invoice.customer_name}</title>
+          <style>
+            body { font-family: Arial, sans-serif; margin: 20px; }
+            .header { text-align: center; margin-bottom: 30px; }
+            .invoice-info { margin-bottom: 20px; }
+            .invoice-info div { margin-bottom: 5px; }
+            table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+            th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+            th { background-color: #f2f2f2; }
+            .total { font-weight: bold; font-size: 18px; margin-top: 20px; }
+            .footer { margin-top: 40px; text-align: center; font-size: 12px; color: #666; }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <h1>HÓA ĐƠN</h1>
+            <h2>Công ty TNHH Nội Thất ABC</h2>
+          </div>
+          
+          <div class="invoice-info">
+            <div><strong>Tên khách hàng:</strong> ${invoice.customer_name}</div>
+            <div><strong>Ngày hóa đơn:</strong> ${new Date(invoice.invoice_date).toLocaleDateString('vi-VN')}</div>
+            <div><strong>Giờ:</strong> ${new Date(invoice.invoice_date).toLocaleTimeString('vi-VN')}</div>
+          </div>
+          
+              <table>
+                <thead>
+                  <tr>
+                    <th>STT</th>
+                    <th>Tên sản phẩm</th>
+                    <th>Loại nhôm</th>
+                    <th>Loại kính</th>
+                    <th>Loại tay nắm</th>
+                    <th>Bộ phận</th>
+                    <th>Kích thước</th>
+                    <th>Số lượng</th>
+                    <th>Đơn giá</th>
+                    <th>Thành tiền</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${invoice.items.map((item, index) => `
+                    <tr>
+                      <td>${index + 1}</td>
+                      <td>${item.sanpham?.tensp || 'N/A'}</td>
+                      <td>${item.sanpham?.ten_nhom || item.ten_nhom || 'N/A'}</td>
+                      <td>${item.sanpham?.ten_kinh || item.ten_kinh || 'N/A'}</td>
+                      <td>${item.sanpham?.ten_taynam || item.ten_taynam || 'N/A'}</td>
+                      <td>${item.sanpham?.ten_bophan || item.ten_bophan || 'N/A'}</td>
+                      <td>${item.ngang} x ${item.cao} x ${item.sau} mm</td>
+                      <td>${item.so_luong}</td>
+                      <td>${item.don_gia?.toLocaleString('vi-VN')} VND</td>
+                      <td>${item.thanh_tien?.toLocaleString('vi-VN')} VND</td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>          <div class="total">
+            <div>Tổng tiền: ${invoice.total_amount?.toLocaleString('vi-VN')} VND</div>
+          </div>
+          
+          <div class="footer">
+            <p>Cảm ơn quý khách đã tin tưởng và sử dụng dịch vụ của chúng tôi!</p>
+            <p>Ngày in: ${new Date().toLocaleDateString('vi-VN')}</p>
+          </div>
+        </body>
+      </html>
+    `;
+    
+    printWindow.document.write(invoiceHtml);
+    printWindow.document.close();
+    printWindow.print();
+  };
+
+  const printAllInvoices = () => {
+    if (invoices.length === 0) {
+      alert('Không có hóa đơn nào để in');
+      return;
+    }
+
+    const printWindow = window.open('', '_blank');
+    const allInvoicesHtml = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Danh sách hóa đơn tháng ${selectedMonth}</title>
+          <style>
+            body { font-family: Arial, sans-serif; margin: 20px; }
+            .header { text-align: center; margin-bottom: 30px; }
+            .invoice { page-break-after: always; margin-bottom: 40px; }
+            .invoice-info { margin-bottom: 20px; }
+            .invoice-info div { margin-bottom: 5px; }
+            table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+            th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+            th { background-color: #f2f2f2; }
+            .total { font-weight: bold; font-size: 18px; margin-top: 20px; }
+            .footer { margin-top: 40px; text-align: center; font-size: 12px; color: #666; }
+            .month-total { font-size: 20px; font-weight: bold; text-align: center; margin: 30px 0; }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <h1>DANH SÁCH HÓA ĐƠN</h1>
+            <h2>Tháng ${selectedMonth}</h2>
+          </div>
+          
+          ${invoices.map(invoice => `
+            <div class="invoice">
+              <div class="invoice-info">
+                <div><strong>Tên khách hàng:</strong> ${invoice.customer_name}</div>
+                <div><strong>Ngày hóa đơn:</strong> ${new Date(invoice.invoice_date).toLocaleDateString('vi-VN')}</div>
+                <div><strong>Giờ:</strong> ${new Date(invoice.invoice_date).toLocaleTimeString('vi-VN')}</div>
+              </div>
+              
+              <table>
+                <thead>
+                  <tr>
+                    <th>STT</th>
+                    <th>Tên sản phẩm</th>
+                    <th>Loại nhôm</th>
+                    <th>Loại kính</th>
+                    <th>Loại tay nắm</th>
+                    <th>Bộ phận</th>
+                    <th>Kích thước</th>
+                    <th>Số lượng</th>
+                    <th>Đơn giá</th>
+                    <th>Thành tiền</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${invoice.items.map((item, index) => `
+                    <tr>
+                      <td>${index + 1}</td>
+                      <td>${item.sanpham?.tensp || 'N/A'}</td>
+                      <td>${item.sanpham?.ten_nhom || item.ten_nhom || 'N/A'}</td>
+                      <td>${item.sanpham?.ten_kinh || item.ten_kinh || 'N/A'}</td>
+                      <td>${item.sanpham?.ten_taynam || item.ten_taynam || 'N/A'}</td>
+                      <td>${item.sanpham?.ten_bophan || item.ten_bophan || 'N/A'}</td>
+                      <td>${item.ngang} x ${item.cao} x ${item.sau} mm</td>
+                      <td>${item.so_luong}</td>
+                      <td>${item.don_gia?.toLocaleString('vi-VN')} VND</td>
+                      <td>${item.thanh_tien?.toLocaleString('vi-VN')} VND</td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+              
+              <div class="total">
+                <div>Tổng tiền: ${invoice.total_amount?.toLocaleString('vi-VN')} VND</div>
+              </div>
+            </div>
+          `).join('')}
+          
+          <div class="month-total">
+            Tổng doanh thu tháng ${selectedMonth}: ${invoices.reduce((sum, inv) => sum + (inv.total_amount || 0), 0).toLocaleString('vi-VN')} VND
+          </div>
+          
+          <div class="footer">
+            <p>Ngày in: ${new Date().toLocaleDateString('vi-VN')}</p>
+          </div>
+        </body>
+      </html>
+    `;
+    
+    printWindow.document.write(allInvoicesHtml);
+    printWindow.document.close();
+    printWindow.print();
+  };
+
+  const exportToExcel = () => {
+    if (invoices.length === 0) {
+      alert('Không có hóa đơn nào để xuất');
+      return;
+    }
+
+    // Tạo dữ liệu cho Excel
+    const excelData = [];
+    
+    // Header
+    excelData.push(['DANH SÁCH HÓA ĐƠN THÁNG ' + selectedMonth]);
+    excelData.push([]);
+    excelData.push(['STT', 'Khách hàng', 'Ngày', 'Giờ', 'Tên sản phẩm', 'Loại nhôm', 'Loại kính', 'Loại tay nắm', 'Bộ phận', 'Kích thước', 'Số lượng', 'Đơn giá', 'Thành tiền', 'Tổng hóa đơn']);
+
+    let rowIndex = 4; // Bắt đầu từ dòng 4 (index 3)
+    
+    invoices.forEach((invoice, invoiceIndex) => {
+      const invoiceDate = new Date(invoice.invoice_date);
+      const dateStr = invoiceDate.toLocaleDateString('vi-VN');
+      const timeStr = invoiceDate.toLocaleTimeString('vi-VN');
+      
+      if (invoice.items && invoice.items.length > 0) {
+        invoice.items.forEach((item, itemIndex) => {
+          excelData.push([
+            invoiceIndex + 1, // STT hóa đơn
+            invoice.customer_name,
+            dateStr,
+            timeStr,
+            item.sanpham?.tensp || 'N/A',
+            item.sanpham?.ten_nhom || item.ten_nhom || 'N/A',
+            item.sanpham?.ten_kinh || item.ten_kinh || 'N/A',
+            item.sanpham?.ten_taynam || item.ten_taynam || 'N/A',
+            item.sanpham?.ten_bophan || item.ten_bophan || 'N/A',
+            `${item.ngang} x ${item.cao} x ${item.sau} mm`,
+            item.so_luong,
+            item.don_gia || 0,
+            item.thanh_tien || 0,
+            itemIndex === 0 ? invoice.total_amount || 0 : '' // Chỉ hiển thị tổng ở dòng đầu của mỗi hóa đơn
+          ]);
+        });
+      } else {
+        // Nếu không có items, vẫn thêm dòng cho hóa đơn
+        excelData.push([
+          invoiceIndex + 1,
+          invoice.customer_name,
+          dateStr,
+          timeStr,
+          'N/A',
+          'N/A',
+          'N/A',
+          'N/A',
+          'N/A',
+          'N/A',
+          0,
+          0,
+          0,
+          invoice.total_amount || 0
+        ]);
+      }
+      
+      // Thêm dòng trống giữa các hóa đơn
+      excelData.push([]);
+      rowIndex += (invoice.items?.length || 1) + 1;
+    });
+
+    // Thêm tổng kết tháng
+    excelData.push([]);
+    excelData.push(['', '', '', '', '', '', '', '', '', '', '', 'TỔNG DOANH THU THÁNG:', totalRevenue]);
+
+    // Tạo workbook và worksheet
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.aoa_to_sheet(excelData);
+
+    // Định dạng cột
+    const colWidths = [
+      { wch: 5 },  // STT
+      { wch: 20 }, // Khách hàng
+      { wch: 12 }, // Ngày
+      { wch: 10 }, // Giờ
+      { wch: 25 }, // Tên sản phẩm
+      { wch: 15 }, // Loại nhôm
+      { wch: 15 }, // Loại kính
+      { wch: 15 }, // Loại tay nắm
+      { wch: 15 }, // Bộ phận
+      { wch: 20 }, // Kích thước
+      { wch: 10 }, // Số lượng
+      { wch: 12 }, // Đơn giá
+      { wch: 12 }, // Thành tiền
+      { wch: 15 }  // Tổng hóa đơn
+    ];
+    ws['!cols'] = colWidths;
+
+    // Thêm worksheet vào workbook
+    XLSX.utils.book_append_sheet(wb, ws, 'HoaDon_Thang_' + selectedMonth);
+
+    // Xuất file
+    const fileName = `DanhSach_HoaDon_Thang_${selectedMonth}.xlsx`;
+    XLSX.writeFile(wb, fileName);
+  };
+
+  const totalRevenue = invoices.reduce((sum, invoice) => sum + (invoice.total_amount || 0), 0);
 
   return (
     <div className="space-y-6">
-      {/* Header with Stats */}
-      <div className="flex justify-between items-center">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-900">Quản lý Doanh thu</h2>
-          <p className="text-gray-600 mt-1">Theo dõi và quản lý các giao dịch bán hàng</p>
-        </div>
+      {/* Month Selector */}
+      <div className="bg-white rounded-lg shadow-sm border p-6">
         <div className="flex items-center space-x-4">
-          <div className="text-right">
-            <p className="text-sm text-gray-600">Tổng doanh thu</p>
-            <p className="text-xl font-bold text-green-600">{totalRevenue.toLocaleString('vi-VN')} VND</p>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Chọn tháng</label>
+            <input
+              type="month"
+              value={selectedMonth}
+              onChange={(e) => setSelectedMonth(e.target.value)}
+              className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black"
+            />
           </div>
-          <button
-            onClick={() => setShowForm(!showForm)}
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center space-x-2"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Thêm giao dịch</span>
-          </button>
+          <div className="flex items-end space-x-2">
+            <button
+              onClick={loadInvoices}
+              className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 flex items-center space-x-2"
+            >
+              <RefreshCw className="w-4 h-4" />
+              <span>Tải lại</span>
+            </button>
+            <button
+              onClick={exportToExcel}
+              disabled={invoices.length === 0}
+              className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center space-x-2"
+            >
+              <Download className="w-4 h-4" />
+              <span>Xuất Excel</span>
+            </button>
+            <button
+              onClick={printAllInvoices}
+              disabled={invoices.length === 0}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center space-x-2"
+            >
+              <FileText className="w-4 h-4" />
+              <span>In tất cả</span>
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* Add Form */}
-      {showForm && (
-        <div className="bg-white rounded-lg shadow-sm border p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Thêm giao dịch bán hàng</h3>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Sản phẩm</label>
-                <select
-                  value={formData.product_id}
-                  onChange={(e) => setFormData({...formData, product_id: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black"
-                  required
-                >
-                  <option value="">Chọn sản phẩm</option>
-                  {products.map(product => (
-                    <option key={product.id} value={product.id}>{product.name}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Số lượng</label>
-                <input
-                  type="number"
-                  placeholder="Nhập số lượng"
-                  value={formData.quantity}
-                  onChange={(e) => setFormData({...formData, quantity: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Đơn giá (VND)</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  placeholder="Nhập đơn giá"
-                  value={formData.price_at_transaction}
-                  onChange={(e) => setFormData({...formData, price_at_transaction: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black"
-                  required
-                />
-              </div>
-            </div>
-            <div className="flex justify-end space-x-3">
-              <button
-                type="button"
-                onClick={() => setShowForm(false)}
-                className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
-              >
-                Hủy
-              </button>
-              <button
-                type="submit"
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-              >
-                Thêm giao dịch
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
-
-      {/* Sales Table */}
+      {/* Invoices List */}
       <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
         <div className="px-6 py-4 border-b">
-          <h3 className="text-lg font-semibold text-gray-900">Danh sách giao dịch</h3>
+          <h3 className="text-lg font-semibold text-gray-900">Danh sách hóa đơn tháng {selectedMonth}</h3>
         </div>
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sản phẩm</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Số lượng</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Đơn giá</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tổng tiền</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ngày</th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {salesData.map(sale => (
-                <tr key={sale.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center">
-                      <Package className="w-4 h-4 text-gray-400 mr-2" />
-                      <span className="text-sm font-medium text-gray-900">
-                        {products.find(p => p.id == sale.product_id)?.name}
-                      </span>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{sale.quantity}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {sale.price_at_transaction.toLocaleString('vi-VN')} VND
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-green-600">
-                    {sale.total_revenue.toLocaleString('vi-VN')} VND
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {new Date(sale.transaction_date).toLocaleDateString('vi-VN')}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        {salesData.length === 0 && (
+        
+        {loading ? (
+          <div className="text-center py-12">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <p className="text-gray-600">Đang tải dữ liệu...</p>
+          </div>
+        ) : invoices.length === 0 ? (
           <div className="text-center py-12">
             <Receipt className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-            <p className="text-gray-500">Chưa có giao dịch nào</p>
+            <p className="text-gray-500">Không có hóa đơn nào trong tháng này</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Khách hàng</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ngày</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Số sản phẩm</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tổng tiền</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Thao tác</th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {invoices.map(invoice => (
+                  <tr key={invoice.id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center">
+                        <Receipt className="w-4 h-4 text-gray-400 mr-2" />
+                        <span className="text-sm font-medium text-gray-900">{invoice.customer_name}</span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {new Date(invoice.invoice_date).toLocaleDateString('vi-VN')}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {invoice.items?.length || 0}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-green-600">
+                      {invoice.total_amount?.toLocaleString('vi-VN')} VND
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                      <button
+                        onClick={() => printInvoice(invoice)}
+                        className="text-blue-600 hover:text-blue-900 p-1"
+                        title="In hóa đơn"
+                      >
+                        <FileText className="w-4 h-4" />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         )}
       </div>
+
+      {/* Summary */}
+      {invoices.length > 0 && (
+        <div className="bg-white rounded-lg shadow-sm border p-6">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Tóm tắt tháng {selectedMonth}</h3>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="text-center">
+              <p className="text-2xl font-bold text-blue-600">{invoices.length}</p>
+              <p className="text-sm text-gray-600">Tổng hóa đơn</p>
+            </div>
+            <div className="text-center">
+              <p className="text-2xl font-bold text-green-600">{invoices.reduce((sum, inv) => sum + (inv.items?.length || 0), 0)}</p>
+              <p className="text-sm text-gray-600">Tổng sản phẩm</p>
+            </div>
+            <div className="text-center">
+              <p className="text-2xl font-bold text-purple-600">{totalRevenue.toLocaleString('vi-VN')} VND</p>
+              <p className="text-sm text-gray-600">Tổng doanh thu</p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -94,3 +94,149 @@ async def create_invoice(invoice_data: dict):
         return {"message": "Invoice created successfully", "invoice_id": invoice_id}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error creating invoice: {str(e)}")
+
+@router.get("/invoices/")
+async def get_invoices(month: str = None):
+    """Lấy danh sách hóa đơn, có thể lọc theo tháng"""
+    try:
+        query = supabase.table('invoices').select('*')
+
+        if month:
+            # Lọc theo tháng (định dạng YYYY-MM)
+            start_date = f"{month}-01"
+            # Tính ngày cuối tháng
+            year, month_num = map(int, month.split('-'))
+            if month_num == 12:
+                end_date = f"{year + 1}-01-01"
+            else:
+                end_date = f"{year}-{month_num + 1:02d}-01"
+
+            query = query.gte('invoice_date', start_date).lt('invoice_date', end_date)
+
+        result = query.order('invoice_date', desc=True).execute()
+
+        # Lấy chi tiết cho mỗi hóa đơn
+        invoices_with_items = []
+        for invoice in result.data:
+            # Lấy items của invoice này
+            items_result = supabase.table('invoice_items').select('*').eq('invoice_id', invoice['id']).execute()
+
+            # Lấy thông tin chi tiết cho mỗi item
+            items_with_details = []
+            for item in items_result.data:
+                item_with_details = dict(item)
+
+                # Lấy thông tin sản phẩm
+                if item.get('sanpham_id'):
+                    try:
+                        product_id = item['sanpham_id']
+                        if product_id:
+                            product_result = supabase.table('sanpham').select('*').eq('id', product_id).execute()
+                            if product_result.data:
+                                product = product_result.data[0]
+
+                                # Lấy tên loại nhôm
+                                if product.get('id_nhom'):
+                                    try:
+                                        nhom_id = product['id_nhom']
+                                        if nhom_id:
+                                            nhom_result = supabase.table('loainhom').select('tenloai').eq('id', nhom_id).execute()
+                                            if nhom_result.data:
+                                                product['ten_nhom'] = nhom_result.data[0]['tenloai']
+                                    except:
+                                        pass
+
+                                # Lấy tên loại kính
+                                if product.get('id_kinh'):
+                                    try:
+                                        kinh_id = product['id_kinh']
+                                        if kinh_id:
+                                            kinh_result = supabase.table('loaikinh').select('tenloai').eq('id', kinh_id).execute()
+                                            if kinh_result.data:
+                                                product['ten_kinh'] = kinh_result.data[0]['tenloai']
+                                    except:
+                                        pass
+
+                                # Lấy tên loại tay nắm
+                                if product.get('id_taynam'):
+                                    try:
+                                        taynam_id = product['id_taynam']
+                                        if taynam_id:
+                                            taynam_result = supabase.table('loaitaynam').select('tenloai').eq('id', taynam_id).execute()
+                                            if taynam_result.data:
+                                                product['ten_taynam'] = taynam_result.data[0]['tenloai']
+                                    except:
+                                        pass
+
+                                # Lấy tên bộ phận
+                                if product.get('id_bophan'):
+                                    try:
+                                        bophan_id = product['id_bophan']
+                                        if bophan_id:
+                                            bophan_result = supabase.table('bophan').select('tenloai').eq('id', bophan_id).execute()
+                                            if bophan_result.data:
+                                                product['ten_bophan'] = bophan_result.data[0]['tenloai']
+                                    except:
+                                        pass
+
+                                item_with_details['sanpham'] = product
+                    except (ValueError, TypeError):
+                        pass
+
+                # Nếu không có sanpham_id hoặc không tìm thấy sản phẩm, lấy thông tin từ item trực tiếp
+                if not item_with_details.get('sanpham'):
+                    # Lấy tên loại nhôm từ item
+                    if item.get('id_nhom'):
+                        try:
+                            nhom_id = item['id_nhom']
+                            if nhom_id:
+                                nhom_result = supabase.table('loainhom').select('tenloai').eq('id', nhom_id).execute()
+                                if nhom_result.data:
+                                    item_with_details['ten_nhom'] = nhom_result.data[0]['tenloai']
+                        except:
+                            pass
+
+                    # Lấy tên loại kính từ item
+                    if item.get('id_kinh'):
+                        try:
+                            kinh_id = item['id_kinh']
+                            if kinh_id:
+                                kinh_result = supabase.table('loaikinh').select('tenloai').eq('id', kinh_id).execute()
+                                if kinh_result.data:
+                                    item_with_details['ten_kinh'] = kinh_result.data[0]['tenloai']
+                        except:
+                            pass
+
+                    # Lấy tên loại tay nắm từ item
+                    if item.get('id_taynam'):
+                        try:
+                            taynam_id = item['id_taynam']
+                            if taynam_id:
+                                taynam_result = supabase.table('loaitaynam').select('tenloai').eq('id', taynam_id).execute()
+                                if taynam_result.data:
+                                    item_with_details['ten_taynam'] = taynam_result.data[0]['tenloai']
+                        except:
+                            pass
+
+                    # Lấy tên bộ phận từ item
+                    if item.get('id_bophan'):
+                        try:
+                            bophan_id = item['id_bophan']
+                            if bophan_id:
+                                bophan_result = supabase.table('bophan').select('tenloai').eq('id', bophan_id).execute()
+                                if bophan_result.data:
+                                    item_with_details['ten_bophan'] = bophan_result.data[0]['tenloai']
+                        except:
+                            pass
+
+                items_with_details.append(item_with_details)
+
+            invoice_with_items = {
+                **invoice,
+                'items': items_with_details
+            }
+            invoices_with_items.append(invoice_with_items)
+
+        return {"invoices": invoices_with_items}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching invoices: {str(e)}")
