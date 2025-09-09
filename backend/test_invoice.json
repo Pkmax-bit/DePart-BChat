@@ -1,0 +1,21 @@
+{
+  "customer_name": "Test Customer",
+  "invoice_date": "2025-09-09T16:04:46",
+  "total_amount": 5400000,
+  "items": [{
+    "id_nhom": "NHK",
+    "id_kinh": "5LC",
+    "id_taynam": "TNA",
+    "id_bophan": "TL",
+    "sanpham_id": "NHKTNA5LCTL",
+    "ngang": 600,
+    "cao": 700,
+    "sau": 500,
+    "so_luong": 1,
+    "don_gia": 5400000,
+    "dien_tich_ke_hoach": 210000,
+    "dien_tich_thuc_te": 210000,
+    "ti_le": 1.0,
+    "thanh_tien": 5400000
+  }]
+}

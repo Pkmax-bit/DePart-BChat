@@ -471,13 +471,15 @@ function InvoicesTab() {
       return;
     }
 
-    // Kiểm tra xem có sản phẩm nào chưa được chọn đầy đủ không
+    // Kiểm tra xem các bộ phận được chọn có đầy đủ các loại (nhôm, kính, tay nắm) không
     const invalidItems = invoiceItems.filter(item => 
-      !(item.id_nhom || globalNhom) || !(item.id_kinh || globalKinh) || !(item.id_taynam || globalTaynam) || !item.id_bophan || !item.sanpham
+      selectedBophans.includes(item.id_bophan) && (
+        !(item.id_nhom || globalNhom) || !(item.id_kinh || globalKinh) || !(item.id_taynam || globalTaynam) || !item.id_bophan || !item.sanpham
+      )
     );
 
     if (invalidItems.length > 0) {
-      alert('Vui lòng chọn đầy đủ các loại (nhôm, kính, tay nắm) cho tất cả sản phẩm');
+      alert('Vui lòng chọn đầy đủ các loại (nhôm, kính, tay nắm) cho tất cả bộ phận đã tích chọn');
       return;
     }
 
@@ -519,6 +521,8 @@ function InvoicesTab() {
         setInvoiceItems([]);
         setInvoiceDate(new Date().toISOString().split('T')[0]);
         setInvoiceTime(new Date().toTimeString().split(' ')[0]);
+        // Reload trang
+        window.location.reload();
       } else {
         const errorData = await response.json();
         alert(`Có lỗi xảy ra khi lưu hóa đơn: ${errorData.detail || 'Lỗi không xác định'}`);
