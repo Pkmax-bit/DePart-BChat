@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
-import { Plus, Edit, Trash2, TrendingUp, TrendingDown, DollarSign, Package, Receipt, CreditCard, FileText, Info, Calendar, BarChart3, History, Settings, RotateCcw, Save, RefreshCw, Download, Users, Wrench, Eye, EyeOff } from 'lucide-react';
+import { Plus, Edit, Trash2, TrendingUp, TrendingDown, DollarSign, Package, Receipt, CreditCard, FileText, Info, Calendar, BarChart3, History, Settings, RotateCcw, Save, RefreshCw, Download, Users, Wrench, Eye, EyeOff, X } from 'lucide-react';
 import * as XLSX from 'xlsx';
 
 const supabase = createClientComponentClient();
@@ -23,7 +23,7 @@ function AccountingLayout({ user, activeTab, onTabChange, children }) {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-6">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">Quản lý Tài chính</h1>
+              <h1 className="text-3xl font-bold text-gray-900">Quản lý doanh thu</h1>
               <p className="text-gray-600 mt-1">Quản lý hóa đơn và theo dõi doanh thu</p>
             </div>
             <div className="flex items-center space-x-4">
@@ -2005,17 +2005,88 @@ function ProductsManagementTab({ products, setProducts }) {
   const [showForm, setShowForm] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
 
+  // Product detail states
+  const [selectedProduct, setSelectedProduct] = useState(null);
+  const [productDetailForm, setProductDetailForm] = useState({
+    id_nhom: '',
+    id_kinh: '',
+    id_taynam: '',
+    id_bophan: '',
+    ngang: 0,
+    cao: 0,
+    sau: 0,
+    don_gia: 0
+  });
+
+  // Material data for product details
+  const [nhomList, setNhomList] = useState([]);
+  const [kinhList, setKinhList] = useState([]);
+  const [taynamList, setTaynamList] = useState([]);
+  const [departments, setDepartments] = useState([]);
+  const [productDetails, setProductDetails] = useState([]);
+  const [sanphamList, setSanphamList] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchMaterials();
+  }, []);
+
+  const fetchMaterials = async () => {
+    try {
+      const [nhomRes, kinhRes, taynamRes, bophanRes, productDetailsRes, sanphamRes] = await Promise.all([
+        fetch('http://localhost:8001/api/v1/loainhom/'),
+        fetch('http://localhost:8001/api/v1/loaikinh/'),
+        fetch('http://localhost:8001/api/v1/loaitaynam/'),
+        fetch('http://localhost:8001/api/v1/bophan/'),
+        fetch('http://localhost:8001/api/v1/chitietsanpham/'),
+        fetch('http://localhost:8001/api/v1/sanpham/')
+      ]);
+
+      if (nhomRes.ok) setNhomList(await nhomRes.json());
+      if (kinhRes.ok) setKinhList(await kinhRes.json());
+      if (taynamRes.ok) setTaynamList(await taynamRes.json());
+      if (bophanRes.ok) setDepartments(await bophanRes.json());
+      if (productDetailsRes.ok) setProductDetails(await productDetailsRes.json());
+      if (sanphamRes.ok) setSanphamList(await sanphamRes.json());
+    } catch (error) {
+      console.error('Error fetching materials:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
 
-      const url = editingProduct 
-        ? `http://localhost:8001/api/v1/accounting/products/${editingProduct.id}`
-        : 'http://localhost:8001/api/v1/accounting/products';
+      // Kiểm tra trùng lặp sản phẩm
+      const existingProduct = sanphamList.find(p => 
+        p.tensp.toLowerCase() === formData.name.toLowerCase() && 
+        p.id !== (editingProduct?.id || null)
+      );
       
+      if (existingProduct) {
+        alert('Tên sản phẩm đã tồn tại! Vui lòng chọn tên khác.');
+        return;
+      }
+
+      // Use the correct endpoint for sanpham table
+      const url = editingProduct
+        ? `http://localhost:8001/api/v1/sanpham/${editingProduct.id}`
+        : 'http://localhost:8001/api/v1/sanpham/';
+
       const method = editingProduct ? 'PUT' : 'POST';
+
+      // Only send the fields that exist in the sanpham table
+      const productData = {
+        tensp: formData.name,
+        id_nhom: editingProduct?.id_nhom || null,
+        id_kinh: editingProduct?.id_kinh || null,
+        id_taynam: editingProduct?.id_taynam || null,
+        id_bophan: editingProduct?.id_bophan || null
+      };
 
       const response = await fetch(url, {
         method,
@@ -2023,19 +2094,17 @@ function ProductsManagementTab({ products, setProducts }) {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${session.access_token}`
         },
-        body: JSON.stringify({
-          name: formData.name,
-          unit_price: parseFloat(formData.unit_price),
-          cost_price: parseFloat(formData.cost_price)
-        })
+        body: JSON.stringify(productData)
       });
 
       if (response.ok) {
         const result = await response.json();
         if (editingProduct) {
-          setProducts(products.map(p => p.id === editingProduct.id ? result.product : p));
+          // Update the product in the sanphamList
+          setSanphamList(sanphamList.map(p => p.id === editingProduct.id ? result : p));
         } else {
-          setProducts([...products, result.product]);
+          // Add new product to sanphamList
+          setSanphamList([...sanphamList, result]);
         }
         setFormData({ name: '', unit_price: '', cost_price: '' });
         setShowForm(false);
@@ -2048,10 +2117,14 @@ function ProductsManagementTab({ products, setProducts }) {
 
   const handleEdit = (product) => {
     setEditingProduct(product);
+    // Get price from product detail if available
+    const unitPrice = product.detail && product.detail.don_gia ? product.detail.don_gia.toString() : '';
+    const costPrice = unitPrice; // For now, use same price for both fields
+
     setFormData({
-      name: product.name,
-      unit_price: product.unit_price.toString(),
-      cost_price: product.cost_price.toString()
+      name: product.tensp || product.name || '',
+      unit_price: unitPrice,
+      cost_price: costPrice
     });
     setShowForm(true);
   };
@@ -2063,7 +2136,8 @@ function ProductsManagementTab({ products, setProducts }) {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
 
-      const response = await fetch(`http://localhost:8001/api/v1/accounting/products/${productId}`, {
+      // Use the correct endpoint for sanpham table
+      const response = await fetch(`http://localhost:8001/api/v1/sanpham/${productId}`, {
         method: 'DELETE',
         headers: {
           Authorization: `Bearer ${session.access_token}`
@@ -2071,18 +2145,152 @@ function ProductsManagementTab({ products, setProducts }) {
       });
 
       if (response.ok) {
-        setProducts(products.filter(p => p.id !== productId));
+        // Remove from sanphamList
+        setSanphamList(sanphamList.filter(p => p.id !== productId));
+        // Also remove any related product details
+        setProductDetails(productDetails.filter(detail => detail.id_sanpham !== productId));
       }
     } catch (error) {
       console.error('Error deleting product:', error);
     }
   };
 
-  const handleCancel = () => {
-    setShowForm(false);
-    setEditingProduct(null);
-    setFormData({ name: '', unit_price: '', cost_price: '' });
+  const handleProductClick = (product) => {
+    setSelectedProduct(product);
+    // Load product details for this product
+    const productDetail = productDetails.find(detail => detail.id_sanpham === product.id);
+    if (productDetail) {
+      setProductDetailForm({
+        id_nhom: productDetail.id_nhom || product.id_nhom || '',
+        id_kinh: productDetail.id_kinh || product.id_kinh || '',
+        id_taynam: productDetail.id_taynam || product.id_taynam || '',
+        id_bophan: productDetail.id_bophan || product.id_bophan || '',
+        ngang: productDetail.ngang || 0,
+        cao: productDetail.cao || 0,
+        sau: productDetail.sau || 0,
+        don_gia: productDetail.don_gia || 0
+      });
+    } else {
+      // Nếu không có chi tiết sản phẩm, load từ thông tin sản phẩm chính
+      setProductDetailForm({
+        id_nhom: product.id_nhom || '',
+        id_kinh: product.id_kinh || '',
+        id_taynam: product.id_taynam || '',
+        id_bophan: product.id_bophan || '',
+        ngang: 0,
+        cao: 0,
+        sau: 0,
+        don_gia: 0
+      });
+    }
   };
+
+  const handleProductDetailSubmit = async (e) => {
+    e.preventDefault();
+    
+    // Kiểm tra trùng lặp sản phẩm với cùng loại nhôm, kính, tay nắm và bộ phận
+    const existingDetail = productDetails.find(detail => 
+      detail.id_nhom === productDetailForm.id_nhom &&
+      detail.id_kinh === productDetailForm.id_kinh &&
+      detail.id_taynam === productDetailForm.id_taynam &&
+      detail.id_bophan === productDetailForm.id_bophan &&
+      detail.id_sanpham !== selectedProduct.id
+    );
+    
+    if (existingDetail) {
+      alert('Đã tồn tại sản phẩm với cùng loại nhôm, kính, tay nắm và bộ phận! Vui lòng chọn loại khác.');
+      return;
+    }
+    
+    try {
+      const url = `http://localhost:8001/api/v1/chitietsanpham/`;
+      const method = 'POST'; // Always create new or update existing
+
+      const response = await fetch(url, {
+        method,
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          id_sanpham: selectedProduct.id,
+          id_nhom: productDetailForm.id_nhom,
+          id_kinh: productDetailForm.id_kinh,
+          id_taynam: productDetailForm.id_taynam,
+          id_bophan: productDetailForm.id_bophan,
+          ngang: productDetailForm.ngang,
+          cao: productDetailForm.cao,
+          sau: productDetailForm.sau,
+          don_gia: productDetailForm.don_gia
+        })
+      });
+
+      const detailResponse = await fetch(url, {
+        method,
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          id_sanpham: selectedProduct.id,
+          id_nhom: productDetailForm.id_nhom,
+          id_kinh: productDetailForm.id_kinh,
+          id_taynam: productDetailForm.id_taynam,
+          id_bophan: productDetailForm.id_bophan,
+          ngang: productDetailForm.ngang,
+          cao: productDetailForm.cao,
+          sau: productDetailForm.sau,
+          don_gia: productDetailForm.don_gia
+        })
+      });
+
+      if (detailResponse.ok) {
+        const result = await detailResponse.json();
+        // Update product details in state
+        const updatedDetails = productDetails.filter(detail => detail.id_sanpham !== selectedProduct.id);
+        setProductDetails([...updatedDetails, result]);
+        
+        // Also update the product in sanphamList with the new material info
+        const updatedSanphamList = sanphamList.map(p => {
+          if (p.id === selectedProduct.id) {
+            return {
+              ...p,
+              id_nhom: productDetailForm.id_nhom,
+              id_kinh: productDetailForm.id_kinh,
+              id_taynam: productDetailForm.id_taynam,
+              id_bophan: productDetailForm.id_bophan
+            };
+          }
+          return p;
+        });
+        setSanphamList(updatedSanphamList);
+        
+        alert('Chi tiết sản phẩm đã được cập nhật thành công!');
+      } else {
+        alert('Có lỗi xảy ra khi cập nhật chi tiết sản phẩm');
+      }
+    } catch (error) {
+      console.error('Error saving product detail:', error);
+      alert('Có lỗi xảy ra khi cập nhật chi tiết sản phẩm');
+    }
+  };
+
+  const getCombinedProducts = () => {
+    return sanphamList.map(sanpham => {
+      const detail = productDetails.find(detail => detail.id_sanpham === sanpham.id);
+      return {
+        ...sanpham,
+        detail: detail || null,
+        // Thêm thông tin từ các bảng liên quan
+        ten_nhom: detail ? nhomList.find(n => n.id === detail.id_nhom)?.tenloai : nhomList.find(n => n.id === sanpham.id_nhom)?.tenloai,
+        ten_kinh: detail ? kinhList.find(k => k.id === detail.id_kinh)?.tenloai : kinhList.find(k => k.id === sanpham.id_kinh)?.tenloai,
+        ten_taynam: detail ? taynamList.find(t => t.id === detail.id_taynam)?.tenloai : taynamList.find(t => t.id === sanpham.id_taynam)?.tenloai,
+        ten_bophan: detail ? departments.find(b => b.id === detail.id_bophan)?.tenloai : departments.find(b => b.id === sanpham.id_bophan)?.tenloai
+      };
+    });
+  };
+
+  if (loading) {
+    return <div className="p-6">Đang tải dữ liệu sản phẩm...</div>;
+  }
 
   return (
     <div className="space-y-6">
@@ -2107,7 +2315,157 @@ function ProductsManagementTab({ products, setProducts }) {
         </div>
       </div>
 
-      {/* Add/Edit Form */}
+      {/* Product Detail Form */}
+      {selectedProduct && (
+        <div className="bg-white rounded-lg shadow-sm border p-6">
+          <div className="flex justify-between items-center mb-6">
+            <h3 className="text-lg font-semibold text-gray-900">
+              Chỉnh sửa chi tiết sản phẩm: {selectedProduct.tensp}
+            </h3>
+            <button
+              onClick={() => setSelectedProduct(null)}
+              className="text-gray-400 hover:text-gray-600"
+            >
+              <X className="w-6 h-6" />
+            </button>
+          </div>
+
+          <form onSubmit={handleProductDetailSubmit} className="space-y-6">
+            {/* Hiển thị tên sản phẩm */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Tên sản phẩm</label>
+              <input
+                type="text"
+                value={selectedProduct.tensp}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-100 text-black"
+                readOnly
+              />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Loại nhôm</label>
+                <select
+                  value={productDetailForm.id_nhom}
+                  onChange={(e) => setProductDetailForm({...productDetailForm, id_nhom: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black"
+                >
+                  <option value="">Chọn loại nhôm</option>
+                  {nhomList.map(nhom => (
+                    <option key={nhom.id} value={nhom.id}>{nhom.tenloai}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Loại kính</label>
+                <select
+                  value={productDetailForm.id_kinh}
+                  onChange={(e) => setProductDetailForm({...productDetailForm, id_kinh: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black"
+                >
+                  <option value="">Chọn loại kính</option>
+                  {kinhList.map(kinh => (
+                    <option key={kinh.id} value={kinh.id}>{kinh.tenloai}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Loại tay nắm</label>
+                <select
+                  value={productDetailForm.id_taynam}
+                  onChange={(e) => setProductDetailForm({...productDetailForm, id_taynam: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black"
+                >
+                  <option value="">Chọn loại tay nắm</option>
+                  {taynamList.map(taynam => (
+                    <option key={taynam.id} value={taynam.id}>{taynam.tenloai}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Bộ phận</label>
+                <select
+                  value={productDetailForm.id_bophan}
+                  onChange={(e) => setProductDetailForm({...productDetailForm, id_bophan: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black"
+                >
+                  <option value="">Chọn bộ phận</option>
+                  {departments.map(bophan => (
+                    <option key={bophan.id} value={bophan.id}>{bophan.tenloai}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Chiều ngang (mm)</label>
+                <input
+                  type="number"
+                  min="1"
+                  value={productDetailForm.ngang}
+                  onChange={(e) => setProductDetailForm({...productDetailForm, ngang: parseInt(e.target.value) || 0})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black"
+                  placeholder="Nhập chiều ngang"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Chiều cao (mm)</label>
+                <input
+                  type="number"
+                  min="1"
+                  value={productDetailForm.cao}
+                  onChange={(e) => setProductDetailForm({...productDetailForm, cao: parseInt(e.target.value) || 0})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black"
+                  placeholder="Nhập chiều cao"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Chiều sâu (mm)</label>
+                <input
+                  type="number"
+                  min="1"
+                  value={productDetailForm.sau}
+                  onChange={(e) => setProductDetailForm({...productDetailForm, sau: parseInt(e.target.value) || 0})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black"
+                  placeholder="Nhập chiều sâu"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Đơn giá (VND)</label>
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                value={productDetailForm.don_gia}
+                onChange={(e) => setProductDetailForm({...productDetailForm, don_gia: parseFloat(e.target.value) || 0})}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black"
+                placeholder="Nhập đơn giá"
+              />
+            </div>
+
+            <div className="flex justify-end space-x-3 pt-4 border-t">
+              <button
+                type="button"
+                onClick={() => setSelectedProduct(null)}
+                className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
+              >
+                Hủy
+              </button>
+              <button
+                type="submit"
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+              >
+                Lưu chi tiết sản phẩm
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* Add/Edit Product Form */}
       {showForm && (
         <div className="bg-white rounded-lg shadow-sm border p-6">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">
@@ -2115,7 +2473,7 @@ function ProductsManagementTab({ products, setProducts }) {
           </h3>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="md:col-span-2">
+              <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Tên sản phẩm</label>
                 <input
                   type="text"
@@ -2139,31 +2497,26 @@ function ProductsManagementTab({ products, setProducts }) {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Giá vốn (VND)</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Giá gốc (VND)</label>
                 <input
                   type="number"
                   step="0.01"
-                  placeholder="Nhập giá vốn"
+                  placeholder="Nhập giá gốc"
                   value={formData.cost_price}
                   onChange={(e) => setFormData({...formData, cost_price: e.target.value})}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black"
                   required
                 />
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Lợi nhuận dự kiến</label>
-                <div className="px-3 py-2 bg-gray-50 rounded-lg">
-                  <span className="text-sm font-medium text-green-600">
-                    {formData.unit_price && formData.cost_price ? 
-                      (parseFloat(formData.unit_price) - parseFloat(formData.cost_price)).toLocaleString('vi-VN') : '0'} VND
-                  </span>
-                </div>
-              </div>
             </div>
             <div className="flex justify-end space-x-3">
               <button
                 type="button"
-                onClick={handleCancel}
+                onClick={() => {
+                  setShowForm(false);
+                  setEditingProduct(null);
+                  setFormData({ name: '', unit_price: '', cost_price: '' });
+                }}
                 className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
               >
                 Hủy
@@ -2190,56 +2543,49 @@ function ProductsManagementTab({ products, setProducts }) {
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tên sản phẩm</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Giá bán</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Giá vốn</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Lợi nhuận</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Kích thước</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Thao tác</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {products.map(product => {
-                const profit = product.unit_price - product.cost_price;
-                return (
-                  <tr key={product.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center">
-                        <Package className="w-4 h-4 text-gray-400 mr-2" />
-                        <span className="text-sm font-medium text-gray-900">{product.name}</span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-blue-600">
-                      {product.unit_price.toLocaleString('vi-VN')} VND
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {product.cost_price.toLocaleString('vi-VN')} VND
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-green-600">
-                      {profit.toLocaleString('vi-VN')} VND
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      <div className="flex items-center space-x-2">
-                        <button
-                          onClick={() => handleEdit(product)}
-                          className="text-blue-600 hover:text-blue-900 p-1"
-                          title="Chỉnh sửa"
-                        >
-                          <Edit className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => handleDelete(product.id)}
-                          className="text-red-600 hover:text-red-900 p-1"
-                          title="Xóa"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
+              {getCombinedProducts().map((product) => (
+                <tr key={product.id} className="hover:bg-gray-50">
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="flex items-center">
+                      <Package className="w-4 h-4 text-gray-400 mr-2" />
+                      <span className="text-sm font-medium text-gray-900">{product.tensp}</span>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-green-600">
+                    {product.detail ? product.detail.don_gia?.toLocaleString('vi-VN') : 'N/A'} VND
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    {product.detail ? `${product.detail.ngang} x ${product.detail.cao} x ${product.detail.sau} mm` : 'N/A'}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                    <div className="flex items-center space-x-2">
+                      <button
+                        onClick={() => handleProductClick(product)}
+                        className="text-blue-600 hover:text-blue-900 p-1"
+                        title="Chỉnh sửa chi tiết"
+                      >
+                        <Edit className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => handleDelete(product.id)}
+                        className="text-red-600 hover:text-red-900 p-1"
+                        title="Xóa"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>
-        {products.length === 0 && (
+        {getCombinedProducts().length === 0 && (
           <div className="text-center py-12">
             <Package className="w-12 h-12 text-gray-400 mx-auto mb-4" />
             <p className="text-gray-500">Chưa có sản phẩm nào</p>
@@ -2257,8 +2603,6 @@ function MaterialsManagementTab() {
   const [kinhList, setKinhList] = useState([]);
   const [taynamList, setTaynamList] = useState([]);
   const [departments, setDepartments] = useState([]);
-  const [products, setProducts] = useState([]);
-  const [productDetails, setProductDetails] = useState([]);
   const [loading, setLoading] = useState(true);
 
   const [formData, setFormData] = useState({
@@ -2267,20 +2611,6 @@ function MaterialsManagementTab() {
   });
   const [showForm, setShowForm] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
-  
-  // Product detail modal states
-  const [showProductDetailModal, setShowProductDetailModal] = useState(false);
-  const [selectedProduct, setSelectedProduct] = useState(null);
-  const [productDetailForm, setProductDetailForm] = useState({
-    id_nhom: '',
-    id_kinh: '',
-    id_taynam: '',
-    id_bophan: '',
-    ngang: 0,
-    cao: 0,
-    sau: 0,
-    don_gia: 0
-  });
 
   useEffect(() => {
     fetchMaterials();
@@ -2288,21 +2618,17 @@ function MaterialsManagementTab() {
 
   const fetchMaterials = async () => {
     try {
-      const [nhomRes, kinhRes, taynamRes, bophanRes, productsRes, productDetailsRes] = await Promise.all([
+      const [nhomRes, kinhRes, taynamRes, bophanRes] = await Promise.all([
         fetch('http://localhost:8001/api/v1/loainhom/'),
         fetch('http://localhost:8001/api/v1/loaikinh/'),
         fetch('http://localhost:8001/api/v1/loaitaynam/'),
-        fetch('http://localhost:8001/api/v1/bophan/'),
-        fetch('http://localhost:8001/api/v1/sanpham/'),
-        fetch('http://localhost:8001/api/v1/chitietsanpham/')
+        fetch('http://localhost:8001/api/v1/bophan/')
       ]);
 
       if (nhomRes.ok) setNhomList(await nhomRes.json());
       if (kinhRes.ok) setKinhList(await kinhRes.json());
       if (taynamRes.ok) setTaynamList(await taynamRes.json());
       if (bophanRes.ok) setDepartments(await bophanRes.json());
-      if (productsRes.ok) setProducts(await productsRes.json());
-      if (productDetailsRes.ok) setProductDetails(await productDetailsRes.json());
     } catch (error) {
       console.error('Error fetching materials:', error);
     } finally {
@@ -2316,7 +2642,6 @@ function MaterialsManagementTab() {
       case 'kinh': return kinhList;
       case 'taynam': return taynamList;
       case 'departments': return departments;
-      case 'products': return products;
       default: return [];
     }
   };
@@ -2327,7 +2652,6 @@ function MaterialsManagementTab() {
       case 'kinh': return setKinhList;
       case 'taynam': return setTaynamList;
       case 'departments': return setDepartments;
-      case 'products': return setProducts;
       default: return () => {};
     }
   };
@@ -2338,7 +2662,6 @@ function MaterialsManagementTab() {
       case 'kinh': return 'loaikinh';
       case 'taynam': return 'loaitaynam';
       case 'departments': return 'bophan';
-      case 'products': return 'sanpham';
       default: return '';
     }
   };
@@ -2349,7 +2672,6 @@ function MaterialsManagementTab() {
       case 'kinh': return 'Loại kính';
       case 'taynam': return 'Loại tay nắm';
       case 'departments': return 'Bộ phận';
-      case 'products': return 'Sản phẩm';
       default: return '';
     }
   };
@@ -2364,25 +2686,15 @@ function MaterialsManagementTab() {
       
       const method = editingItem ? 'PUT' : 'POST';
 
-      let bodyData;
-      if (activeMaterialTab === 'products') {
-        bodyData = {
-          tensp: formData.tensp,
-          gia: formData.gia
-        };
-      } else {
-        bodyData = {
-          tenloai: formData.tenloai,
-          mota: formData.mota
-        };
-      }
-
       const response = await fetch(url, {
         method,
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify(bodyData)
+        body: JSON.stringify({
+          tenloai: formData.tenloai,
+          mota: formData.mota
+        })
       });
 
       if (response.ok) {
@@ -2396,7 +2708,7 @@ function MaterialsManagementTab() {
           setter([...currentList, result]);
         }
         
-        setFormData({});
+        setFormData({ tenloai: '', mota: '' });
         setShowForm(false);
         setEditingItem(null);
       }
@@ -2407,17 +2719,10 @@ function MaterialsManagementTab() {
 
   const handleEdit = (item) => {
     setEditingItem(item);
-    if (activeMaterialTab === 'products') {
-      setFormData({
-        tensp: item.tensp || '',
-        gia: item.gia || 0
-      });
-    } else {
-      setFormData({
-        tenloai: item.tenloai,
-        mota: item.mota || ''
-      });
-    }
+    setFormData({
+      tenloai: item.tenloai,
+      mota: item.mota || ''
+    });
     setShowForm(true);
   };
 
@@ -2440,81 +2745,10 @@ function MaterialsManagementTab() {
     }
   };
 
-  const handleProductClick = (product) => {
-    setSelectedProduct(product);
-    // Load product details for this product
-    const productDetail = productDetails.find(detail => detail.id_sanpham === product.id);
-    if (productDetail) {
-      setProductDetailForm({
-        id_nhom: productDetail.id_nhom || '',
-        id_kinh: productDetail.id_kinh || '',
-        id_taynam: productDetail.id_taynam || '',
-        id_bophan: productDetail.id_bophan || '',
-        ngang: productDetail.ngang || 0,
-        cao: productDetail.cao || 0,
-        sau: productDetail.sau || 0,
-        don_gia: productDetail.don_gia || 0
-      });
-    } else {
-      setProductDetailForm({
-        id_nhom: '',
-        id_kinh: '',
-        id_taynam: '',
-        id_bophan: '',
-        ngang: 0,
-        cao: 0,
-        sau: 0,
-        don_gia: 0
-      });
-    }
-    setShowProductDetailModal(true);
-  };
-
-  const handleProductDetailSubmit = async (e) => {
-    e.preventDefault();
-    try {
-      const url = `http://localhost:8001/api/v1/chitietsanpham/`;
-      const method = 'POST'; // Always create new or update existing
-
-      const response = await fetch(url, {
-        method,
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          id_sanpham: selectedProduct.id,
-          id_nhom: productDetailForm.id_nhom,
-          id_kinh: productDetailForm.id_kinh,
-          id_taynam: productDetailForm.id_taynam,
-          id_bophan: productDetailForm.id_bophan,
-          ngang: productDetailForm.ngang,
-          cao: productDetailForm.cao,
-          sau: productDetailForm.sau,
-          don_gia: productDetailForm.don_gia
-        })
-      });
-
-      if (response.ok) {
-        const result = await response.json();
-        // Update product details in state
-        const updatedDetails = productDetails.filter(detail => detail.id_sanpham !== selectedProduct.id);
-        setProductDetails([...updatedDetails, result]);
-        setShowProductDetailModal(false);
-        setSelectedProduct(null);
-        alert('Chi tiết sản phẩm đã được cập nhật thành công!');
-      } else {
-        alert('Có lỗi xảy ra khi cập nhật chi tiết sản phẩm');
-      }
-    } catch (error) {
-      console.error('Error saving product detail:', error);
-      alert('Có lỗi xảy ra khi cập nhật chi tiết sản phẩm');
-    }
-  };
-
   const handleCancel = () => {
     setShowForm(false);
     setEditingItem(null);
-    setFormData({});
+    setFormData({ tenloai: '', mota: '' });
   };
 
   if (loading) {
@@ -2527,7 +2761,7 @@ function MaterialsManagementTab() {
       <div className="flex justify-between items-center">
         <div>
           <h2 className="text-2xl font-bold text-gray-900">Quản lý Vật liệu</h2>
-          <p className="text-gray-600 mt-1">Quản lý các loại nhôm, kính, tay nắm, bộ phận, sản phẩm và chi tiết sản phẩm</p>
+          <p className="text-gray-600 mt-1">Quản lý các loại nhôm, kính, tay nắm và bộ phận</p>
         </div>
         <div className="flex items-center space-x-4">
           <div className="text-right">
@@ -2560,8 +2794,7 @@ function MaterialsManagementTab() {
               { id: 'nhom', label: 'Loại nhôm', count: nhomList.length },
               { id: 'kinh', label: 'Loại kính', count: kinhList.length },
               { id: 'taynam', label: 'Loại tay nắm', count: taynamList.length },
-              { id: 'departments', label: 'Bộ phận', count: departments.length },
-              { id: 'products', label: 'Sản phẩm', count: products.length }
+              { id: 'departments', label: 'Bộ phận', count: departments.length }
             ].map((tab) => (
               <button
                 key={tab.id}
@@ -2588,57 +2821,29 @@ function MaterialsManagementTab() {
               {editingItem ? `Chỉnh sửa ${getMaterialTitle().toLowerCase()}` : `Thêm ${getMaterialTitle().toLowerCase()} mới`}
             </h3>
             <form onSubmit={handleSubmit} className="space-y-4">
-              {activeMaterialTab === 'products' ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Tên sản phẩm</label>
-                    <input
-                      type="text"
-                      placeholder="Nhập tên sản phẩm"
-                      value={formData.tensp || ''}
-                      onChange={(e) => setFormData({...formData, tensp: e.target.value})}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-black"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Giá (VND)</label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      placeholder="Nhập giá sản phẩm"
-                      value={formData.gia || ''}
-                      onChange={(e) => setFormData({...formData, gia: parseFloat(e.target.value) || 0})}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-black"
-                      required
-                    />
-                  </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Tên loại</label>
+                  <input
+                    type="text"
+                    placeholder={`Nhập tên ${getMaterialTitle().toLowerCase()}`}
+                    value={formData.tenloai}
+                    onChange={(e) => setFormData({...formData, tenloai: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-black"
+                    required
+                  />
                 </div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Tên loại</label>
-                    <input
-                      type="text"
-                      placeholder={`Nhập tên ${getMaterialTitle().toLowerCase()}`}
-                      value={formData.tenloai}
-                      onChange={(e) => setFormData({...formData, tenloai: e.target.value})}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-black"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Mô tả</label>
-                    <input
-                      type="text"
-                      placeholder="Nhập mô tả (tùy chọn)"
-                      value={formData.mota}
-                      onChange={(e) => setFormData({...formData, mota: e.target.value})}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-black"
-                    />
-                  </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Mô tả</label>
+                  <input
+                    type="text"
+                    placeholder="Nhập mô tả (tùy chọn)"
+                    value={formData.mota}
+                    onChange={(e) => setFormData({...formData, mota: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-black"
+                  />
                 </div>
-              )}
+              </div>
               <div className="flex justify-end space-x-3">
                 <button
                   type="button"
@@ -2665,10 +2870,10 @@ function MaterialsManagementTab() {
               <thead className="bg-gray-50">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    {activeMaterialTab === 'products' ? 'Tên sản phẩm' : 'Tên loại'}
+                    Tên loại
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    {activeMaterialTab === 'products' ? 'Giá (VND)' : 'Mô tả'}
+                    Mô tả
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Thao tác</th>
                 </tr>
@@ -2679,18 +2884,13 @@ function MaterialsManagementTab() {
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
                         <Settings className="w-4 h-4 text-gray-400 mr-2" />
-                        <span 
-                          className={`text-sm font-medium text-gray-900 ${activeMaterialTab === 'products' ? 'cursor-pointer hover:text-blue-600' : ''}`}
-                          onClick={() => activeMaterialTab === 'products' && handleProductClick(item)}
-                        >
-                          {activeMaterialTab === 'products' ? item.tensp : item.tenloai}
+                        <span className="text-sm font-medium text-gray-900">
+                          {item.tenloai}
                         </span>
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {activeMaterialTab === 'products' ? 
-                        (item.gia ? item.gia.toLocaleString('vi-VN') + ' VND' : 'Chưa có giá') :
-                        (item.mota || 'Không có mô tả')}
+                      {item.mota || 'Không có mô tả'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                       <div className="flex items-center space-x-2">
@@ -2725,149 +2925,6 @@ function MaterialsManagementTab() {
           </div>
         )}
       </div>
-
-      {/* Product Detail Modal */}
-      {showProductDetailModal && selectedProduct && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
-            <div className="p-6">
-              <div className="flex justify-between items-center mb-6">
-                <h3 className="text-lg font-semibold text-gray-900">
-                  Chỉnh sửa chi tiết sản phẩm: {selectedProduct.tensp}
-                </h3>
-                <button
-                  onClick={() => setShowProductDetailModal(false)}
-                  className="text-gray-400 hover:text-gray-600"
-                >
-                  <X className="w-6 h-6" />
-                </button>
-              </div>
-
-              <form onSubmit={handleProductDetailSubmit} className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Loại nhôm</label>
-                    <select
-                      value={productDetailForm.id_nhom}
-                      onChange={(e) => setProductDetailForm({...productDetailForm, id_nhom: e.target.value})}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black"
-                    >
-                      <option value="">Chọn loại nhôm</option>
-                      {nhomList.map(nhom => (
-                        <option key={nhom.id} value={nhom.id}>{nhom.tenloai}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Loại kính</label>
-                    <select
-                      value={productDetailForm.id_kinh}
-                      onChange={(e) => setProductDetailForm({...productDetailForm, id_kinh: e.target.value})}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black"
-                    >
-                      <option value="">Chọn loại kính</option>
-                      {kinhList.map(kinh => (
-                        <option key={kinh.id} value={kinh.id}>{kinh.tenloai}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Loại tay nắm</label>
-                    <select
-                      value={productDetailForm.id_taynam}
-                      onChange={(e) => setProductDetailForm({...productDetailForm, id_taynam: e.target.value})}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black"
-                    >
-                      <option value="">Chọn loại tay nắm</option>
-                      {taynamList.map(taynam => (
-                        <option key={taynam.id} value={taynam.id}>{taynam.tenloai}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Bộ phận</label>
-                    <select
-                      value={productDetailForm.id_bophan}
-                      onChange={(e) => setProductDetailForm({...productDetailForm, id_bophan: e.target.value})}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black"
-                    >
-                      <option value="">Chọn bộ phận</option>
-                      {departments.map(bophan => (
-                        <option key={bophan.id} value={bophan.id}>{bophan.tenloai}</option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Chiều ngang (mm)</label>
-                    <input
-                      type="number"
-                      min="1"
-                      value={productDetailForm.ngang}
-                      onChange={(e) => setProductDetailForm({...productDetailForm, ngang: parseInt(e.target.value) || 0})}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black"
-                      placeholder="Nhập chiều ngang"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Chiều cao (mm)</label>
-                    <input
-                      type="number"
-                      min="1"
-                      value={productDetailForm.cao}
-                      onChange={(e) => setProductDetailForm({...productDetailForm, cao: parseInt(e.target.value) || 0})}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black"
-                      placeholder="Nhập chiều cao"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Chiều sâu (mm)</label>
-                    <input
-                      type="number"
-                      min="1"
-                      value={productDetailForm.sau}
-                      onChange={(e) => setProductDetailForm({...productDetailForm, sau: parseInt(e.target.value) || 0})}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black"
-                      placeholder="Nhập chiều sâu"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Đơn giá (VND)</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={productDetailForm.don_gia}
-                    onChange={(e) => setProductDetailForm({...productDetailForm, don_gia: parseFloat(e.target.value) || 0})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black"
-                    placeholder="Nhập đơn giá"
-                  />
-                </div>
-
-                <div className="flex justify-end space-x-3 pt-4 border-t">
-                  <button
-                    type="button"
-                    onClick={() => setShowProductDetailModal(false)}
-                    className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
-                  >
-                    Hủy
-                  </button>
-                  <button
-                    type="submit"
-                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-                  >
-                    Lưu chi tiết sản phẩm
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

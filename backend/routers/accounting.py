@@ -58,6 +58,87 @@ async def get_chitietsanpham():
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error fetching chitietsanpham: {str(e)}")
 
+@router.post("/sanpham/")
+async def create_sanpham(product_data: dict):
+    """Tạo sản phẩm mới"""
+    try:
+        result = supabase.table('sanpham').insert({
+            'tensp': product_data['tensp'],
+            'id_nhom': product_data.get('id_nhom'),
+            'id_kinh': product_data.get('id_kinh'),
+            'id_taynam': product_data.get('id_taynam'),
+            'id_bophan': product_data.get('id_bophan')
+        }).execute()
+        return result.data[0]
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error creating sanpham: {str(e)}")
+
+@router.put("/sanpham/{product_id}")
+async def update_sanpham(product_id: int, product_data: dict):
+    """Cập nhật sản phẩm"""
+    try:
+        result = supabase.table('sanpham').update({
+            'tensp': product_data['tensp'],
+            'id_nhom': product_data.get('id_nhom'),
+            'id_kinh': product_data.get('id_kinh'),
+            'id_taynam': product_data.get('id_taynam'),
+            'id_bophan': product_data.get('id_bophan')
+        }).eq('id', product_id).execute()
+        return result.data[0]
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error updating sanpham: {str(e)}")
+
+@router.delete("/sanpham/{product_id}")
+async def delete_sanpham(product_id: int):
+    """Xóa sản phẩm"""
+    try:
+        # First delete related product details
+        supabase.table('chitietsanpham').delete().eq('id_sanpham', product_id).execute()
+        # Then delete the product
+        result = supabase.table('sanpham').delete().eq('id', product_id).execute()
+        return {"message": "Product deleted successfully"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error deleting sanpham: {str(e)}")
+
+@router.post("/chitietsanpham/")
+async def create_chitietsanpham(detail_data: dict):
+    """Tạo chi tiết sản phẩm mới"""
+    try:
+        result = supabase.table('chitietsanpham').insert({
+            'id_sanpham': detail_data['id_sanpham'],
+            'ngang': detail_data['ngang'],
+            'cao': detail_data['cao'],
+            'sau': detail_data['sau'],
+            'don_gia': detail_data['don_gia']
+        }).execute()
+        return result.data[0]
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error creating chitietsanpham: {str(e)}")
+
+@router.put("/chitietsanpham/{detail_id}")
+async def update_chitietsanpham(detail_id: int, detail_data: dict):
+    """Cập nhật chi tiết sản phẩm"""
+    try:
+        result = supabase.table('chitietsanpham').update({
+            'id_sanpham': detail_data['id_sanpham'],
+            'ngang': detail_data['ngang'],
+            'cao': detail_data['cao'],
+            'sau': detail_data['sau'],
+            'don_gia': detail_data['don_gia']
+        }).eq('id', detail_id).execute()
+        return result.data[0]
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error updating chitietsanpham: {str(e)}")
+
+@router.delete("/chitietsanpham/{detail_id}")
+async def delete_chitietsanpham(detail_id: int):
+    """Xóa chi tiết sản phẩm"""
+    try:
+        result = supabase.table('chitietsanpham').delete().eq('id', detail_id).execute()
+        return {"message": "Product detail deleted successfully"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error deleting chitietsanpham: {str(e)}")
+
 @router.post("/invoices/")
 async def create_invoice(invoice_data: dict):
     """Tạo hóa đơn mới"""
