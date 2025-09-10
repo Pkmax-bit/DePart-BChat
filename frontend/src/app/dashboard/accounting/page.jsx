@@ -3,15 +3,17 @@
 import { useState, useEffect } from 'react';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
-import { Plus, Edit, Trash2, TrendingUp, TrendingDown, DollarSign, Package, Receipt, CreditCard, FileText, Info, Calendar, BarChart3, History, Settings, RotateCcw, Save, RefreshCw, Download } from 'lucide-react';
+import { Plus, Edit, Trash2, TrendingUp, TrendingDown, DollarSign, Package, Receipt, CreditCard, FileText, Info, Calendar, BarChart3, History, Settings, RotateCcw, Save, RefreshCw, Download, Users, Wrench, Eye, EyeOff } from 'lucide-react';
 import * as XLSX from 'xlsx';
 
 const supabase = createClientComponentClient();
 
 function AccountingLayout({ user, activeTab, onTabChange, children }) {
   const tabs = [
+    { id: 'revenue', label: 'Doanh thu', icon: TrendingUp },
     { id: 'invoices', label: 'Hóa đơn', icon: FileText },
-    { id: 'revenue', label: 'Doanh thu', icon: TrendingUp }
+    { id: 'products', label: 'Sản phẩm', icon: Package },
+    { id: 'materials', label: 'Vật liệu', icon: Settings }
   ];
 
   return (
@@ -29,33 +31,37 @@ function AccountingLayout({ user, activeTab, onTabChange, children }) {
                 <p className="text-sm text-gray-600">Xin chào</p>
                 <p className="text-lg font-semibold text-gray-900">{user?.email}</p>
               </div>
+              <div className="flex items-center space-x-2">
+                <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                <span className="text-sm text-gray-600">Online</span>
+              </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Tabs */}
-      <div className="bg-white shadow-sm">
+      {/* Navigation Tabs */}
+      <div className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex space-x-8">
+          <nav className="flex space-x-8">
             {tabs.map((tab) => {
               const Icon = tab.icon;
               return (
                 <button
                   key={tab.id}
                   onClick={() => onTabChange(tab.id)}
-                  className={`flex items-center space-x-2 py-4 px-1 border-b-2 font-medium text-sm ${
+                  className={`flex items-center space-x-3 py-4 px-1 border-b-2 font-medium text-sm transition-colors duration-200 ${
                     activeTab === tab.id
                       ? 'border-blue-500 text-blue-600'
                       : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                   }`}
                 >
-                  <Icon className="w-4 h-4" />
+                  <Icon className="w-5 h-5" />
                   <span>{tab.label}</span>
                 </button>
               );
             })}
-          </div>
+          </nav>
         </div>
       </div>
 
@@ -70,7 +76,19 @@ function AccountingLayout({ user, activeTab, onTabChange, children }) {
 export default function AccountingPage() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('invoices');
+  const [showProductDetailModal, setShowProductDetailModal] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState(null);
+  const [productDetailForm, setProductDetailForm] = useState({
+    id_nhom: '',
+    id_kinh: '',
+    id_taynam: '',
+    id_bophan: '',
+    ngang: 0,
+    cao: 0,
+    sau: 0,
+    don_gia: 0
+  });
+  const [activeTab, setActiveTab] = useState('revenue');
 
   // Mock data for demonstration
   const [salesData, setSalesData] = useState([]);
@@ -140,8 +158,10 @@ export default function AccountingPage() {
 
   return (
     <AccountingLayout user={user} activeTab={activeTab} onTabChange={setActiveTab}>
-      {activeTab === 'invoices' && <InvoicesTab />}
       {activeTab === 'revenue' && <RevenueTab salesData={salesData} products={products} setSalesData={setSalesData} />}
+      {activeTab === 'invoices' && <InvoicesTab />}
+      {activeTab === 'products' && <ProductsManagementTab products={products} setProducts={setProducts} />}
+      {activeTab === 'materials' && <MaterialsManagementTab />}
     </AccountingLayout>
   );
 }
@@ -1615,26 +1635,84 @@ function RevenueTab({ salesData, products, setSalesData }) {
 
   return (
     <div className="space-y-6">
-      {/* Month Selector */}
-      <div className="bg-white rounded-lg shadow-sm border p-6">
-        <div className="flex items-center space-x-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Chọn tháng</label>
-            <input
-              type="month"
-              value={selectedMonth}
-              onChange={(e) => setSelectedMonth(e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black"
-            />
+      {/* Overview Stats */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <div className="bg-white rounded-lg shadow-sm border p-6">
+          <div className="flex items-center">
+            <div className="p-3 bg-blue-100 rounded-lg">
+              <Receipt className="w-6 h-6 text-blue-600" />
+            </div>
+            <div className="ml-4">
+              <p className="text-sm font-medium text-gray-600">Tổng hóa đơn</p>
+              <p className="text-2xl font-bold text-gray-900">{invoices.length}</p>
+            </div>
           </div>
-          <div className="flex items-end space-x-2">
-            <button
-              onClick={loadInvoices}
-              className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 flex items-center space-x-2"
-            >
-              <RefreshCw className="w-4 h-4" />
-              <span>Tải lại</span>
-            </button>
+        </div>
+
+        <div className="bg-white rounded-lg shadow-sm border p-6">
+          <div className="flex items-center">
+            <div className="p-3 bg-green-100 rounded-lg">
+              <TrendingUp className="w-6 h-6 text-green-600" />
+            </div>
+            <div className="ml-4">
+              <p className="text-sm font-medium text-gray-600">Tổng sản phẩm</p>
+              <p className="text-2xl font-bold text-gray-900">{invoices.reduce((sum, inv) => sum + (inv.items?.length || 0), 0)}</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-lg shadow-sm border p-6">
+          <div className="flex items-center">
+            <div className="p-3 bg-purple-100 rounded-lg">
+              <DollarSign className="w-6 h-6 text-purple-600" />
+            </div>
+            <div className="ml-4">
+              <p className="text-sm font-medium text-gray-600">Doanh thu tháng</p>
+              <p className="text-2xl font-bold text-green-600">{totalRevenue.toLocaleString('vi-VN')} VND</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-lg shadow-sm border p-6">
+          <div className="flex items-center">
+            <div className="p-3 bg-orange-100 rounded-lg">
+              <BarChart3 className="w-6 h-6 text-orange-600" />
+            </div>
+            <div className="ml-4">
+              <p className="text-sm font-medium text-gray-600">Trung bình/đơn</p>
+              <p className="text-2xl font-bold text-gray-900">
+                {invoices.length > 0 ? (totalRevenue / invoices.length).toLocaleString('vi-VN') : 0} VND
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Month Selector & Actions */}
+      <div className="bg-white rounded-lg shadow-sm border p-6">
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0">
+          <div className="flex items-center space-x-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Chọn tháng</label>
+              <input
+                type="month"
+                value={selectedMonth}
+                onChange={(e) => setSelectedMonth(e.target.value)}
+                className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black"
+              />
+            </div>
+            <div className="flex items-end">
+              <button
+                onClick={loadInvoices}
+                className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 flex items-center space-x-2"
+              >
+                <RefreshCw className="w-4 h-4" />
+                <span>Tải lại</span>
+              </button>
+            </div>
+          </div>
+          
+          <div className="flex items-center space-x-2">
             <button
               onClick={exportToExcel}
               disabled={invoices.length === 0}
@@ -1654,8 +1732,6 @@ function RevenueTab({ salesData, products, setSalesData }) {
           </div>
         </div>
       </div>
-
-      {/* Invoices List */}
       <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
         <div className="px-6 py-4 border-b">
           <h3 className="text-lg font-semibold text-gray-900">Danh sách hóa đơn tháng {selectedMonth}</h3>
@@ -1920,7 +1996,7 @@ function ExpensesTab({ expensesData, expenseCategories, setExpensesData }) {
   );
 }
 
-function ProductsTab({ products, setProducts }) {
+function ProductsManagementTab({ products, setProducts }) {
   const [formData, setFormData] = useState({
     name: '',
     unit_price: '',
@@ -2174,6 +2250,629 @@ function ProductsTab({ products, setProducts }) {
     </div>
   );
 }
+
+function MaterialsManagementTab() {
+  const [activeMaterialTab, setActiveMaterialTab] = useState('nhom');
+  const [nhomList, setNhomList] = useState([]);
+  const [kinhList, setKinhList] = useState([]);
+  const [taynamList, setTaynamList] = useState([]);
+  const [departments, setDepartments] = useState([]);
+  const [products, setProducts] = useState([]);
+  const [productDetails, setProductDetails] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  const [formData, setFormData] = useState({
+    tenloai: '',
+    mota: ''
+  });
+  const [showForm, setShowForm] = useState(false);
+  const [editingItem, setEditingItem] = useState(null);
+  
+  // Product detail modal states
+  const [showProductDetailModal, setShowProductDetailModal] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState(null);
+  const [productDetailForm, setProductDetailForm] = useState({
+    id_nhom: '',
+    id_kinh: '',
+    id_taynam: '',
+    id_bophan: '',
+    ngang: 0,
+    cao: 0,
+    sau: 0,
+    don_gia: 0
+  });
+
+  useEffect(() => {
+    fetchMaterials();
+  }, []);
+
+  const fetchMaterials = async () => {
+    try {
+      const [nhomRes, kinhRes, taynamRes, bophanRes, productsRes, productDetailsRes] = await Promise.all([
+        fetch('http://localhost:8001/api/v1/loainhom/'),
+        fetch('http://localhost:8001/api/v1/loaikinh/'),
+        fetch('http://localhost:8001/api/v1/loaitaynam/'),
+        fetch('http://localhost:8001/api/v1/bophan/'),
+        fetch('http://localhost:8001/api/v1/sanpham/'),
+        fetch('http://localhost:8001/api/v1/chitietsanpham/')
+      ]);
+
+      if (nhomRes.ok) setNhomList(await nhomRes.json());
+      if (kinhRes.ok) setKinhList(await kinhRes.json());
+      if (taynamRes.ok) setTaynamList(await taynamRes.json());
+      if (bophanRes.ok) setDepartments(await bophanRes.json());
+      if (productsRes.ok) setProducts(await productsRes.json());
+      if (productDetailsRes.ok) setProductDetails(await productDetailsRes.json());
+    } catch (error) {
+      console.error('Error fetching materials:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getCurrentList = () => {
+    switch (activeMaterialTab) {
+      case 'nhom': return nhomList;
+      case 'kinh': return kinhList;
+      case 'taynam': return taynamList;
+      case 'departments': return departments;
+      case 'products': return products;
+      default: return [];
+    }
+  };
+
+  const getCurrentSetter = () => {
+    switch (activeMaterialTab) {
+      case 'nhom': return setNhomList;
+      case 'kinh': return setKinhList;
+      case 'taynam': return setTaynamList;
+      case 'departments': return setDepartments;
+      case 'products': return setProducts;
+      default: return () => {};
+    }
+  };
+
+  const getApiEndpoint = () => {
+    switch (activeMaterialTab) {
+      case 'nhom': return 'loainhom';
+      case 'kinh': return 'loaikinh';
+      case 'taynam': return 'loaitaynam';
+      case 'departments': return 'bophan';
+      case 'products': return 'sanpham';
+      default: return '';
+    }
+  };
+
+  const getMaterialTitle = () => {
+    switch (activeMaterialTab) {
+      case 'nhom': return 'Loại nhôm';
+      case 'kinh': return 'Loại kính';
+      case 'taynam': return 'Loại tay nắm';
+      case 'departments': return 'Bộ phận';
+      case 'products': return 'Sản phẩm';
+      default: return '';
+    }
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      const endpoint = getApiEndpoint();
+      const url = editingItem 
+        ? `http://localhost:8001/api/v1/${endpoint}/${editingItem.id}`
+        : `http://localhost:8001/api/v1/${endpoint}/`;
+      
+      const method = editingItem ? 'PUT' : 'POST';
+
+      let bodyData;
+      if (activeMaterialTab === 'products') {
+        bodyData = {
+          tensp: formData.tensp,
+          gia: formData.gia
+        };
+      } else {
+        bodyData = {
+          tenloai: formData.tenloai,
+          mota: formData.mota
+        };
+      }
+
+      const response = await fetch(url, {
+        method,
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(bodyData)
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        const setter = getCurrentSetter();
+        const currentList = getCurrentList();
+        
+        if (editingItem) {
+          setter(currentList.map(item => item.id === editingItem.id ? result : item));
+        } else {
+          setter([...currentList, result]);
+        }
+        
+        setFormData({});
+        setShowForm(false);
+        setEditingItem(null);
+      }
+    } catch (error) {
+      console.error('Error saving material:', error);
+    }
+  };
+
+  const handleEdit = (item) => {
+    setEditingItem(item);
+    if (activeMaterialTab === 'products') {
+      setFormData({
+        tensp: item.tensp || '',
+        gia: item.gia || 0
+      });
+    } else {
+      setFormData({
+        tenloai: item.tenloai,
+        mota: item.mota || ''
+      });
+    }
+    setShowForm(true);
+  };
+
+  const handleDelete = async (itemId) => {
+    if (!confirm('Bạn có chắc chắn muốn xóa mục này?')) return;
+
+    try {
+      const endpoint = getApiEndpoint();
+      const response = await fetch(`http://localhost:8001/api/v1/${endpoint}/${itemId}`, {
+        method: 'DELETE'
+      });
+
+      if (response.ok) {
+        const setter = getCurrentSetter();
+        const currentList = getCurrentList();
+        setter(currentList.filter(item => item.id !== itemId));
+      }
+    } catch (error) {
+      console.error('Error deleting material:', error);
+    }
+  };
+
+  const handleProductClick = (product) => {
+    setSelectedProduct(product);
+    // Load product details for this product
+    const productDetail = productDetails.find(detail => detail.id_sanpham === product.id);
+    if (productDetail) {
+      setProductDetailForm({
+        id_nhom: productDetail.id_nhom || '',
+        id_kinh: productDetail.id_kinh || '',
+        id_taynam: productDetail.id_taynam || '',
+        id_bophan: productDetail.id_bophan || '',
+        ngang: productDetail.ngang || 0,
+        cao: productDetail.cao || 0,
+        sau: productDetail.sau || 0,
+        don_gia: productDetail.don_gia || 0
+      });
+    } else {
+      setProductDetailForm({
+        id_nhom: '',
+        id_kinh: '',
+        id_taynam: '',
+        id_bophan: '',
+        ngang: 0,
+        cao: 0,
+        sau: 0,
+        don_gia: 0
+      });
+    }
+    setShowProductDetailModal(true);
+  };
+
+  const handleProductDetailSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      const url = `http://localhost:8001/api/v1/chitietsanpham/`;
+      const method = 'POST'; // Always create new or update existing
+
+      const response = await fetch(url, {
+        method,
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          id_sanpham: selectedProduct.id,
+          id_nhom: productDetailForm.id_nhom,
+          id_kinh: productDetailForm.id_kinh,
+          id_taynam: productDetailForm.id_taynam,
+          id_bophan: productDetailForm.id_bophan,
+          ngang: productDetailForm.ngang,
+          cao: productDetailForm.cao,
+          sau: productDetailForm.sau,
+          don_gia: productDetailForm.don_gia
+        })
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        // Update product details in state
+        const updatedDetails = productDetails.filter(detail => detail.id_sanpham !== selectedProduct.id);
+        setProductDetails([...updatedDetails, result]);
+        setShowProductDetailModal(false);
+        setSelectedProduct(null);
+        alert('Chi tiết sản phẩm đã được cập nhật thành công!');
+      } else {
+        alert('Có lỗi xảy ra khi cập nhật chi tiết sản phẩm');
+      }
+    } catch (error) {
+      console.error('Error saving product detail:', error);
+      alert('Có lỗi xảy ra khi cập nhật chi tiết sản phẩm');
+    }
+  };
+
+  const handleCancel = () => {
+    setShowForm(false);
+    setEditingItem(null);
+    setFormData({});
+  };
+
+  if (loading) {
+    return <div className="p-6">Đang tải dữ liệu vật liệu...</div>;
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex justify-between items-center">
+        <div>
+          <h2 className="text-2xl font-bold text-gray-900">Quản lý Vật liệu</h2>
+          <p className="text-gray-600 mt-1">Quản lý các loại nhôm, kính, tay nắm, bộ phận, sản phẩm và chi tiết sản phẩm</p>
+        </div>
+        <div className="flex items-center space-x-4">
+          <div className="text-right">
+            <p className="text-sm text-gray-600">Tổng {getMaterialTitle().toLowerCase()}</p>
+            <p className="text-xl font-bold text-purple-600">{getCurrentList().length}</p>
+          </div>
+          <button
+            onClick={() => setShowForm(true)}
+            className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 flex items-center space-x-2"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Thêm {getMaterialTitle().toLowerCase()}</span>
+          </button>
+          <button
+            onClick={fetchMaterials}
+            className="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 flex items-center space-x-2"
+            title="Tải lại dữ liệu"
+          >
+            <RefreshCw className="w-4 h-4" />
+            <span>Tải lại</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Material Type Tabs */}
+      <div className="bg-white rounded-lg shadow-sm border">
+        <div className="border-b">
+          <nav className="flex space-x-8 px-6">
+            {[
+              { id: 'nhom', label: 'Loại nhôm', count: nhomList.length },
+              { id: 'kinh', label: 'Loại kính', count: kinhList.length },
+              { id: 'taynam', label: 'Loại tay nắm', count: taynamList.length },
+              { id: 'departments', label: 'Bộ phận', count: departments.length },
+              { id: 'products', label: 'Sản phẩm', count: products.length }
+            ].map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveMaterialTab(tab.id)}
+                className={`flex items-center space-x-2 py-4 px-1 border-b-2 font-medium text-sm transition-colors duration-200 ${
+                  activeMaterialTab === tab.id
+                    ? 'border-purple-500 text-purple-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                <span>{tab.label}</span>
+                <span className="bg-gray-100 text-gray-600 px-2 py-1 rounded-full text-xs">
+                  {tab.count}
+                </span>
+              </button>
+            ))}
+          </nav>
+        </div>
+
+        {/* Add/Edit Form */}
+        {showForm && (
+          <div className="p-6 border-b">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">
+              {editingItem ? `Chỉnh sửa ${getMaterialTitle().toLowerCase()}` : `Thêm ${getMaterialTitle().toLowerCase()} mới`}
+            </h3>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              {activeMaterialTab === 'products' ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Tên sản phẩm</label>
+                    <input
+                      type="text"
+                      placeholder="Nhập tên sản phẩm"
+                      value={formData.tensp || ''}
+                      onChange={(e) => setFormData({...formData, tensp: e.target.value})}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-black"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Giá (VND)</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      placeholder="Nhập giá sản phẩm"
+                      value={formData.gia || ''}
+                      onChange={(e) => setFormData({...formData, gia: parseFloat(e.target.value) || 0})}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-black"
+                      required
+                    />
+                  </div>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Tên loại</label>
+                    <input
+                      type="text"
+                      placeholder={`Nhập tên ${getMaterialTitle().toLowerCase()}`}
+                      value={formData.tenloai}
+                      onChange={(e) => setFormData({...formData, tenloai: e.target.value})}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-black"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Mô tả</label>
+                    <input
+                      type="text"
+                      placeholder="Nhập mô tả (tùy chọn)"
+                      value={formData.mota}
+                      onChange={(e) => setFormData({...formData, mota: e.target.value})}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-black"
+                    />
+                  </div>
+                </div>
+              )}
+              <div className="flex justify-end space-x-3">
+                <button
+                  type="button"
+                  onClick={handleCancel}
+                  className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
+                >
+                  Hủy
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
+                >
+                  {editingItem ? 'Cập nhật' : 'Thêm mới'}
+                </button>
+              </div>
+            </form>
+          </div>
+        )}
+
+        {/* Materials List */}
+        <div className="p-6">
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    {activeMaterialTab === 'products' ? 'Tên sản phẩm' : 'Tên loại'}
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    {activeMaterialTab === 'products' ? 'Giá (VND)' : 'Mô tả'}
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Thao tác</th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {getCurrentList().map((item) => (
+                  <tr key={item.id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center">
+                        <Settings className="w-4 h-4 text-gray-400 mr-2" />
+                        <span 
+                          className={`text-sm font-medium text-gray-900 ${activeMaterialTab === 'products' ? 'cursor-pointer hover:text-blue-600' : ''}`}
+                          onClick={() => activeMaterialTab === 'products' && handleProductClick(item)}
+                        >
+                          {activeMaterialTab === 'products' ? item.tensp : item.tenloai}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {activeMaterialTab === 'products' ? 
+                        (item.gia ? item.gia.toLocaleString('vi-VN') + ' VND' : 'Chưa có giá') :
+                        (item.mota || 'Không có mô tả')}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                      <div className="flex items-center space-x-2">
+                        <button
+                          onClick={() => handleEdit(item)}
+                          className="text-blue-600 hover:text-blue-900 p-1"
+                          title="Chỉnh sửa"
+                        >
+                          <Edit className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => handleDelete(item.id)}
+                          className="text-red-600 hover:text-red-900 p-1"
+                          title="Xóa"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {getCurrentList().length === 0 && (
+          <div className="text-center py-12">
+            <Settings className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+            <p className="text-gray-500">Chưa có {getMaterialTitle().toLowerCase()} nào</p>
+            <p className="text-sm text-gray-400 mt-1">Thêm {getMaterialTitle().toLowerCase()} đầu tiên để bắt đầu</p>
+          </div>
+        )}
+      </div>
+
+      {/* Product Detail Modal */}
+      {showProductDetailModal && selectedProduct && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-lg font-semibold text-gray-900">
+                  Chỉnh sửa chi tiết sản phẩm: {selectedProduct.tensp}
+                </h3>
+                <button
+                  onClick={() => setShowProductDetailModal(false)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+
+              <form onSubmit={handleProductDetailSubmit} className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Loại nhôm</label>
+                    <select
+                      value={productDetailForm.id_nhom}
+                      onChange={(e) => setProductDetailForm({...productDetailForm, id_nhom: e.target.value})}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black"
+                    >
+                      <option value="">Chọn loại nhôm</option>
+                      {nhomList.map(nhom => (
+                        <option key={nhom.id} value={nhom.id}>{nhom.tenloai}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Loại kính</label>
+                    <select
+                      value={productDetailForm.id_kinh}
+                      onChange={(e) => setProductDetailForm({...productDetailForm, id_kinh: e.target.value})}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black"
+                    >
+                      <option value="">Chọn loại kính</option>
+                      {kinhList.map(kinh => (
+                        <option key={kinh.id} value={kinh.id}>{kinh.tenloai}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Loại tay nắm</label>
+                    <select
+                      value={productDetailForm.id_taynam}
+                      onChange={(e) => setProductDetailForm({...productDetailForm, id_taynam: e.target.value})}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black"
+                    >
+                      <option value="">Chọn loại tay nắm</option>
+                      {taynamList.map(taynam => (
+                        <option key={taynam.id} value={taynam.id}>{taynam.tenloai}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Bộ phận</label>
+                    <select
+                      value={productDetailForm.id_bophan}
+                      onChange={(e) => setProductDetailForm({...productDetailForm, id_bophan: e.target.value})}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black"
+                    >
+                      <option value="">Chọn bộ phận</option>
+                      {departments.map(bophan => (
+                        <option key={bophan.id} value={bophan.id}>{bophan.tenloai}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Chiều ngang (mm)</label>
+                    <input
+                      type="number"
+                      min="1"
+                      value={productDetailForm.ngang}
+                      onChange={(e) => setProductDetailForm({...productDetailForm, ngang: parseInt(e.target.value) || 0})}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black"
+                      placeholder="Nhập chiều ngang"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Chiều cao (mm)</label>
+                    <input
+                      type="number"
+                      min="1"
+                      value={productDetailForm.cao}
+                      onChange={(e) => setProductDetailForm({...productDetailForm, cao: parseInt(e.target.value) || 0})}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black"
+                      placeholder="Nhập chiều cao"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Chiều sâu (mm)</label>
+                    <input
+                      type="number"
+                      min="1"
+                      value={productDetailForm.sau}
+                      onChange={(e) => setProductDetailForm({...productDetailForm, sau: parseInt(e.target.value) || 0})}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black"
+                      placeholder="Nhập chiều sâu"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Đơn giá (VND)</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={productDetailForm.don_gia}
+                    onChange={(e) => setProductDetailForm({...productDetailForm, don_gia: parseFloat(e.target.value) || 0})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black"
+                    placeholder="Nhập đơn giá"
+                  />
+                </div>
+
+                <div className="flex justify-end space-x-3 pt-4 border-t">
+                  <button
+                    type="button"
+                    onClick={() => setShowProductDetailModal(false)}
+                    className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
+                  >
+                    Hủy
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                  >
+                    Lưu chi tiết sản phẩm
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+
 
 function ExpenseCategoriesTab({ expenseCategories, setExpenseCategories }) {
   const [formData, setFormData] = useState({
