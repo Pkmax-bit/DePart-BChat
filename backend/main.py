@@ -1,4 +1,8 @@
 # main.py
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from routers import users, chatflows, feedback, departments, chat_history, sample_files, user_chat_sessions, user_chat_sessions_direct, test_router, conversation_sync, user_chat, accounting

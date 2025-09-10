@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'; // Import client mới
-import { LogOut, ChevronFirst, ChevronLast, Bot, DollarSign } from "lucide-react";
+import { LogOut, ChevronFirst, ChevronLast, Bot, DollarSign, Receipt } from "lucide-react";
 import Link from 'next/link';
 
 // Thay vì import từ file helper cũ, chúng ta có thể tạo client trực tiếp ở đây
@@ -75,14 +75,20 @@ export default function DashboardLayout({ children }) {
              <Link href="/dashboard/accounting">
                <li className="relative flex items-center py-2 px-3 my-1 font-medium rounded-md cursor-pointer transition-colors text-gray-600 hover:bg-blue-50 group">
                  <DollarSign className="w-6 h-6 mr-3 text-gray-700 group-hover:text-blue-600 group-hover:scale-110 transition-all duration-200 flex-shrink-0" />
-                 <span className={`overflow-hidden transition-all font-heading text-gray-800 ${sidebarExpanded ? "w-52 ml-3" : "w-0"}`}>Quản lý Tài chính</span>
+                 <span className={`overflow-hidden transition-all font-heading text-gray-800 ${sidebarExpanded ? "w-52 ml-3" : "w-0"}`}>Revenue</span>
+               </li>
+             </Link>
+             <Link href="/dashboard/expenses">
+               <li className="relative flex items-center py-2 px-3 my-1 font-medium rounded-md cursor-pointer transition-colors text-gray-600 hover:bg-blue-50 group">
+                 <Receipt className="w-6 h-6 mr-3 text-gray-700 group-hover:text-blue-600 group-hover:scale-110 transition-all duration-200 flex-shrink-0" />
+                 <span className={`overflow-hidden transition-all font-heading text-gray-800 ${sidebarExpanded ? "w-52 ml-3" : "w-0"}`}>Expense</span>
                </li>
              </Link>
              <li className="relative flex items-center py-2 px-3 my-1 font-medium rounded-md cursor-pointer transition-colors text-gray-600 hover:bg-blue-50 group" onClick={() => setShowFeedbackModal(true)}>
                  <svg className="w-6 h-6 mr-3 text-gray-700 group-hover:text-blue-600 group-hover:scale-110 transition-all duration-200 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                  </svg>
-                 <span className={`overflow-hidden transition-all font-heading text-gray-800 ${sidebarExpanded ? "w-52 ml-3" : "w-0"}`}>Góp Ý</span>
+                 <span className={`overflow-hidden transition-all font-heading text-gray-800 ${sidebarExpanded ? "w-52 ml-3" : "w-0"}`}>Feedback</span>
              </li>
            </ul>
  

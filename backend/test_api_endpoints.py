@@ -2,7 +2,7 @@
 import requests
 import json
 
-BASE_URL = "http://localhost:8002/api/v1"
+BASE_URL = "http://localhost:8001/api/v1"
 
 def test_user_chat_sessions_direct():
     """Test the new direct database connection endpoints"""
@@ -93,7 +93,7 @@ def test_user_chat_sessions_direct():
         return True
 
     except requests.exceptions.ConnectionError:
-        print("❌ Connection error: Make sure the backend server is running on port 8002")
+        print("❌ Connection error: Make sure the backend server is running on port 8001")
         return False
     except Exception as e:
         print(f"❌ Test failed with error: {e}")

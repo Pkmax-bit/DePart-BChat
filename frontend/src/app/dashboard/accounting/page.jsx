@@ -73,6 +73,8 @@ function AccountingLayout({ user, activeTab, onTabChange, children }) {
   );
 }
 
+
+
 export default function AccountingPage() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -119,9 +121,9 @@ export default function AccountingPage() {
 
       const [productsRes, categoriesRes, salesRes, expensesRes, reportsRes] = await Promise.all([
         fetch('http://localhost:8001/api/v1/accounting/products', { headers }),
-        fetch('http://localhost:8001/api/v1/accounting/expense-categories', { headers }),
+        fetch('http://localhost:8001/api/v1/accounting/loaichiphi', { headers }),
         fetch('http://localhost:8001/api/v1/accounting/sales', { headers }),
-        fetch('http://localhost:8001/api/v1/accounting/expenses', { headers }),
+        fetch('http://localhost:8001/api/v1/accounting/quanly_chiphi', { headers }),
         fetch('http://localhost:8001/api/v1/accounting/reports', { headers })
       ]);
 
@@ -132,7 +134,7 @@ export default function AccountingPage() {
       const reports = await reportsRes.json();
 
       setProducts(products.products || []);
-      setExpenseCategories(categories.categories || []);
+      setExpenseCategories(categories || []);
       setSalesData(sales.sales || []);
       setExpensesData(expenses.expenses || []);
       setReportsData(reports.reports || []);
@@ -159,6 +161,7 @@ export default function AccountingPage() {
   return (
     <AccountingLayout user={user} activeTab={activeTab} onTabChange={setActiveTab}>
       {activeTab === 'revenue' && <RevenueTab salesData={salesData} products={products} setSalesData={setSalesData} />}
+      {activeTab === 'expenses' && <ExpensesManagementTab />}
       {activeTab === 'invoices' && <InvoicesTab />}
       {activeTab === 'products' && <ProductsManagementTab products={products} setProducts={setProducts} />}
       {activeTab === 'materials' && <MaterialsManagementTab />}
@@ -1832,7 +1835,7 @@ function ExpensesTab({ expensesData, expenseCategories, setExpensesData }) {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
 
-      const response = await fetch('http://localhost:8001/api/v1/accounting/expenses', {
+      const response = await fetch('http://localhost:8001/api/v1/accounting/quanly_chiphi', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -2946,8 +2949,8 @@ function ExpenseCategoriesTab({ expenseCategories, setExpenseCategories }) {
       if (!session) return;
 
       const url = editingCategory 
-        ? `http://localhost:8001/api/v1/accounting/expense-categories/${editingCategory.id}`
-        : 'http://localhost:8001/api/v1/accounting/expense-categories';
+        ? `http://localhost:8001/api/v1/loaichiphi/${editingCategory.id}`
+        : 'http://localhost:8001/api/v1/loaichiphi/';
       
       const method = editingCategory ? 'PUT' : 'POST';
 
@@ -2958,17 +2961,18 @@ function ExpenseCategoriesTab({ expenseCategories, setExpenseCategories }) {
           Authorization: `Bearer ${session.access_token}`
         },
         body: JSON.stringify({
-          name: formData.name,
-          type: formData.type
+          ten_loai: formData.name,
+          loai_phi: formData.type,
+          mo_ta: ''
         })
       });
 
       if (response.ok) {
         const result = await response.json();
         if (editingCategory) {
-          setExpenseCategories(expenseCategories.map(c => c.id === editingCategory.id ? result.category : c));
+          setExpenseCategories(expenseCategories.map(c => c.id === editingCategory.id ? result : c));
         } else {
-          setExpenseCategories([...expenseCategories, result.category]);
+          setExpenseCategories([...expenseCategories, result]);
         }
         setFormData({ name: '', type: 'variable' });
         setShowForm(false);
@@ -2982,8 +2986,8 @@ function ExpenseCategoriesTab({ expenseCategories, setExpenseCategories }) {
   const handleEdit = (category) => {
     setEditingCategory(category);
     setFormData({
-      name: category.name,
-      type: category.type
+      name: category.ten_loai,
+      type: category.loai_phi
     });
     setShowForm(true);
   };
@@ -2995,7 +2999,7 @@ function ExpenseCategoriesTab({ expenseCategories, setExpenseCategories }) {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
 
-      const response = await fetch(`http://localhost:8001/api/v1/accounting/expense-categories/${categoryId}`, {
+      const response = await fetch(`http://localhost:8001/api/v1/loaichiphi/${categoryId}`, {
         method: 'DELETE',
         headers: {
           Authorization: `Bearer ${session.access_token}`
@@ -3109,14 +3113,14 @@ function ExpenseCategoriesTab({ expenseCategories, setExpenseCategories }) {
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
                       <Settings className="w-4 h-4 text-gray-400 mr-2" />
-                      <span className="text-sm font-medium text-gray-900">{category.name}</span>
+                      <span className="text-sm font-medium text-gray-900">{category.ten_loai}</span>
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
-                      category.type === 'fixed' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'
+                      category.loai_phi === 'fixed' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'
                     }`}>
-                      {category.type === 'fixed' ? 'Cố định' : 'Biến động'}
+                      {category.loai_phi === 'fixed' ? 'Cố định' : 'Biến động'}
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
@@ -3389,6 +3393,146 @@ function HistoryTab({ reportsData }) {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function ExpensesManagementTab() {
+  const [expenses, setExpenses] = useState([]);
+  const [expenseCategories, setExpenseCategories] = useState([]);
+  const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7));
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const loadData = async () => {
+    setLoading(true);
+    try {
+      const [expensesRes, categoriesRes] = await Promise.all([
+        fetch(`http://localhost:8001/api/v1/quanly_chiphi/?month=${selectedMonth}`),
+        fetch('http://localhost:8001/api/v1/loaichiphi/')
+      ]);
+
+      if (expensesRes.ok) {
+        const expensesData = await expensesRes.json();
+        setExpenses(expensesData);
+      }
+
+      if (categoriesRes.ok) {
+        const categoriesData = await categoriesRes.json();
+        setExpenseCategories(categoriesData);
+      }
+    } catch (error) {
+      console.error('Error loading data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleExpenseUpdate = () => {
+    loadData();
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-600"></div>
+        <p className="text-gray-600 ml-3">Đang tải dữ liệu chi phí...</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex justify-between items-center">
+        <div>
+          <h2 className="text-2xl font-bold text-gray-900">Quản lý Chi phí</h2>
+          <p className="text-gray-600 mt-1">Theo dõi và quản lý các khoản chi phí</p>
+        </div>
+        <div className="flex items-center space-x-4">
+          <div className="text-right">
+            <p className="text-sm text-gray-600">Tổng chi phí</p>
+            <p className="text-xl font-bold text-red-600">
+              {expenses.reduce((sum, expense) => sum + (expense.so_tien || 0), 0).toLocaleString('vi-VN')} VND
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Month Selector */}
+      <div className="bg-white rounded-lg shadow-sm border p-6">
+        <div className="flex items-center space-x-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Chọn tháng</label>
+            <input
+              type="month"
+              value={selectedMonth}
+              onChange={(e) => setSelectedMonth(e.target.value)}
+              className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent text-black"
+            />
+          </div>
+          <div className="flex items-end">
+            <button
+              onClick={loadData}
+              className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 flex items-center space-x-2"
+            >
+              <RefreshCw className="w-4 h-4" />
+              <span>Tải lại</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Expenses Table */}
+      <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
+        <div className="px-6 py-4 border-b">
+          <h3 className="text-lg font-semibold text-gray-900">Danh sách chi phí tháng {selectedMonth}</h3>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Loại chi phí</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tên chi phí</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Số tiền</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ngày</th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {expenses.map(expense => (
+                <tr key={expense.id} className="hover:bg-gray-50">
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span className="inline-flex px-2 py-1 text-xs font-medium bg-red-100 text-red-800 rounded-full">
+                      {expense.loaichiphi?.ten_loai || 'N/A'}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="flex items-center">
+                      <Receipt className="w-4 h-4 text-gray-400 mr-2" />
+                      <span className="text-sm font-medium text-gray-900">{expense.ten_chi_phi}</span>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-red-600">
+                    {(expense.so_tien || 0).toLocaleString('vi-VN')} VND
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {expense.ngay_chi_phi ? new Date(expense.ngay_chi_phi).toLocaleDateString('vi-VN') : 'N/A'}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        {expenses.length === 0 && (
+          <div className="text-center py-12">
+            <Receipt className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+            <p className="text-gray-500">Không có chi phí nào trong tháng này</p>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
