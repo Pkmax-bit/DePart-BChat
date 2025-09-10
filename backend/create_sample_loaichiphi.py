@@ -17,41 +17,35 @@ def create_sample_loaichiphi():
         # Dữ liệu mẫu
         sample_data = [
             {
-                'ten_loai': 'Văn phòng phẩm',
-                'loai_phi': 'biến phí',
-                'mo_ta': 'Chi phí mua văn phòng phẩm, giấy tờ, bút viết, etc.'
+                'loaichiphi': 'biến phí',
+                'tenchiphi': 'Văn phòng phẩm'
             },
             {
-                'ten_loai': 'Điện nước',
-                'loai_phi': 'cố định',
-                'mo_ta': 'Chi phí tiền điện, nước hàng tháng'
+                'loaichiphi': 'định phí',
+                'tenchiphi': 'Điện nước'
             },
             {
-                'ten_loai': 'Marketing',
-                'loai_phi': 'biến phí',
-                'mo_ta': 'Chi phí quảng cáo, marketing, truyền thông'
+                'loaichiphi': 'biến phí',
+                'tenchiphi': 'Marketing'
             },
             {
-                'ten_loai': 'Vận chuyển',
-                'loai_phi': 'biến phí',
-                'mo_ta': 'Chi phí giao hàng, vận chuyển hàng hóa'
+                'loaichiphi': 'biến phí',
+                'tenchiphi': 'Vận chuyển'
             },
             {
-                'ten_loai': 'Lương nhân viên',
-                'loai_phi': 'cố định',
-                'mo_ta': 'Chi phí lương cơ bản cho nhân viên'
+                'loaichiphi': 'định phí',
+                'tenchiphi': 'Lương nhân viên'
             },
             {
-                'ten_loai': 'Bảo hiểm',
-                'loai_phi': 'cố định',
-                'mo_ta': 'Chi phí bảo hiểm công ty, nhân viên'
+                'loaichiphi': 'định phí',
+                'tenchiphi': 'Bảo hiểm'
             }
         ]
 
         # Insert dữ liệu mẫu
         for item in sample_data:
             result = supabase.table('loaichiphi').insert(item).execute()
-            print(f"✓ Đã tạo: {item['ten_loai']}")
+            print(f"✓ Đã tạo: {item['tenchiphi']} ({item['loaichiphi']})")
 
         print(f"\n✅ Đã tạo thành công {len(sample_data)} loại chi phí mẫu!")
 

@@ -332,9 +332,8 @@ async def get_loaichiphi():
         for item in result.data:
             transformed_item = {
                 'id': item['id'],
-                'ten_loai': item.get('loaichiphi', ''),  # Map loaichiphi -> ten_loai
-                'loai_phi': 'cố định',  # Default value since column doesn't exist
-                'mo_ta': item.get('tenchiphi', '')  # Map tenchiphi -> mo_ta
+                'tenchiphi': item.get('tenchiphi', ''),  # Map tenchiphi -> tenchiphi
+                'loaichiphi': item.get('loaichiphi', ''),  # Map loaichiphi -> loaichiphi
             }
             transformed_data.append(transformed_item)
         return transformed_data
@@ -346,16 +345,15 @@ async def create_loaichiphi(loaichiphi_data: dict):
     """Tạo loại chi phí mới"""
     try:
         result = supabase.table('loaichiphi').insert({
-            'loaichiphi': loaichiphi_data['ten_loai'],  # Map ten_loai -> loaichiphi
-            'tenchiphi': loaichiphi_data.get('mo_ta', '')  # Map mo_ta -> tenchiphi
+            'loaichiphi': loaichiphi_data.get('loaichiphi', ''),  # Map loaichiphi -> loaichiphi
+            'tenchiphi': loaichiphi_data['tenchiphi']  # Map tenchiphi -> tenchiphi
         }).execute()
         # Transform response to match expected format
         item = result.data[0]
         return {
             'id': item['id'],
-            'ten_loai': item.get('loaichiphi', ''),  # Map back for frontend
-            'loai_phi': 'cố định',  # Default value
-            'mo_ta': item.get('tenchiphi', '')  # Map back for frontend
+            'tenchiphi': item.get('tenchiphi', ''),  # Map back for frontend
+            'loaichiphi': item.get('loaichiphi', 'định phí'),  # Use actual value
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error creating loaichiphi: {str(e)}")
@@ -365,16 +363,15 @@ async def update_loaichiphi(loaichiphi_id: int, loaichiphi_data: dict):
     """Cập nhật loại chi phí"""
     try:
         result = supabase.table('loaichiphi').update({
-            'loaichiphi': loaichiphi_data['ten_loai'],  # Map ten_loai -> loaichiphi
-            'tenchiphi': loaichiphi_data.get('mo_ta', '')  # Map mo_ta -> tenchiphi
+            'loaichiphi': loaichiphi_data.get('loaichiphi', ''),  # Map loaichiphi -> loaichiphi
+            'tenchiphi': loaichiphi_data['tenchiphi']  # Map tenchiphi -> tenchiphi
         }).eq('id', loaichiphi_id).execute()
         # Transform response to match expected format
         item = result.data[0]
         return {
             'id': item['id'],
-            'ten_loai': item.get('loaichiphi', ''),  # Map back for frontend
-            'loai_phi': 'cố định',  # Default value
-            'mo_ta': item.get('tenchiphi', '')  # Map back for frontend
+            'tenchiphi': item.get('tenchiphi', ''),  # Map back for frontend
+            'loaichiphi': item.get('loaichiphi', 'định phí'),  # Use actual value
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error updating loaichiphi: {str(e)}")
@@ -417,9 +414,8 @@ async def get_quanly_chiphi(month: str = None):
                         loaichiphi_item = loaichiphi_result.data[0]
                         transformed_item['loaichiphi'] = {
                             'id': loaichiphi_item['id'],
-                            'ten_loai': loaichiphi_item.get('loaichiphi', ''),  # Map loaichiphi -> ten_loai
-                            'loai_phi': 'cố định',  # Default value
-                            'mo_ta': loaichiphi_item.get('tenchiphi', '')  # Map tenchiphi -> mo_ta
+                            'tenchiphi': loaichiphi_item.get('tenchiphi', ''),  # Map tenchiphi -> tenchiphi
+                            'loaichiphi': loaichiphi_item.get('loaichiphi', ''),  # Map loaichiphi -> loaichiphi
                         }
                 except Exception as e:
                     print(f"Error fetching loaichiphi for id {item['id_loai_chiphi']}: {e}")
@@ -525,8 +521,8 @@ async def get_chiphi_tong_quan(month: str = None):
                 loaichiphi_data = loaichiphi_map[item['id_loai_chiphi']]
 
             if loaichiphi_data:
-                category_name = loaichiphi_data.get('loaichiphi', 'Chưa phân loại')  # Map loaichiphi -> ten_loai
-                type_name = 'cố định'  # Default value since column doesn't exist
+                category_name = loaichiphi_data.get('tenchiphi', 'Chưa phân loại')  # Map tenchiphi -> category name
+                type_name = loaichiphi_data.get('loaichiphi', 'Chưa phân loại')  # Map loaichiphi -> type name
             else:
                 category_name = 'Chưa phân loại'
                 type_name = 'Chưa phân loại'

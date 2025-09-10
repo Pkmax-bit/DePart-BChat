@@ -149,6 +149,6 @@ if __name__ == "__main__":
         print("   - Ready for frontend integration")
     else:
         print("\n❌ API tests failed. Please check:")
-        print("   - Backend server is running on port 8002")
+        print("   - Backend server is running on port 8001")
         print("   - Database connection is working")
         print("   - API endpoints are properly configured")

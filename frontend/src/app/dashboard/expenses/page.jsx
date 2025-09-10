@@ -28,7 +28,7 @@ function ExpensesLayout({ user, activeTab, onTabChange, children }) {
             <div className="flex items-center space-x-4">
               <div className="text-right">
                 <p className="text-sm text-gray-600">Xin chào</p>
-                <p className="text-lg font-semibold text-gray-900">{user?.email}</p>
+                <p className="text-lg font-semibold text-gray-900">{user?.email || user?.username || 'User'}</p>
               </div>
               <div className="flex items-center space-x-2">
                 <div className="w-3 h-3 bg-green-500 rounded-full"></div>
@@ -137,8 +137,8 @@ function ExpensesOverviewTab({ expenses, expenseCategories, selectedMonth }) {
         <div className="space-y-4">
           {Object.entries(
             expenses.reduce((acc, expense) => {
-              const categoryName = expense.loaichiphi?.ten_loai || 'Chưa phân loại';
-              const expenseType = 'Chi phí'; // Simplified since loai_phi is not available
+              const categoryName = expense.loaichiphi?.tenchiphi || 'Chưa phân loại';
+              const expenseType = 'Chi phí'; // Simplified since loaichiphi is not available
               const key = `${categoryName} (${expenseType})`;
               acc[key] = (acc[key] || 0) + (expense.so_tien || 0);
               return acc;
@@ -381,7 +381,7 @@ function ExpensesManagementTab({ expenses, expenseCategories, selectedMonth, onE
                     >
                       <option value="">Chọn loại chi phí</option>
                       {expenseCategories.map(cat => (
-                        <option key={cat.id} value={cat.id}>{cat.ten_loai}</option>
+                        <option key={cat.id} value={cat.id}>{cat.tenchiphi}</option>
                       ))}
                     </select>
                     <div className="absolute right-4 top-4 text-gray-400">
@@ -602,7 +602,7 @@ function ExpensesManagementTab({ expenses, expenseCategories, selectedMonth, onE
                   <tr key={expense.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className="inline-flex px-2 py-1 text-xs font-medium bg-red-100 text-red-800 rounded-full">
-                        {expense.loaichiphi?.ten_loai || 'N/A'}
+                        {expense.loaichiphi?.tenchiphi || 'N/A'}
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
@@ -662,8 +662,8 @@ function ExpenseCategoriesTab({ expenseCategories, onCategoryUpdate }) {
   const [showCategoryForm, setShowCategoryForm] = useState(false);
   const [editingCategory, setEditingCategory] = useState(null);
   const [categoryForm, setCategoryForm] = useState({
-    ten_loai: '',
-    mo_ta: ''
+    tenchiphi: '',
+    loaichiphi: 'định phí'
   });
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -687,15 +687,14 @@ function ExpenseCategoriesTab({ expenseCategories, onCategoryUpdate }) {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          ten_loai: categoryForm.ten_loai,
-          mo_ta: categoryForm.mo_ta
-          // Note: loai_phi field removed since database doesn't have this column
+          tenchiphi: categoryForm.tenchiphi,  // Tên chi phí
+          loaichiphi: categoryForm.loaichiphi   // Định phí hoặc Biến phí
         })
       });
 
       if (response.ok) {
         setSuccess(true);
-        setCategoryForm({ ten_loai: '', mo_ta: '' });
+        setCategoryForm({ tenchiphi: '', loaichiphi: 'định phí' });
         setEditingCategory(null);
         onCategoryUpdate();
 
@@ -739,8 +738,8 @@ function ExpenseCategoriesTab({ expenseCategories, onCategoryUpdate }) {
   const editCategory = (category) => {
     setEditingCategory(category);
     setCategoryForm({
-      ten_loai: category.ten_loai,
-      mo_ta: category.mo_ta || ''
+      tenchiphi: category.tenchiphi,
+      loaichiphi: category.loaichiphi || 'định phí'
     });
     setError('');
     setSuccess(false);
@@ -770,7 +769,7 @@ function ExpenseCategoriesTab({ expenseCategories, onCategoryUpdate }) {
             onClick={() => {
               setShowCategoryForm(true);
               setEditingCategory(null);
-              setCategoryForm({ ten_loai: '', mo_ta: '' });
+              setCategoryForm({ tenchiphi: '', loaichiphi: 'định phí' });
               setError('');
               setSuccess(false);
             }}
@@ -846,8 +845,8 @@ function ExpenseCategoriesTab({ expenseCategories, onCategoryUpdate }) {
                 <div className="relative">
                   <input
                     type="text"
-                    value={categoryForm.ten_loai}
-                    onChange={(e) => setCategoryForm({...categoryForm, ten_loai: e.target.value})}
+                    value={categoryForm.tenchiphi}
+                    onChange={(e) => setCategoryForm({...categoryForm, tenchiphi: e.target.value})}
                     className="w-full pl-5 pr-12 py-4 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200 bg-white text-gray-900 placeholder-gray-500 text-lg"
                     placeholder="Ví dụ: Văn phòng phẩm, Điện nước, Marketing..."
                     required
@@ -864,27 +863,34 @@ function ExpenseCategoriesTab({ expenseCategories, onCategoryUpdate }) {
                 </p>
               </div>
 
-              {/* Description Field */}
+              {/* Expense Type Field */}
               <div className="lg:col-span-2">
                 <label className="block text-sm font-semibold text-gray-800 mb-3 flex items-center">
                   <span className="w-6 h-6 bg-orange-100 rounded-lg flex items-center justify-center mr-3">
-                    <span className="text-xs text-orange-600">📝</span>
+                    <span className="text-xs text-orange-600">�</span>
                   </span>
-                  Mô tả chi tiết
-                  <span className="text-gray-500 text-sm font-normal ml-2">(không bắt buộc)</span>
+                  Loại phí
+                  <span className="text-red-500 ml-1">*</span>
                 </label>
-                <textarea
-                  value={categoryForm.mo_ta}
-                  onChange={(e) => setCategoryForm({...categoryForm, mo_ta: e.target.value})}
-                  className="w-full px-5 py-4 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200 bg-white resize-none text-gray-900 placeholder-gray-500 text-lg"
-                  rows="4"
-                  placeholder="Mô tả chi tiết về loại chi phí này để nhân viên hiểu rõ hơn..."
-                />
+                <div className="relative">
+                  <select
+                    value={categoryForm.loaichiphi}
+                    onChange={(e) => setCategoryForm({...categoryForm, loaichiphi: e.target.value})}
+                    className="w-full pl-5 pr-12 py-4 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200 bg-white text-gray-900 appearance-none"
+                    required
+                  >
+                    <option value="định phí">Định phí</option>
+                    <option value="biến phí">Biến phí</option>
+                  </select>
+                  <div className="absolute right-4 top-4 text-gray-400">
+                    <Settings className="w-6 h-6" />
+                  </div>
+                </div>
                 <p className="text-sm text-gray-600 mt-2 flex items-center">
                   <span className="w-4 h-4 bg-gray-100 rounded-full flex items-center justify-center mr-2">
                     <span className="text-xs">💡</span>
                   </span>
-                  Mô tả sẽ giúp nhân viên nhập liệu chính xác hơn
+                  Chọn loại phí phù hợp: Định phí (cố định) hoặc Biến phí (thay đổi theo sản lượng)
                 </p>
               </div>
             </div>
@@ -937,7 +943,7 @@ function ExpenseCategoriesTab({ expenseCategories, onCategoryUpdate }) {
                 </div>
                 <div className="flex-1">
                   <h4 className="font-semibold text-gray-900 text-lg group-hover:text-green-700 transition-colors duration-200">
-                    {category.ten_loai}
+                    {category.tenchiphi}
                   </h4>
                 </div>
               </div>
@@ -958,14 +964,14 @@ function ExpenseCategoriesTab({ expenseCategories, onCategoryUpdate }) {
                 </button>
               </div>
             </div>
-            {category.mo_ta && (
+            {category.loaichiphi && (
               <p className="text-sm text-gray-600 leading-relaxed bg-gray-50 p-3 rounded-lg border-l-4 border-green-200">
-                {category.mo_ta}
+                Loại phí: <span className="font-medium text-green-700">{category.loaichiphi}</span>
               </p>
             )}
-            {!category.mo_ta && (
+            {!category.loaichiphi && (
               <div className="text-xs text-gray-400 italic bg-gray-50 p-3 rounded-lg">
-                Chưa có mô tả chi tiết
+                Chưa phân loại phí
               </div>
             )}
           </div>
@@ -985,7 +991,7 @@ function ExpenseCategoriesTab({ expenseCategories, onCategoryUpdate }) {
             onClick={() => {
               setShowCategoryForm(true);
               setEditingCategory(null);
-              setCategoryForm({ ten_loai: '', mo_ta: '' });
+              setCategoryForm({ tenchiphi: '', loaichiphi: 'định phí' });
               setError('');
               setSuccess(false);
             }}
@@ -1012,11 +1018,29 @@ export default function ExpensesPage() {
 
   useEffect(() => {
     const getUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      setUser(user);
+      // Check Supabase authentication first (for Admin users)
+      const { data: { user: supabaseUser } } = await supabase.auth.getUser();
+
+      // Check localStorage session (for User/Manager users)
+      const localSession = localStorage.getItem('user_session');
+      let localUser = null;
+      if (localSession) {
+        try {
+          const sessionData = JSON.parse(localSession);
+          localUser = sessionData.user;
+        } catch (error) {
+          console.error('Error parsing localStorage session:', error);
+          localStorage.removeItem('user_session'); // Clear invalid session
+        }
+      }
+
+      // Use whichever authentication method has a valid user
+      const currentUser = supabaseUser || localUser;
+      setUser(currentUser);
       setLoading(false);
 
-      if (user) {
+      // Load data if user is authenticated
+      if (currentUser) {
         await loadData();
       }
     };
