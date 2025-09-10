@@ -5,6 +5,7 @@ import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { Plus, Edit, Trash2, TrendingDown, DollarSign, Receipt, CreditCard, FileText, Info, Calendar, BarChart3, History, Settings, RotateCcw, Save, RefreshCw, Download, Users, Wrench, Eye, EyeOff, X } from 'lucide-react';
 import * as XLSX from 'xlsx';
+import { uploadExpenseImage, deleteExpenseImage, testSupabaseStorage, testSupabaseConnection, testNetworkConnectivity, listAllBuckets, createExpenseFolder, testUploadWithPolicies } from '../../../lib/supabaseStorage';
 
 const supabase = createClientComponentClient();
 
@@ -184,9 +185,37 @@ function ExpensesManagementTab({ expenses, expenseCategories, selectedMonth, onE
     hinhanh: '',
     created_at: new Date().toISOString().split('T')[0] // Default to today
   });
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [previewUrl, setPreviewUrl] = useState('');
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadStatus, setUploadStatus] = useState(null);
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState('');
+
+  // Handle file selection
+  const handleFileSelect = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setSelectedFile(file);
+
+      // Create preview
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setPreviewUrl(e.target.result);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  // Remove selected file
+  const removeImage = () => {
+    setSelectedFile(null);
+    setPreviewUrl('');
+    setExpenseForm({...expenseForm, hinhanh: ''});
+    setUploadStatus(null);
+  };
 
   const handleExpenseSubmit = async (e) => {
     e.preventDefault();
@@ -213,6 +242,31 @@ function ExpensesManagementTab({ expenses, expenseCategories, selectedMonth, onE
       return;
     }
 
+    let imageUrl = '';
+
+    // Upload image if selected
+    if (selectedFile) {
+      setUploadingImage(true);
+      try {
+        const uploadResult = await uploadExpenseImage(selectedFile);
+        if (uploadResult.success) {
+          imageUrl = uploadResult.url;
+        } else {
+          setError(uploadResult.error);
+          setLoading(false);
+          setUploadingImage(false);
+          return;
+        }
+      } catch (error) {
+        console.error('Upload error:', error);
+        setError('Không thể upload hình ảnh. Vui lòng thử lại.');
+        setLoading(false);
+        setUploadingImage(false);
+        return;
+      }
+      setUploadingImage(false);
+    }
+
     try {
       const method = editingExpense ? 'PUT' : 'POST';
       const url = editingExpense
@@ -224,7 +278,7 @@ function ExpensesManagementTab({ expenses, expenseCategories, selectedMonth, onE
         id_lcp: expenseForm.id_lcp ? parseInt(expenseForm.id_lcp) : null,
         giathanh: parseFloat(expenseForm.giathanh) || null,
         mo_ta: expenseForm.mo_ta || null,
-        hinhanh: expenseForm.hinhanh || null,
+        hinhanh: imageUrl || expenseForm.hinhanh || null,
         created_at: expenseForm.created_at ? new Date(expenseForm.created_at).toISOString() : new Date().toISOString()
       };
 
@@ -247,6 +301,8 @@ function ExpensesManagementTab({ expenses, expenseCategories, selectedMonth, onE
           hinhanh: '',
           created_at: new Date().toISOString().split('T')[0]
         });
+        setSelectedFile(null);
+        setPreviewUrl('');
         setEditingExpense(null);
         onExpenseUpdate();
 
@@ -327,6 +383,8 @@ function ExpensesManagementTab({ expenses, expenseCategories, selectedMonth, onE
               hinhanh: '',
               created_at: new Date().toISOString().split('T')[0]
             });
+            setSelectedFile(null);
+            setPreviewUrl('');
             setError('');
             setSuccess(false);
           }}
@@ -334,6 +392,66 @@ function ExpensesManagementTab({ expenses, expenseCategories, selectedMonth, onE
         >
           <Plus className="w-4 h-4" />
           <span>Thêm chi phí</span>
+        </button>
+        <button
+          onClick={async () => {
+            const result = await testNetworkConnectivity();
+            if (result.success) {
+              alert(`✅ ${result.message}`);
+            } else {
+              alert(`❌ ${result.error}`);
+            }
+          }}
+          className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 flex items-center space-x-2 ml-4"
+        >
+          <span>Test Network</span>
+        </button>
+        <button
+          onClick={async () => {
+            const result = await testSupabaseConnection();
+            if (result.success) {
+              alert(`✅ ${result.message}`);
+            } else {
+              alert(`❌ ${result.error}`);
+            }
+          }}
+          className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 flex items-center space-x-2 ml-4"
+        >
+          <span>Test Connection</span>
+        </button>
+        <button
+          onClick={async () => {
+            const result = await testSupabaseStorage();
+            if (result.success) {
+              alert(`✅ Kết nối Supabase Storage thành công!\nBuckets: ${result.buckets?.map(b => b.name).join(', ')}\nFiles in minhchung_chiphi: ${result.files?.length || 0}`);
+            } else {
+              alert(`❌ Lỗi kết nối: ${result.error}\nAvailable buckets: ${result.buckets?.map(b => b.name).join(', ') || 'None'}`);
+            }
+          }}
+          className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center space-x-2 ml-4"
+        >
+          <span>Test Storage</span>
+        </button>
+        <button
+          onClick={async () => {
+            alert('✅ File sẽ được lưu trực tiếp vào root bucket minhchung_chiphi\nKhông cần tạo folder riêng!');
+          }}
+          className="bg-yellow-600 text-white px-4 py-2 rounded-lg hover:bg-yellow-700 flex items-center space-x-2 ml-4"
+        >
+          <span>Info</span>
+        </button>
+        <button
+          onClick={async () => {
+            const result = await testUploadWithPolicies();
+            if (result.success) {
+              alert(`✅ ${result.message}`);
+            } else {
+              alert(`❌ ${result.error}`);
+            }
+          }}
+          className="bg-cyan-600 text-white px-4 py-2 rounded-lg hover:bg-cyan-700 flex items-center space-x-2 ml-4"
+        >
+          <span>Test Upload</span>
         </button>
       </div>
 
@@ -501,19 +619,71 @@ function ExpensesManagementTab({ expenses, expenseCategories, selectedMonth, onE
                   Hình ảnh
                   <span className="text-gray-500 text-sm font-normal ml-2">(không bắt buộc)</span>
                 </label>
-                <div className="relative">
-                  <input
-                    type="text"
-                    value={expenseForm.hinhanh}
-                    onChange={(e) => setExpenseForm({...expenseForm, hinhanh: e.target.value})}
-                    className="w-full pl-5 pr-12 py-4 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all duration-200 bg-white text-gray-900 placeholder-gray-500 text-lg"
-                    placeholder="Nhập URL hình ảnh hoặc để trống..."
-                  />
-                  <div className="absolute right-4 top-4 text-gray-400">
-                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                    </svg>
+                <div className="space-y-4">
+                  {/* File Input */}
+                  <div className="relative">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleFileSelect}
+                      className="hidden"
+                      id="image-upload"
+                    />
+                    <label
+                      htmlFor="image-upload"
+                      className="w-full flex items-center justify-center px-6 py-4 border-2 border-dashed border-gray-300 rounded-xl hover:border-red-400 hover:bg-red-50 transition-all duration-200 cursor-pointer group"
+                    >
+                      <div className="text-center">
+                        <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3 group-hover:bg-red-100 transition-colors duration-200">
+                          <svg className="w-6 h-6 text-gray-400 group-hover:text-red-500 transition-colors duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                          </svg>
+                        </div>
+                        <p className="text-sm font-medium text-gray-700 group-hover:text-red-600 transition-colors duration-200">
+                          {selectedFile ? selectedFile.name : 'Chọn hình ảnh từ máy tính'}
+                        </p>
+                        <p className="text-xs text-gray-500 mt-1">
+                          PNG, JPG, JPEG tối đa 5MB
+                        </p>
+                      </div>
+                    </label>
                   </div>
+
+                  {/* Image Preview */}
+                  {previewUrl && (
+                    <div className="relative inline-block">
+                      <img
+                        src={previewUrl}
+                        alt="Preview"
+                        className="w-32 h-32 object-cover rounded-xl border-2 border-gray-200 shadow-sm"
+                      />
+                      <button
+                        type="button"
+                        onClick={removeImage}
+                        className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 transition-colors duration-200 shadow-lg"
+                        title="Xóa hình ảnh"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Upload Progress */}
+                  {uploadProgress > 0 && uploadProgress < 100 && (
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div
+                        className="bg-red-500 h-2 rounded-full transition-all duration-300"
+                        style={{ width: `${uploadProgress}%` }}
+                      ></div>
+                    </div>
+                  )}
+
+                  {/* Upload Status */}
+                  {uploadStatus && (
+                    <div className={`text-sm ${uploadStatus.type === 'success' ? 'text-green-600' : 'text-red-600'}`}>
+                      {uploadStatus.message}
+                    </div>
+                  )}
                 </div>
                 <p className="text-sm text-gray-600 mt-2 flex items-center">
                   <span className="w-4 h-4 bg-gray-100 rounded-full flex items-center justify-center mr-2">
