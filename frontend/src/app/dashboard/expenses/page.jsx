@@ -73,7 +73,7 @@ function ExpensesLayout({ user, activeTab, onTabChange, children }) {
 }
 
 function ExpensesOverviewTab({ expenses, expenseCategories, selectedMonth }) {
-  const totalExpenses = expenses.reduce((sum, expense) => sum + (expense.so_tien || 0), 0);
+  const totalExpenses = expenses.reduce((sum, expense) => sum + (expense.giathanh || 0), 0);
   const expenseCount = expenses.length;
 
   return (
@@ -140,7 +140,7 @@ function ExpensesOverviewTab({ expenses, expenseCategories, selectedMonth }) {
               const categoryName = expense.loaichiphi?.tenchiphi || 'Chưa phân loại';
               const expenseType = 'Chi phí'; // Simplified since loaichiphi is not available
               const key = `${categoryName} (${expenseType})`;
-              acc[key] = (acc[key] || 0) + (expense.so_tien || 0);
+              acc[key] = (acc[key] || 0) + (expense.giathanh || 0);
               return acc;
             }, {})
           ).map(([category, amount]) => (
@@ -178,12 +178,11 @@ function ExpensesManagementTab({ expenses, expenseCategories, selectedMonth, onE
   const [showExpenseForm, setShowExpenseForm] = useState(false);
   const [editingExpense, setEditingExpense] = useState(null);
   const [expenseForm, setExpenseForm] = useState({
-    id_loai_chiphi: '',
-    ten_chi_phi: '',
-    so_tien: '',
+    id_lcp: '',
+    giathanh: '',
     mo_ta: '',
-    hinh_chung_minh: '',
-    ngay_chi_phi: new Date().toISOString().split('T')[0]
+    hinhanh: '',
+    created_at: new Date().toISOString().split('T')[0] // Default to today
   });
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -195,29 +194,58 @@ function ExpensesManagementTab({ expenses, expenseCategories, selectedMonth, onE
     setError('');
     setSuccess(false);
 
+    // Validate required fields
+    if (!expenseForm.id_lcp || expenseForm.id_lcp === '') {
+      setError('Vui lòng chọn loại chi phí');
+      setLoading(false);
+      return;
+    }
+
+    if (!expenseForm.giathanh || expenseForm.giathanh === '') {
+      setError('Vui lòng nhập số tiền');
+      setLoading(false);
+      return;
+    }
+
+    if (!expenseForm.created_at || expenseForm.created_at === '') {
+      setError('Vui lòng chọn ngày chi phí');
+      setLoading(false);
+      return;
+    }
+
     try {
       const method = editingExpense ? 'PUT' : 'POST';
       const url = editingExpense
         ? `http://localhost:8001/api/v1/quanly_chiphi/${editingExpense.id}`
         : 'http://localhost:8001/api/v1/quanly_chiphi/';
 
+      // Prepare the data to send
+      const dataToSend = {
+        id_lcp: expenseForm.id_lcp ? parseInt(expenseForm.id_lcp) : null,
+        giathanh: parseFloat(expenseForm.giathanh) || null,
+        mo_ta: expenseForm.mo_ta || null,
+        hinhanh: expenseForm.hinhanh || null,
+        created_at: expenseForm.created_at ? new Date(expenseForm.created_at).toISOString() : new Date().toISOString()
+      };
+
+      console.log('Sending data:', dataToSend); // Debug log
+
       const response = await fetch(url, {
         method,
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify(expenseForm)
+        body: JSON.stringify(dataToSend)
       });
 
       if (response.ok) {
         setSuccess(true);
         setExpenseForm({
-          id_loai_chiphi: '',
-          ten_chi_phi: '',
-          so_tien: '',
+          id_lcp: '',
+          giathanh: '',
           mo_ta: '',
-          hinh_chung_minh: '',
-          ngay_chi_phi: new Date().toISOString().split('T')[0]
+          hinhanh: '',
+          created_at: new Date().toISOString().split('T')[0]
         });
         setEditingExpense(null);
         onExpenseUpdate();
@@ -229,6 +257,7 @@ function ExpensesManagementTab({ expenses, expenseCategories, selectedMonth, onE
         }, 2000);
       } else {
         const errorData = await response.json();
+        console.error('API Error:', errorData); // Debug log
         setError(errorData.detail || 'Có lỗi xảy ra khi lưu chi phí');
       }
     } catch (error) {
@@ -268,12 +297,11 @@ function ExpensesManagementTab({ expenses, expenseCategories, selectedMonth, onE
   const editExpense = (expense) => {
     setEditingExpense(expense);
     setExpenseForm({
-      id_loai_chiphi: expense.id_loai_chiphi,
-      ten_chi_phi: expense.ten_chi_phi,
-      so_tien: expense.so_tien || '',
+      id_lcp: expense.id_lcp || '',
+      giathanh: expense.giathanh ? expense.giathanh.toString() : '',
       mo_ta: expense.mo_ta || '',
-      hinh_chung_minh: expense.hinh_chung_minh || '',
-      ngay_chi_phi: expense.ngay_chi_phi
+      hinhanh: expense.hinhanh || '',
+      created_at: expense.created_at ? new Date(expense.created_at).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]
     });
     setError('');
     setSuccess(false);
@@ -293,12 +321,11 @@ function ExpensesManagementTab({ expenses, expenseCategories, selectedMonth, onE
             setShowExpenseForm(true);
             setEditingExpense(null);
             setExpenseForm({
-              id_loai_chiphi: '',
-              ten_chi_phi: '',
-              so_tien: '',
+              id_lcp: '',
+              giathanh: '',
               mo_ta: '',
-              hinh_chung_minh: '',
-              ngay_chi_phi: new Date().toISOString().split('T')[0]
+              hinhanh: '',
+              created_at: new Date().toISOString().split('T')[0]
             });
             setError('');
             setSuccess(false);
@@ -312,273 +339,227 @@ function ExpensesManagementTab({ expenses, expenseCategories, selectedMonth, onE
 
       {/* Expense Form Modal */}
       {showExpenseForm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-gradient-to-r from-red-50 to-pink-50 rounded-2xl p-8 border border-red-100 mb-8">
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center space-x-3">
-                <div className="w-12 h-12 bg-red-100 rounded-xl flex items-center justify-center">
-                  <Receipt className="w-6 h-6 text-red-600" />
-                </div>
-                <div>
-                  <h3 className="text-2xl font-bold text-gray-900">
-                    {editingExpense ? 'Chỉnh sửa chi phí' : 'Thêm chi phí mới'}
-                  </h3>
-                  <p className="text-red-700 mt-1">Thêm khoản chi phí cho doanh nghiệp của bạn</p>
-                </div>
+        <div className="bg-gradient-to-r from-red-50 to-pink-50 rounded-2xl p-8 border border-red-100 mb-8">
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center space-x-3">
+              <div className="w-12 h-12 bg-red-100 rounded-xl flex items-center justify-center">
+                <Receipt className="w-6 h-6 text-red-600" />
               </div>
-              <button
-                onClick={() => setShowExpenseForm(false)}
-                className="w-10 h-10 bg-white hover:bg-gray-50 rounded-xl flex items-center justify-center transition-all duration-200 shadow-sm hover:shadow-md"
-                title="Đóng"
-              >
-                <X className="w-5 h-5 text-gray-500" />
-              </button>
+              <div>
+                <h3 className="text-2xl font-bold text-gray-900">
+                  {editingExpense ? 'Chỉnh sửa chi phí' : 'Thêm chi phí mới'}
+                </h3>
+                <p className="text-red-700 mt-1">Thêm khoản chi phí cho doanh nghiệp của bạn</p>
+              </div>
             </div>
+            <button
+              onClick={() => setShowExpenseForm(false)}
+              className="w-10 h-10 bg-white hover:bg-gray-50 rounded-xl flex items-center justify-center transition-all duration-200 shadow-sm hover:shadow-md"
+              title="Đóng"
+            >
+              <X className="w-5 h-5 text-gray-500" />
+            </button>
+          </div>
 
-            {/* Success Message */}
-            {success && (
-              <div className="mb-6 bg-green-50 border border-green-200 text-green-800 px-6 py-4 rounded-xl flex items-center space-x-3">
-                <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center flex-shrink-0">
-                  <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                  </svg>
+          {/* Success Message */}
+          {success && (
+            <div className="mb-6 bg-green-50 border border-green-200 text-green-800 px-6 py-4 rounded-xl flex items-center space-x-3">
+              <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center flex-shrink-0">
+                <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+              <p className="text-sm font-medium">
+                {editingExpense ? 'Cập nhật chi phí thành công!' : 'Thêm chi phí thành công!'}
+              </p>
+            </div>
+          )}
+
+          {/* Error Message */}
+          {error && (
+            <div className="mb-6 bg-red-50 border border-red-200 text-red-800 px-6 py-4 rounded-xl flex items-center space-x-3">
+              <div className="w-6 h-6 bg-red-500 rounded-full flex items-center justify-center flex-shrink-0">
+                <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <p className="text-sm font-medium">{error}</p>
+            </div>
+          )}
+
+          <form onSubmit={handleExpenseSubmit} className="space-y-8">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              {/* Category Selection Field */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-800 mb-3 flex items-center">
+                  <span className="w-6 h-6 bg-blue-100 rounded-lg flex items-center justify-center mr-3">
+                    <span className="text-xs text-blue-600">🏷️</span>
+                  </span>
+                  Loại chi phí
+                  <span className="text-red-500 ml-1">*</span>
+                </label>
+                <div className="relative">
+                  <select
+                    value={expenseForm.id_lcp}
+                    onChange={(e) => setExpenseForm({...expenseForm, id_lcp: e.target.value})}
+                    className="w-full pl-5 pr-12 py-4 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all duration-200 bg-white text-gray-900 text-lg"
+                    required
+                  >
+                    <option value="">Chọn loại chi phí...</option>
+                    {expenseCategories.map(cat => (
+                      <option key={cat.id} value={cat.id.toString()}>
+                        {cat.tenchiphi}
+                      </option>
+                    ))}
+                  </select>
+                  <div className="absolute right-4 top-4 text-gray-400">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </div>
                 </div>
-                <p className="text-sm font-medium">
-                  {editingExpense ? 'Cập nhật chi phí thành công!' : 'Thêm chi phí thành công!'}
+                <p className="text-sm text-gray-600 mt-2 flex items-center">
+                  <span className="w-4 h-4 bg-gray-100 rounded-full flex items-center justify-center mr-2">
+                    <span className="text-xs">💡</span>
+                  </span>
+                  Chọn loại chi phí từ danh sách có sẵn
                 </p>
               </div>
-            )}
 
-            {/* Error Message */}
-            {error && (
-              <div className="mb-6 bg-red-50 border border-red-200 text-red-800 px-6 py-4 rounded-xl flex items-center space-x-3">
-                <div className="w-6 h-6 bg-red-500 rounded-full flex items-center justify-center flex-shrink-0">
-                  <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                </div>
-                <p className="text-sm font-medium">{error}</p>
-              </div>
-            )}
-
-            <form onSubmit={handleExpenseSubmit} className="space-y-8">
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                {/* Category Field */}
-                <div className="lg:col-span-2">
-                  <label className="block text-sm font-semibold text-gray-800 mb-3 flex items-center">
-                    <span className="w-6 h-6 bg-blue-100 rounded-lg flex items-center justify-center mr-3">
-                      <span className="text-xs text-blue-600">🏷️</span>
-                    </span>
-                    Loại chi phí
-                    <span className="text-red-500 ml-1">*</span>
-                  </label>
-                  <div className="relative">
-                    <select
-                      value={expenseForm.id_loai_chiphi}
-                      onChange={(e) => setExpenseForm({...expenseForm, id_loai_chiphi: e.target.value})}
-                      className="w-full pl-5 pr-12 py-4 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all duration-200 bg-white text-gray-900 appearance-none"
-                      required
-                    >
-                      <option value="">Chọn loại chi phí</option>
-                      {expenseCategories.map(cat => (
-                        <option key={cat.id} value={cat.id}>{cat.tenchiphi}</option>
-                      ))}
-                    </select>
-                    <div className="absolute right-4 top-4 text-gray-400">
-                      <Settings className="w-6 h-6" />
-                    </div>
-                  </div>
-                  <p className="text-sm text-gray-600 mt-2 flex items-center">
-                    <span className="w-4 h-4 bg-gray-100 rounded-full flex items-center justify-center mr-2">
-                      <span className="text-xs">💡</span>
-                    </span>
-                    Chọn loại chi phí phù hợp để phân loại khoản chi
-                  </p>
-                </div>
-
-                {/* Name Field */}
-                <div className="lg:col-span-2">
-                  <label className="block text-sm font-semibold text-gray-800 mb-3 flex items-center">
-                    <span className="w-6 h-6 bg-purple-100 rounded-lg flex items-center justify-center mr-3">
-                      <span className="text-xs text-purple-600">📝</span>
-                    </span>
-                    Tên chi phí
-                    <span className="text-red-500 ml-1">*</span>
-                  </label>
-                  <div className="relative">
-                    <input
-                      type="text"
-                      value={expenseForm.ten_chi_phi}
-                      onChange={(e) => setExpenseForm({...expenseForm, ten_chi_phi: e.target.value})}
-                      className="w-full pl-5 pr-12 py-4 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all duration-200 bg-white text-gray-900 placeholder-gray-500 text-lg"
-                      placeholder="Ví dụ: Mua văn phòng phẩm, Thanh toán tiền điện..."
-                      required
-                    />
-                    <div className="absolute right-4 top-4 text-gray-400">
-                      <Receipt className="w-6 h-6" />
-                    </div>
-                  </div>
-                  <p className="text-sm text-gray-600 mt-2 flex items-center">
-                    <span className="w-4 h-4 bg-gray-100 rounded-full flex items-center justify-center mr-2">
-                      <span className="text-xs">💡</span>
-                    </span>
-                    Nhập tên chi phí rõ ràng và dễ hiểu
-                  </p>
-                </div>
-
-                {/* Amount Field */}
-                <div>
-                  <label className="block text-sm font-semibold text-gray-800 mb-3 flex items-center">
-                    <span className="w-6 h-6 bg-green-100 rounded-lg flex items-center justify-center mr-3">
-                      <span className="text-xs text-green-600">💰</span>
-                    </span>
-                    Số tiền (VND)
-                    <span className="text-red-500 ml-1">*</span>
-                  </label>
-                  <div className="relative">
-                    <input
-                      type="number"
-                      step="0.01"
-                      value={expenseForm.so_tien}
-                      onChange={(e) => setExpenseForm({...expenseForm, so_tien: e.target.value})}
-                      className="w-full pl-5 pr-12 py-4 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all duration-200 bg-white text-gray-900 placeholder-gray-500 text-lg"
-                      placeholder="0.00"
-                      required
-                    />
-                    <div className="absolute right-4 top-4 text-gray-400">
-                      <DollarSign className="w-6 h-6" />
-                    </div>
-                  </div>
-                  <p className="text-sm text-gray-600 mt-2 flex items-center">
-                    <span className="w-4 h-4 bg-gray-100 rounded-full flex items-center justify-center mr-2">
-                      <span className="text-xs">💡</span>
-                    </span>
-                    Nhập số tiền chính xác
-                  </p>
-                </div>
-
-                {/* Date Field */}
-                <div>
-                  <label className="block text-sm font-semibold text-gray-800 mb-3 flex items-center">
-                    <span className="w-6 h-6 bg-orange-100 rounded-lg flex items-center justify-center mr-3">
-                      <span className="text-xs text-orange-600">📅</span>
-                    </span>
-                    Ngày chi phí
-                    <span className="text-red-500 ml-1">*</span>
-                  </label>
-                  <div className="relative">
-                    <input
-                      type="date"
-                      value={expenseForm.ngay_chi_phi}
-                      onChange={(e) => setExpenseForm({...expenseForm, ngay_chi_phi: e.target.value})}
-                      className="w-full pl-5 pr-12 py-4 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all duration-200 bg-white text-gray-900 text-lg"
-                      required
-                    />
-                    <div className="absolute right-4 top-4 text-gray-400">
-                      <Calendar className="w-6 h-6" />
-                    </div>
-                  </div>
-                  <p className="text-sm text-gray-600 mt-2 flex items-center">
-                    <span className="w-4 h-4 bg-gray-100 rounded-full flex items-center justify-center mr-2">
-                      <span className="text-xs">💡</span>
-                    </span>
-                    Chọn ngày thực hiện chi phí
-                  </p>
-                </div>
-
-                {/* Description Field */}
-                <div className="lg:col-span-2">
-                  <label className="block text-sm font-semibold text-gray-800 mb-3 flex items-center">
-                    <span className="w-6 h-6 bg-indigo-100 rounded-lg flex items-center justify-center mr-3">
-                      <span className="text-xs text-indigo-600">📋</span>
-                    </span>
-                    Mô tả chi tiết
-                    <span className="text-gray-500 text-sm font-normal ml-2">(không bắt buộc)</span>
-                  </label>
-                  <textarea
-                    value={expenseForm.mo_ta}
-                    onChange={(e) => setExpenseForm({...expenseForm, mo_ta: e.target.value})}
-                    className="w-full px-5 py-4 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all duration-200 bg-white resize-none text-gray-900 placeholder-gray-500 text-lg"
-                    rows="4"
-                    placeholder="Mô tả chi tiết về khoản chi phí này để dễ theo dõi..."
+              {/* Amount Field */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-800 mb-3 flex items-center">
+                  <span className="w-6 h-6 bg-green-100 rounded-lg flex items-center justify-center mr-3">
+                    <span className="text-xs text-green-600">�</span>
+                  </span>
+                  Số tiền (VND)
+                  <span className="text-red-500 ml-1">*</span>
+                </label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={expenseForm.giathanh ? Number(expenseForm.giathanh).toLocaleString('vi-VN') : ''}
+                    onChange={(e) => {
+                      const value = e.target.value.replace(/[.,\s]/g, '');
+                      if (!isNaN(value) && value !== '') {
+                        setExpenseForm({...expenseForm, giathanh: parseFloat(value)});
+                      } else if (value === '') {
+                        setExpenseForm({...expenseForm, giathanh: ''});
+                      }
+                    }}
+                    className="w-full pl-5 pr-12 py-4 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all duration-200 bg-white text-gray-900 placeholder-gray-500 text-lg"
+                    placeholder="0"
+                    required
                   />
-                  <p className="text-sm text-gray-600 mt-2 flex items-center">
-                    <span className="w-4 h-4 bg-gray-100 rounded-full flex items-center justify-center mr-2">
-                      <span className="text-xs">💡</span>
-                    </span>
-                    Mô tả sẽ giúp dễ theo dõi và báo cáo chi phí
-                  </p>
-                </div>
-
-                {/* Image URL Field */}
-                <div className="lg:col-span-2">
-                  <label className="block text-sm font-semibold text-gray-800 mb-3 flex items-center">
-                    <span className="w-6 h-6 bg-teal-100 rounded-lg flex items-center justify-center mr-3">
-                      <span className="text-xs text-teal-600">🖼️</span>
-                    </span>
-                    Hình chứng minh
-                    <span className="text-gray-500 text-sm font-normal ml-2">(không bắt buộc)</span>
-                  </label>
-                  <div className="relative">
-                    <input
-                      type="url"
-                      value={expenseForm.hinh_chung_minh}
-                      onChange={(e) => setExpenseForm({...expenseForm, hinh_chung_minh: e.target.value})}
-                      className="w-full pl-5 pr-12 py-4 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all duration-200 bg-white text-gray-900 placeholder-gray-500 text-lg"
-                      placeholder="https://example.com/hinh-chung-minh.jpg"
-                    />
-                    <div className="absolute right-4 top-4 text-gray-400">
-                      <FileText className="w-6 h-6" />
-                    </div>
+                  <div className="absolute right-4 top-4 text-gray-400">
+                    <DollarSign className="w-6 h-6" />
                   </div>
-                  <p className="text-sm text-gray-600 mt-2 flex items-center">
-                    <span className="w-4 h-4 bg-gray-100 rounded-full flex items-center justify-center mr-2">
-                      <span className="text-xs">💡</span>
-                    </span>
-                    Đính kèm hình ảnh hóa đơn hoặc chứng từ để dễ kiểm tra
-                  </p>
                 </div>
+                <p className="text-sm text-gray-600 mt-2 flex items-center">
+                  <span className="w-4 h-4 bg-gray-100 rounded-full flex items-center justify-center mr-2">
+                    <span className="text-xs">💡</span>
+                  </span>
+                  Nhập số tiền chính xác (ví dụ: 1.000.000)
+                </p>
               </div>
 
-              {/* Action Buttons */}
-              <div className="flex flex-col sm:flex-row gap-4 pt-6 border-t border-gray-200">
-                <button
-                  type="button"
-                  onClick={() => setShowExpenseForm(false)}
-                  className="flex-1 bg-gray-100 text-gray-700 py-4 px-6 rounded-xl hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500 transition-all duration-200 font-semibold hover:shadow-md text-lg"
-                >
+              {/* Date Field */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-800 mb-3 flex items-center">
+                  <span className="w-6 h-6 bg-orange-100 rounded-lg flex items-center justify-center mr-3">
+                    <span className="text-xs text-orange-600">📅</span>
+                  </span>
+                  Ngày chi phí
+                  <span className="text-red-500 ml-1">*</span>
+                </label>
+                <div className="relative">
+                  <input
+                    type="date"
+                    value={expenseForm.created_at}
+                    onChange={(e) => setExpenseForm({...expenseForm, created_at: e.target.value})}
+                    className="w-full pl-5 pr-12 py-4 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all duration-200 bg-white text-gray-900 text-lg"
+                    required
+                  />
+                  <div className="absolute right-4 top-4 text-gray-400">
+                    <Calendar className="w-6 h-6" />
+                  </div>
+                </div>
+                <p className="text-sm text-gray-600 mt-2 flex items-center">
+                  <span className="w-4 h-4 bg-gray-100 rounded-full flex items-center justify-center mr-2">
+                    <span className="text-xs">💡</span>
+                  </span>
+                  Chọn ngày thực hiện chi phí
+                </p>
+              </div>
+
+              {/* Image Upload Field */}
+              <div className="lg:col-span-2">
+                <label className="block text-sm font-semibold text-gray-800 mb-3 flex items-center">
+                  <span className="w-6 h-6 bg-yellow-100 rounded-lg flex items-center justify-center mr-3">
+                    <span className="text-xs text-yellow-600">�</span>
+                  </span>
+                  Hình ảnh
+                  <span className="text-gray-500 text-sm font-normal ml-2">(không bắt buộc)</span>
+                </label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={expenseForm.hinhanh}
+                    onChange={(e) => setExpenseForm({...expenseForm, hinhanh: e.target.value})}
+                    className="w-full pl-5 pr-12 py-4 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all duration-200 bg-white text-gray-900 placeholder-gray-500 text-lg"
+                    placeholder="Nhập URL hình ảnh hoặc để trống..."
+                  />
+                  <div className="absolute right-4 top-4 text-gray-400">
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                  </div>
+                </div>
+                <p className="text-sm text-gray-600 mt-2 flex items-center">
+                  <span className="w-4 h-4 bg-gray-100 rounded-full flex items-center justify-center mr-2">
+                    <span className="text-xs">💡</span>
+                  </span>
+                  Nhập URL hình ảnh để minh họa cho khoản chi phí
+                </p>
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex flex-col sm:flex-row gap-4 pt-6 border-t border-gray-200">
+              <button
+                type="button"
+                onClick={() => setShowExpenseForm(false)}
+                className="flex-1 bg-gray-100 text-gray-700 py-4 px-6 rounded-xl hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500 transition-all duration-200 font-semibold hover:shadow-md text-lg"
+              >
+                <div className="flex items-center justify-center">
+                  <X className="w-5 h-5 mr-2" />
+                  Hủy
+                </div>
+              </button>
+              <button
+                type="submit"
+                disabled={loading}
+                className="flex-1 bg-gradient-to-r from-red-500 to-pink-600 text-white py-4 px-6 rounded-xl hover:from-red-600 hover:to-pink-700 focus:outline-none focus:ring-2 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 text-lg"
+              >
+                {loading ? (
                   <div className="flex items-center justify-center">
-                    <X className="w-5 h-5 mr-2" />
-                    Hủy
+                    <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Đang xử lý...
                   </div>
-                </button>
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="flex-1 bg-gradient-to-r from-red-500 to-pink-600 text-white py-4 px-6 rounded-xl hover:from-red-600 hover:to-pink-700 focus:outline-none focus:ring-2 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 text-lg"
-                >
-                  {loading ? (
-                    <div className="flex items-center justify-center">
-                      <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                      </svg>
-                      Đang xử lý...
-                    </div>
-                  ) : (
-                    <div className="flex items-center justify-center">
-                      <Plus className="w-5 h-5 mr-2" />
-                      {editingExpense ? 'Cập nhật chi phí' : 'Thêm chi phí'}
-                    </div>
-                  )}
-                </button>
-              </div>
-            </form>
-          </div>
+                ) : (
+                  <div className="flex items-center justify-center">
+                    <Plus className="w-5 h-5 mr-2" />
+                    {editingExpense ? 'Cập nhật chi phí' : 'Thêm chi phí'}
+                  </div>
+                )}
+              </button>
+            </div>
+          </form>
         </div>
-      )}
-
-      {/* Expenses Table */}
+      )}      {/* Expenses Table */}
       <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
         {expenses.length === 0 ? (
           <div className="text-center py-12">
@@ -591,7 +572,7 @@ function ExpensesManagementTab({ expenses, expenseCategories, selectedMonth, onE
               <thead className="bg-gray-50">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Loại chi phí</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tên chi phí</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Mô tả</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Số tiền</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ngày</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Thao tác</th>
@@ -609,25 +590,15 @@ function ExpensesManagementTab({ expenses, expenseCategories, selectedMonth, onE
                       <div className="flex items-center">
                         <Receipt className="w-4 h-4 text-gray-400 mr-2" />
                         <div>
-                          <div className="text-sm font-medium text-gray-900">{expense.ten_chi_phi}</div>
-                          {expense.mo_ta && (
-                            <div className="text-sm text-gray-500">{expense.mo_ta}</div>
-                          )}
-                          {expense.hinh_chung_minh && (
-                            <div className="text-xs text-blue-600">
-                              <a href={expense.hinh_chung_minh} target="_blank" rel="noopener noreferrer">
-                                Xem chứng minh
-                              </a>
-                            </div>
-                          )}
+                          <div className="text-sm font-medium text-gray-900">{expense.mo_ta || 'Không có mô tả'}</div>
                         </div>
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-red-600">
-                      {(expense.so_tien || 0).toLocaleString('vi-VN')} VND
+                      {(expense.giathanh || 0).toLocaleString('vi-VN')} VND
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {expense.ngay_chi_phi ? new Date(expense.ngay_chi_phi).toLocaleDateString('vi-VN') : 'N/A'}
+                      {expense.created_at ? new Date(expense.created_at).toLocaleDateString('vi-VN') : 'N/A'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                       <div className="flex items-center space-x-2">
@@ -662,8 +633,7 @@ function ExpenseCategoriesTab({ expenseCategories, onCategoryUpdate }) {
   const [showCategoryForm, setShowCategoryForm] = useState(false);
   const [editingCategory, setEditingCategory] = useState(null);
   const [categoryForm, setCategoryForm] = useState({
-    tenchiphi: '',
-    loaichiphi: 'định phí'
+    tenchiphi: ''
   });
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -687,14 +657,13 @@ function ExpenseCategoriesTab({ expenseCategories, onCategoryUpdate }) {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          tenchiphi: categoryForm.tenchiphi,  // Tên chi phí
-          loaichiphi: categoryForm.loaichiphi   // Định phí hoặc Biến phí
+          tenchiphi: categoryForm.tenchiphi
         })
       });
 
       if (response.ok) {
         setSuccess(true);
-        setCategoryForm({ tenchiphi: '', loaichiphi: 'định phí' });
+        setCategoryForm({ tenchiphi: '' });
         setEditingCategory(null);
         onCategoryUpdate();
 
@@ -738,8 +707,7 @@ function ExpenseCategoriesTab({ expenseCategories, onCategoryUpdate }) {
   const editCategory = (category) => {
     setEditingCategory(category);
     setCategoryForm({
-      tenchiphi: category.tenchiphi,
-      loaichiphi: category.loaichiphi || 'định phí'
+      tenchiphi: category.tenchiphi
     });
     setError('');
     setSuccess(false);
@@ -769,7 +737,7 @@ function ExpenseCategoriesTab({ expenseCategories, onCategoryUpdate }) {
             onClick={() => {
               setShowCategoryForm(true);
               setEditingCategory(null);
-              setCategoryForm({ tenchiphi: '', loaichiphi: 'định phí' });
+              setCategoryForm({ tenchiphi: '' });
               setError('');
               setSuccess(false);
             }}
@@ -863,36 +831,6 @@ function ExpenseCategoriesTab({ expenseCategories, onCategoryUpdate }) {
                 </p>
               </div>
 
-              {/* Expense Type Field */}
-              <div className="lg:col-span-2">
-                <label className="block text-sm font-semibold text-gray-800 mb-3 flex items-center">
-                  <span className="w-6 h-6 bg-orange-100 rounded-lg flex items-center justify-center mr-3">
-                    <span className="text-xs text-orange-600">�</span>
-                  </span>
-                  Loại phí
-                  <span className="text-red-500 ml-1">*</span>
-                </label>
-                <div className="relative">
-                  <select
-                    value={categoryForm.loaichiphi}
-                    onChange={(e) => setCategoryForm({...categoryForm, loaichiphi: e.target.value})}
-                    className="w-full pl-5 pr-12 py-4 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200 bg-white text-gray-900 appearance-none"
-                    required
-                  >
-                    <option value="định phí">Định phí</option>
-                    <option value="biến phí">Biến phí</option>
-                  </select>
-                  <div className="absolute right-4 top-4 text-gray-400">
-                    <Settings className="w-6 h-6" />
-                  </div>
-                </div>
-                <p className="text-sm text-gray-600 mt-2 flex items-center">
-                  <span className="w-4 h-4 bg-gray-100 rounded-full flex items-center justify-center mr-2">
-                    <span className="text-xs">💡</span>
-                  </span>
-                  Chọn loại phí phù hợp: Định phí (cố định) hoặc Biến phí (thay đổi theo sản lượng)
-                </p>
-              </div>
             </div>
 
             {/* Action Buttons */}
@@ -964,16 +902,9 @@ function ExpenseCategoriesTab({ expenseCategories, onCategoryUpdate }) {
                 </button>
               </div>
             </div>
-            {category.loaichiphi && (
-              <p className="text-sm text-gray-600 leading-relaxed bg-gray-50 p-3 rounded-lg border-l-4 border-green-200">
-                Loại phí: <span className="font-medium text-green-700">{category.loaichiphi}</span>
-              </p>
-            )}
-            {!category.loaichiphi && (
-              <div className="text-xs text-gray-400 italic bg-gray-50 p-3 rounded-lg">
-                Chưa phân loại phí
-              </div>
-            )}
+            <div className="text-xs text-gray-400 italic bg-gray-50 p-3 rounded-lg">
+              Loại chi phí
+            </div>
           </div>
         ))}
       </div>
@@ -991,7 +922,7 @@ function ExpenseCategoriesTab({ expenseCategories, onCategoryUpdate }) {
             onClick={() => {
               setShowCategoryForm(true);
               setEditingCategory(null);
-              setCategoryForm({ tenchiphi: '', loaichiphi: 'định phí' });
+              setCategoryForm({ tenchiphi: '' });
               setError('');
               setSuccess(false);
             }}

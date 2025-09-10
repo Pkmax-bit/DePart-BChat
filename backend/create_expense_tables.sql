@@ -21,14 +21,11 @@ CREATE TABLE IF NOT EXISTS loaichiphi (
 -- Bảng quản lý chi phí
 CREATE TABLE IF NOT EXISTS quanly_chiphi (
     id SERIAL PRIMARY KEY,
-    id_loai_chiphi INTEGER REFERENCES loaichiphi(id),
-    ten_chi_phi VARCHAR(255) NOT NULL,
-    so_tien DECIMAL(15,2) NOT NULL,
-    mo_ta TEXT,
-    hinh_chung_minh TEXT, -- URL hoặc path đến hình ảnh chứng minh
-    ngay_chi_phi DATE NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    id_lcp INTEGER,
+    giathanh DECIMAL,
+    hinhanh TEXT,
+    created_at TIMESTAMP,
+    mo_ta TEXT
 );
 
 -- Thêm một số dữ liệu mẫu cho loại chi phí
@@ -44,11 +41,11 @@ INSERT INTO loaichiphi (loaichiphi, tenchiphi, loai_phi) VALUES
 ON CONFLICT DO NOTHING;
 
 -- Thêm một số dữ liệu mẫu cho chi phí
-INSERT INTO quanly_chiphi (id_loai_chiphi, ten_chi_phi, so_tien, mo_ta, hinh_chung_minh, ngay_chi_phi) VALUES
-(1, 'Mua nhôm 6063', 5000000.00, 'Mua nhôm cho sản xuất tủ bếp', '/images/hoa_don_nhom.jpg', CURRENT_DATE - INTERVAL '5 days'),
-(2, 'Lương nhân viên tháng 9', 15000000.00, 'Lương nhân viên sản xuất', '/images/bang_luong.jpg', CURRENT_DATE - INTERVAL '1 month'),
-(3, 'Vận chuyển hàng hóa', 800000.00, 'Vận chuyển tủ bếp đến khách hàng', '/images/phieu_van_chuyen.jpg', CURRENT_DATE - INTERVAL '3 days'),
-(4, 'Quảng cáo Facebook', 2000000.00, 'Chi phí quảng cáo sản phẩm', '/images/hoa_don_facebook.jpg', CURRENT_DATE - INTERVAL '10 days'),
-(5, 'Điện nước văn phòng', 1200000.00, 'Tiền điện nước tháng 9', '/images/hoa_don_dien_nuoc.jpg', CURRENT_DATE - INTERVAL '1 month'),
-(6, 'Bảo trì máy móc', 3000000.00, 'Bảo trì máy cắt nhôm', '/images/hoa_don_bao_tri.jpg', CURRENT_DATE - INTERVAL '15 days')
+INSERT INTO quanly_chiphi (id_lcp, giathanh, mo_ta, hinhanh, created_at) VALUES
+(1, 5000000.00, 'Mua nhôm cho sản xuất tủ bếp', '/images/hoa_don_nhom.jpg', CURRENT_DATE - INTERVAL '5 days'),
+(2, 15000000.00, 'Lương nhân viên sản xuất', '/images/bang_luong.jpg', CURRENT_DATE - INTERVAL '1 month'),
+(3, 800000.00, 'Vận chuyển tủ bếp đến khách hàng', '/images/phieu_van_chuyen.jpg', CURRENT_DATE - INTERVAL '3 days'),
+(4, 2000000.00, 'Chi phí quảng cáo sản phẩm', '/images/hoa_don_facebook.jpg', CURRENT_DATE - INTERVAL '10 days'),
+(5, 1200000.00, 'Tiền điện nước tháng 9', '/images/hoa_don_dien_nuoc.jpg', CURRENT_DATE - INTERVAL '1 month'),
+(6, 3000000.00, 'Bảo trì máy cắt nhôm', '/images/hoa_don_bao_tri.jpg', CURRENT_DATE - INTERVAL '15 days')
 ON CONFLICT DO NOTHING;

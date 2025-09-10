@@ -381,7 +381,7 @@ async def delete_loaichiphi(loaichiphi_id: int):
     """Xóa loại chi phí"""
     try:
         # Kiểm tra xem có chi phí nào đang sử dụng loại này không
-        expense_count = supabase.table('quanly_chiphi').select('id', count='exact').eq('id_loai_chiphi', loaichiphi_id).execute()
+        expense_count = supabase.table('quanly_chiphi').select('id', count='exact').eq('id_lcp', loaichiphi_id).execute()
         if expense_count.count > 0:
             raise HTTPException(status_code=400, detail="Không thể xóa loại chi phí đang được sử dụng")
 
@@ -407,9 +407,9 @@ async def get_quanly_chiphi(month: str = None):
             transformed_item = dict(item)
 
             # Fetch related loaichiphi data separately
-            if item.get('id_loai_chiphi'):
+            if item.get('id_lcp'):
                 try:
-                    loaichiphi_result = supabase.table('loaichiphi').select('*').eq('id', item['id_loai_chiphi']).execute()
+                    loaichiphi_result = supabase.table('loaichiphi').select('*').eq('id', item['id_lcp']).execute()
                     if loaichiphi_result.data:
                         loaichiphi_item = loaichiphi_result.data[0]
                         transformed_item['loaichiphi'] = {
@@ -418,7 +418,7 @@ async def get_quanly_chiphi(month: str = None):
                             'loaichiphi': loaichiphi_item.get('loaichiphi', ''),  # Map loaichiphi -> loaichiphi
                         }
                 except Exception as e:
-                    print(f"Error fetching loaichiphi for id {item['id_loai_chiphi']}: {e}")
+                    print(f"Error fetching loaichiphi for id {item['id_lcp']}: {e}")
                     transformed_item['loaichiphi'] = None
             else:
                 transformed_item['loaichiphi'] = None
@@ -435,12 +435,11 @@ async def create_quanly_chiphi(chiphi_data: dict):
     try:
         # Try to insert with basic columns that might exist
         result = supabase.table('quanly_chiphi').insert({
-            'id_loai_chiphi': chiphi_data['id_loai_chiphi'],
-            'ten_chi_phi': chiphi_data['ten_chi_phi'],
-            'so_tien': chiphi_data['so_tien'],
+            'id_lcp': chiphi_data['id_lcp'],
+            'giathanh': chiphi_data['giathanh'],
             'mo_ta': chiphi_data.get('mo_ta', ''),
-            'hinh_chung_minh': chiphi_data.get('hinh_chung_minh', ''),
-            'ngay_chi_phi': chiphi_data['ngay_chi_phi']
+            'hinhanh': chiphi_data.get('hinhanh', ''),
+            'created_at': chiphi_data.get('created_at')
         }).execute()
         return result.data[0]
     except Exception as e:
@@ -453,12 +452,11 @@ async def update_quanly_chiphi(chiphi_id: int, chiphi_data: dict):
     """Cập nhật chi phí"""
     try:
         result = supabase.table('quanly_chiphi').update({
-            'id_loai_chiphi': chiphi_data['id_loai_chiphi'],
-            'ten_chi_phi': chiphi_data['ten_chi_phi'],
-            'so_tien': chiphi_data['so_tien'],
+            'id_lcp': chiphi_data['id_lcp'],
+            'giathanh': chiphi_data['giathanh'],
             'mo_ta': chiphi_data.get('mo_ta', ''),
-            'hinh_chung_minh': chiphi_data.get('hinh_chung_minh', ''),
-            'ngay_chi_phi': chiphi_data['ngay_chi_phi'],
+            'hinhanh': chiphi_data.get('hinhanh', ''),
+            'created_at': chiphi_data.get('created_at'),
             'updated_at': 'now()'
         }).eq('id', chiphi_id).execute()
         return result.data[0]
@@ -491,7 +489,7 @@ async def get_chiphi_tong_quan(month: str = None):
             else:
                 end_date = f"{year}-{month_num + 1:02d}-01"
 
-            query = query.gte('ngay_chi_phi', start_date).lt('ngay_chi_phi', end_date)
+            query = query.gte('created_at', start_date).lt('created_at', end_date)
 
         result = query.execute()
 
@@ -499,7 +497,7 @@ async def get_chiphi_tong_quan(month: str = None):
         loaichiphi_map = {}
         if result.data:
             # Get unique loaichiphi IDs
-            loaichiphi_ids = list(set(item.get('id_loai_chiphi') for item in result.data if item.get('id_loai_chiphi')))
+            loaichiphi_ids = list(set(item.get('id_lcp') for item in result.data if item.get('id_lcp')))
             if loaichiphi_ids:
                 try:
                     loaichiphi_result = supabase.table('loaichiphi').select('*').in_('id', loaichiphi_ids).execute()
@@ -508,7 +506,7 @@ async def get_chiphi_tong_quan(month: str = None):
                     print(f"Error fetching loaichiphi data: {e}")
 
         # Tính tổng chi phí
-        total_expenses = sum(item['so_tien'] for item in result.data)
+        total_expenses = sum(item['giathanh'] for item in result.data)
 
         # Nhóm theo loại chi phí
         expense_by_category = {}
@@ -517,8 +515,8 @@ async def get_chiphi_tong_quan(month: str = None):
         for item in result.data:
             # Get loaichiphi data from map
             loaichiphi_data = None
-            if item.get('id_loai_chiphi') and item['id_loai_chiphi'] in loaichiphi_map:
-                loaichiphi_data = loaichiphi_map[item['id_loai_chiphi']]
+            if item.get('id_lcp') and item['id_lcp'] in loaichiphi_map:
+                loaichiphi_data = loaichiphi_map[item['id_lcp']]
 
             if loaichiphi_data:
                 category_name = loaichiphi_data.get('tenchiphi', 'Chưa phân loại')  # Map tenchiphi -> category name
@@ -529,10 +527,10 @@ async def get_chiphi_tong_quan(month: str = None):
 
             if category_name not in expense_by_category:
                 expense_by_category[category_name] = 0
-            expense_by_category[category_name] += item['so_tien']
+            expense_by_category[category_name] += item['giathanh']
 
             if type_name in expense_by_type:
-                expense_by_type[type_name] += item['so_tien']
+                expense_by_type[type_name] += item['giathanh']
 
         return {
             "total_expenses": total_expenses,

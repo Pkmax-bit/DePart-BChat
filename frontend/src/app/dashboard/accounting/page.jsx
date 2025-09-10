@@ -3456,7 +3456,7 @@ function ExpensesManagementTab() {
           <div className="text-right">
             <p className="text-sm text-gray-600">Tổng chi phí</p>
             <p className="text-xl font-bold text-red-600">
-              {expenses.reduce((sum, expense) => sum + (expense.so_tien || 0), 0).toLocaleString('vi-VN')} VND
+              {expenses.reduce((sum, expense) => sum + (expense.giathanh || 0), 0).toLocaleString('vi-VN')} VND
             </p>
           </div>
         </div>
@@ -3512,14 +3512,14 @@ function ExpensesManagementTab() {
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
                       <Receipt className="w-4 h-4 text-gray-400 mr-2" />
-                      <span className="text-sm font-medium text-gray-900">{expense.ten_chi_phi}</span>
+                      <span className="text-sm font-medium text-gray-900">{expense.ten_chi_phi || expense.mo_ta}</span>
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-red-600">
-                    {(expense.so_tien || 0).toLocaleString('vi-VN')} VND
+                    {(expense.giathanh || 0).toLocaleString('vi-VN')} VND
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {expense.ngay_chi_phi ? new Date(expense.ngay_chi_phi).toLocaleDateString('vi-VN') : 'N/A'}
+                    {expense.created_at ? new Date(expense.created_at).toLocaleDateString('vi-VN') : 'N/A'}
                   </td>
                 </tr>
               ))}

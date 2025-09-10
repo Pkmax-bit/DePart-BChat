@@ -1,6 +1,21 @@
 #!/usr/bin/env python3
 """
-Script để tạo các bảng chi phí trong database
+Script để tạo                            sample_data = {
+                        'id_lcp': category_id,
+                        'giathanh': 1000000.00,
+                        'mo_ta': 'Chi phí mẫu để test hệ thống',
+                        'created_at': '2025-09-10'
+                    }           sample_data = {
+                        'id_lcp': category_id,
+                        'giathanh': 1000000.00,
+                        'mo_ta': 'Chi phí mẫu để test hệ thống',
+                        'created_at': '2025-09-10'
+                    }        sample_data = {
+                        'id_lcp': category_id,
+                        'giathanh': 1000000.00,
+                        'mo_ta': 'Chi phí mẫu để test hệ thống',
+                        'created_at': '2025-09-10'
+                    }g chi phí trong database
 """
 import os
 import sys
@@ -19,14 +34,11 @@ def create_expense_tables():
             create_quanly_chiphi_sql = '''
             CREATE TABLE IF NOT EXISTS quanly_chiphi (
                 id SERIAL PRIMARY KEY,
-                id_loai_chiphi INTEGER REFERENCES loaichiphi(id),
-                ten_chi_phi VARCHAR(255) NOT NULL,
-                so_tien DECIMAL(15,2) NOT NULL,
-                mo_ta TEXT,
-                hinh_chung_minh TEXT,
-                ngay_chi_phi DATE NOT NULL,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                id_lcp INTEGER,
+                giathanh DECIMAL,
+                hinhanh TEXT,
+                created_at TIMESTAMP,
+                mo_ta TEXT
             );
             '''
             supabase.rpc('exec_sql', {'sql': create_quanly_chiphi_sql})
