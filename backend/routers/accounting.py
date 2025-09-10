@@ -334,6 +334,7 @@ async def get_loaichiphi():
                 'id': item['id'],
                 'tenchiphi': item.get('tenchiphi', ''),  # Map tenchiphi -> tenchiphi
                 'loaichiphi': item.get('loaichiphi', ''),  # Map loaichiphi -> loaichiphi
+                'giathanh': item.get('giathanh')  # Add giathanh field
             }
             transformed_data.append(transformed_item)
         return transformed_data
@@ -346,7 +347,8 @@ async def create_loaichiphi(loaichiphi_data: dict):
     try:
         result = supabase.table('loaichiphi').insert({
             'loaichiphi': loaichiphi_data.get('loaichiphi', ''),  # Map loaichiphi -> loaichiphi
-            'tenchiphi': loaichiphi_data['tenchiphi']  # Map tenchiphi -> tenchiphi
+            'tenchiphi': loaichiphi_data['tenchiphi'],  # Map tenchiphi -> tenchiphi
+            'giathanh': loaichiphi_data.get('giathanh')  # Add giathanh field
         }).execute()
         # Transform response to match expected format
         item = result.data[0]
@@ -354,6 +356,7 @@ async def create_loaichiphi(loaichiphi_data: dict):
             'id': item['id'],
             'tenchiphi': item.get('tenchiphi', ''),  # Map back for frontend
             'loaichiphi': item.get('loaichiphi', 'định phí'),  # Use actual value
+            'giathanh': item.get('giathanh')  # Add giathanh field
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error creating loaichiphi: {str(e)}")
@@ -364,7 +367,8 @@ async def update_loaichiphi(loaichiphi_id: int, loaichiphi_data: dict):
     try:
         result = supabase.table('loaichiphi').update({
             'loaichiphi': loaichiphi_data.get('loaichiphi', ''),  # Map loaichiphi -> loaichiphi
-            'tenchiphi': loaichiphi_data['tenchiphi']  # Map tenchiphi -> tenchiphi
+            'tenchiphi': loaichiphi_data['tenchiphi'],  # Map tenchiphi -> tenchiphi
+            'giathanh': loaichiphi_data.get('giathanh')  # Add giathanh field
         }).eq('id', loaichiphi_id).execute()
         # Transform response to match expected format
         item = result.data[0]
@@ -372,6 +376,7 @@ async def update_loaichiphi(loaichiphi_id: int, loaichiphi_data: dict):
             'id': item['id'],
             'tenchiphi': item.get('tenchiphi', ''),  # Map back for frontend
             'loaichiphi': item.get('loaichiphi', 'định phí'),  # Use actual value
+            'giathanh': item.get('giathanh')  # Add giathanh field
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error updating loaichiphi: {str(e)}")
@@ -416,6 +421,7 @@ async def get_quanly_chiphi(month: str = None):
                             'id': loaichiphi_item['id'],
                             'tenchiphi': loaichiphi_item.get('tenchiphi', ''),  # Map tenchiphi -> tenchiphi
                             'loaichiphi': loaichiphi_item.get('loaichiphi', ''),  # Map loaichiphi -> loaichiphi
+                            'giathanh': loaichiphi_item.get('giathanh')  # Add giathanh field
                         }
                 except Exception as e:
                     print(f"Error fetching loaichiphi for id {item['id_lcp']}: {e}")

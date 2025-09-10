@@ -193,6 +193,7 @@ function ExpensesManagementTab({ expenses, expenseCategories, selectedMonth, onE
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState('');
+  const [selectedExpense, setSelectedExpense] = useState(null);
 
   // Handle file selection
   const handleFileSelect = (e) => {
@@ -351,10 +352,19 @@ function ExpensesManagementTab({ expenses, expenseCategories, selectedMonth, onE
   };
 
   const editExpense = (expense) => {
+    // Tìm category tương ứng để áp dụng auto-fill logic
+    const selectedCategory = expenseCategories.find(cat => cat.id.toString() === expense.id_lcp);
+    
+    let autoFillGiathanh = expense.giathanh ? expense.giathanh.toString() : '';
+    // Nếu là định phí và category có giá thành, thì dùng giá thành của category
+    if (selectedCategory && selectedCategory.loaichiphi === 'định phí' && selectedCategory.giathanh) {
+      autoFillGiathanh = selectedCategory.giathanh.toString();
+    }
+    
     setEditingExpense(expense);
     setExpenseForm({
       id_lcp: expense.id_lcp || '',
-      giathanh: expense.giathanh ? expense.giathanh.toString() : '',
+      giathanh: autoFillGiathanh,
       mo_ta: expense.mo_ta || '',
       hinhanh: expense.hinhanh || '',
       created_at: expense.created_at ? new Date(expense.created_at).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]
@@ -392,66 +402,6 @@ function ExpensesManagementTab({ expenses, expenseCategories, selectedMonth, onE
         >
           <Plus className="w-4 h-4" />
           <span>Thêm chi phí</span>
-        </button>
-        <button
-          onClick={async () => {
-            const result = await testNetworkConnectivity();
-            if (result.success) {
-              alert(`✅ ${result.message}`);
-            } else {
-              alert(`❌ ${result.error}`);
-            }
-          }}
-          className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 flex items-center space-x-2 ml-4"
-        >
-          <span>Test Network</span>
-        </button>
-        <button
-          onClick={async () => {
-            const result = await testSupabaseConnection();
-            if (result.success) {
-              alert(`✅ ${result.message}`);
-            } else {
-              alert(`❌ ${result.error}`);
-            }
-          }}
-          className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 flex items-center space-x-2 ml-4"
-        >
-          <span>Test Connection</span>
-        </button>
-        <button
-          onClick={async () => {
-            const result = await testSupabaseStorage();
-            if (result.success) {
-              alert(`✅ Kết nối Supabase Storage thành công!\nBuckets: ${result.buckets?.map(b => b.name).join(', ')}\nFiles in minhchung_chiphi: ${result.files?.length || 0}`);
-            } else {
-              alert(`❌ Lỗi kết nối: ${result.error}\nAvailable buckets: ${result.buckets?.map(b => b.name).join(', ') || 'None'}`);
-            }
-          }}
-          className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center space-x-2 ml-4"
-        >
-          <span>Test Storage</span>
-        </button>
-        <button
-          onClick={async () => {
-            alert('✅ File sẽ được lưu trực tiếp vào root bucket minhchung_chiphi\nKhông cần tạo folder riêng!');
-          }}
-          className="bg-yellow-600 text-white px-4 py-2 rounded-lg hover:bg-yellow-700 flex items-center space-x-2 ml-4"
-        >
-          <span>Info</span>
-        </button>
-        <button
-          onClick={async () => {
-            const result = await testUploadWithPolicies();
-            if (result.success) {
-              alert(`✅ ${result.message}`);
-            } else {
-              alert(`❌ ${result.error}`);
-            }
-          }}
-          className="bg-cyan-600 text-white px-4 py-2 rounded-lg hover:bg-cyan-700 flex items-center space-x-2 ml-4"
-        >
-          <span>Test Upload</span>
         </button>
       </div>
 
@@ -519,7 +469,19 @@ function ExpensesManagementTab({ expenses, expenseCategories, selectedMonth, onE
                 <div className="relative">
                   <select
                     value={expenseForm.id_lcp}
-                    onChange={(e) => setExpenseForm({...expenseForm, id_lcp: e.target.value})}
+                    onChange={(e) => {
+                      const selectedCategoryId = e.target.value;
+                      const selectedCategory = expenseCategories.find(cat => cat.id.toString() === selectedCategoryId);
+                      
+                      let newGiathanh = expenseForm.giathanh;
+                      if (selectedCategory && selectedCategory.loaichiphi === 'định phí' && selectedCategory.giathanh) {
+                        newGiathanh = selectedCategory.giathanh.toString();
+                      } else if (selectedCategory && selectedCategory.loaichiphi === 'biến phí') {
+                        newGiathanh = '';
+                      }
+                      
+                      setExpenseForm({...expenseForm, id_lcp: selectedCategoryId, giathanh: newGiathanh});
+                    }}
                     className="w-full pl-5 pr-12 py-4 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all duration-200 bg-white text-gray-900 text-lg"
                     required
                   >
@@ -786,6 +748,13 @@ function ExpensesManagementTab({ expenses, expenseCategories, selectedMonth, onE
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
+                        <button
+                          onClick={() => setSelectedExpense(expense)}
+                          className="text-green-600 hover:text-green-900 p-1"
+                          title="Xem chi tiết"
+                        >
+                          <Eye className="w-4 h-4" />
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -795,6 +764,188 @@ function ExpensesManagementTab({ expenses, expenseCategories, selectedMonth, onE
           </div>
         )}
       </div>
+
+      {/* Expense Detail Modal */}
+      {selectedExpense && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-8">
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center space-x-3">
+                  <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
+                    <Eye className="w-6 h-6 text-blue-600" />
+                  </div>
+                  <div>
+                    <h3 className="text-2xl font-bold text-gray-900">Chi tiết chi phí</h3>
+                    <p className="text-blue-700 mt-1">Thông tin chi tiết về khoản chi phí</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setSelectedExpense(null)}
+                  className="w-10 h-10 bg-gray-100 hover:bg-gray-200 rounded-xl flex items-center justify-center transition-all duration-200"
+                  title="Đóng"
+                >
+                  <X className="w-5 h-5 text-gray-500" />
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                {/* Expense Information */}
+                <div className="space-y-6">
+                  <div className="bg-gray-50 rounded-xl p-6">
+                    <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                      <Receipt className="w-5 h-5 mr-2 text-gray-600" />
+                      Thông tin chi phí
+                    </h4>
+                    <div className="space-y-4">
+                      <div className="flex justify-between items-center">
+                        <span className="text-gray-600">Loại chi phí:</span>
+                        <span className="font-medium text-gray-900">
+                          {selectedExpense.loaichiphi?.tenchiphi || 'N/A'}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-gray-600">Loại:</span>
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                          selectedExpense.loaichiphi?.loaichiphi === 'định phí' 
+                            ? 'bg-blue-100 text-blue-800' 
+                            : 'bg-green-100 text-green-800'
+                        }`}>
+                          {selectedExpense.loaichiphi?.loaichiphi || 'N/A'}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-gray-600">Số tiền:</span>
+                        <span className="font-bold text-red-600 text-lg">
+                          {(selectedExpense.giathanh || 0).toLocaleString('vi-VN')} VND
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-gray-600">Ngày chi phí:</span>
+                        <span className="font-medium text-gray-900">
+                          {selectedExpense.created_at ? new Date(selectedExpense.created_at).toLocaleDateString('vi-VN') : 'N/A'}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-start">
+                        <span className="text-gray-600">Mô tả:</span>
+                        <span className="font-medium text-gray-900 text-right max-w-xs">
+                          {selectedExpense.mo_ta || 'Không có mô tả'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Category Price Info */}
+                  {selectedExpense.loaichiphi?.loaichiphi === 'định phí' && selectedExpense.loaichiphi?.giathanh && (
+                    <div className="bg-blue-50 rounded-xl p-6 border border-blue-200">
+                      <h4 className="text-lg font-semibold text-blue-900 mb-4 flex items-center">
+                        <DollarSign className="w-5 h-5 mr-2" />
+                        Thông tin giá thành
+                      </h4>
+                      <div className="space-y-3">
+                        <div className="flex justify-between items-center">
+                          <span className="text-blue-700">Giá thành định phí:</span>
+                          <span className="font-bold text-blue-900">
+                            {Number(selectedExpense.loaichiphi.giathanh).toLocaleString('vi-VN')} VND
+                          </span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-blue-700">Chi phí thực tế:</span>
+                          <span className="font-bold text-blue-900">
+                            {(selectedExpense.giathanh || 0).toLocaleString('vi-VN')} VND
+                          </span>
+                        </div>
+                        <div className="flex justify-between items-center pt-2 border-t border-blue-200">
+                          <span className="text-blue-700 font-medium">Chênh lệch:</span>
+                          <span className={`font-bold ${
+                            (selectedExpense.giathanh || 0) > (selectedExpense.loaichiphi.giathanh || 0) 
+                              ? 'text-red-600' 
+                              : (selectedExpense.giathanh || 0) < (selectedExpense.loaichiphi.giathanh || 0)
+                                ? 'text-green-600'
+                                : 'text-gray-600'
+                          }`}>
+                            {((selectedExpense.giathanh || 0) - (selectedExpense.loaichiphi.giathanh || 0)).toLocaleString('vi-VN')} VND
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Image Display */}
+                <div className="space-y-6">
+                  <div className="bg-gray-50 rounded-xl p-6">
+                    <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                      <FileText className="w-5 h-5 mr-2 text-gray-600" />
+                      Hình ảnh minh họa
+                    </h4>
+                    
+                    {selectedExpense.hinhanh ? (
+                      <div className="space-y-4">
+                        <div className="relative">
+                          <img
+                            src={selectedExpense.hinhanh}
+                            alt="Expense proof"
+                            className="w-full h-64 object-cover rounded-xl border border-gray-200 shadow-sm"
+                            onError={(e) => {
+                              e.target.src = '/placeholder-image.png';
+                              e.target.alt = 'Không thể tải hình ảnh';
+                            }}
+                          />
+                        </div>
+                        <div className="flex items-center justify-between text-sm text-gray-600">
+                          <span>Hình ảnh từ storage</span>
+                          <a
+                            href={selectedExpense.hinhanh}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-blue-600 hover:text-blue-800 underline"
+                          >
+                            Xem ảnh gốc
+                          </a>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-center py-12">
+                        <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-4">
+                          <FileText className="w-8 h-8 text-gray-400" />
+                        </div>
+                        <p className="text-gray-500">Không có hình ảnh minh họa</p>
+                        <p className="text-sm text-gray-400 mt-1">Chi phí này chưa được đính kèm hình ảnh</p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Action Buttons */}
+                  <div className="flex space-x-3">
+                    <button
+                      onClick={() => {
+                        editExpense(selectedExpense);
+                        setSelectedExpense(null);
+                      }}
+                      className="flex-1 bg-blue-600 text-white py-3 px-4 rounded-xl hover:bg-blue-700 transition-all duration-200 font-semibold"
+                    >
+                      <div className="flex items-center justify-center">
+                        <Edit className="w-4 h-4 mr-2" />
+                        Chỉnh sửa
+                      </div>
+                    </button>
+                    <button
+                      onClick={() => setSelectedExpense(null)}
+                      className="flex-1 bg-gray-100 text-gray-700 py-3 px-4 rounded-xl hover:bg-gray-200 transition-all duration-200 font-semibold"
+                    >
+                      <div className="flex items-center justify-center">
+                        <X className="w-4 h-4 mr-2" />
+                        Đóng
+                      </div>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -803,7 +954,9 @@ function ExpenseCategoriesTab({ expenseCategories, onCategoryUpdate }) {
   const [showCategoryForm, setShowCategoryForm] = useState(false);
   const [editingCategory, setEditingCategory] = useState(null);
   const [categoryForm, setCategoryForm] = useState({
-    tenchiphi: ''
+    tenchiphi: '',
+    loaichiphi: 'biến phí',
+    giathanh: ''
   });
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -827,13 +980,15 @@ function ExpenseCategoriesTab({ expenseCategories, onCategoryUpdate }) {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          tenchiphi: categoryForm.tenchiphi
+          tenchiphi: categoryForm.tenchiphi,
+          loaichiphi: categoryForm.loaichiphi,
+          giathanh: categoryForm.loaichiphi === 'định phí' ? parseFloat(categoryForm.giathanh) || null : null
         })
       });
 
       if (response.ok) {
         setSuccess(true);
-        setCategoryForm({ tenchiphi: '' });
+        setCategoryForm({ tenchiphi: '', loaichiphi: 'biến phí', giathanh: '' });
         setEditingCategory(null);
         onCategoryUpdate();
 
@@ -877,7 +1032,9 @@ function ExpenseCategoriesTab({ expenseCategories, onCategoryUpdate }) {
   const editCategory = (category) => {
     setEditingCategory(category);
     setCategoryForm({
-      tenchiphi: category.tenchiphi
+      tenchiphi: category.tenchiphi,
+      loaichiphi: category.loaichiphi || 'biến phí',
+      giathanh: category.giathanh ? category.giathanh.toString() : ''
     });
     setError('');
     setSuccess(false);
@@ -907,7 +1064,7 @@ function ExpenseCategoriesTab({ expenseCategories, onCategoryUpdate }) {
             onClick={() => {
               setShowCategoryForm(true);
               setEditingCategory(null);
-              setCategoryForm({ tenchiphi: '' });
+              setCategoryForm({ tenchiphi: '', loaichiphi: 'biến phí', giathanh: '' });
               setError('');
               setSuccess(false);
             }}
@@ -972,7 +1129,7 @@ function ExpenseCategoriesTab({ expenseCategories, onCategoryUpdate }) {
           <form onSubmit={handleCategorySubmit} className="space-y-8">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
               {/* Name Field */}
-              <div className="lg:col-span-2">
+              <div>
                 <label className="block text-sm font-semibold text-gray-800 mb-3 flex items-center">
                   <span className="w-6 h-6 bg-blue-100 rounded-lg flex items-center justify-center mr-3">
                     <span className="text-xs text-blue-600">🏷️</span>
@@ -1000,6 +1157,78 @@ function ExpenseCategoriesTab({ expenseCategories, onCategoryUpdate }) {
                   Nhập tên loại chi phí rõ ràng và dễ hiểu
                 </p>
               </div>
+
+              {/* Type Field */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-800 mb-3 flex items-center">
+                  <span className="w-6 h-6 bg-purple-100 rounded-lg flex items-center justify-center mr-3">
+                    <span className="text-xs text-purple-600">📊</span>
+                  </span>
+                  Loại chi phí
+                  <span className="text-red-500 ml-1">*</span>
+                </label>
+                <div className="relative">
+                  <select
+                    value={categoryForm.loaichiphi}
+                    onChange={(e) => setCategoryForm({...categoryForm, loaichiphi: e.target.value, giathanh: e.target.value === 'biến phí' ? '' : categoryForm.giathanh})}
+                    className="w-full pl-5 pr-12 py-4 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200 bg-white text-gray-900 text-lg"
+                    required
+                  >
+                    <option value="biến phí">Biến phí</option>
+                    <option value="định phí">Định phí</option>
+                  </select>
+                  <div className="absolute right-4 top-4 text-gray-400">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </div>
+                </div>
+                <p className="text-sm text-gray-600 mt-2 flex items-center">
+                  <span className="w-4 h-4 bg-gray-100 rounded-full flex items-center justify-center mr-2">
+                    <span className="text-xs">💡</span>
+                  </span>
+                  Biến phí thay đổi theo sản lượng, định phí cố định
+                </p>
+              </div>
+
+              {/* Price Field - Only show for "định phí" */}
+              {categoryForm.loaichiphi === 'định phí' && (
+                <div className="lg:col-span-2">
+                  <label className="block text-sm font-semibold text-gray-800 mb-3 flex items-center">
+                    <span className="w-6 h-6 bg-yellow-100 rounded-lg flex items-center justify-center mr-3">
+                      <span className="text-xs text-yellow-600">💰</span>
+                    </span>
+                    Giá thành cố định (VND)
+                    <span className="text-red-500 ml-1">*</span>
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={categoryForm.giathanh ? Number(categoryForm.giathanh).toLocaleString('vi-VN') : ''}
+                      onChange={(e) => {
+                        const value = e.target.value.replace(/[.,\s]/g, '');
+                        if (!isNaN(value) && value !== '') {
+                          setCategoryForm({...categoryForm, giathanh: parseFloat(value)});
+                        } else if (value === '') {
+                          setCategoryForm({...categoryForm, giathanh: ''});
+                        }
+                      }}
+                      className="w-full pl-5 pr-12 py-4 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200 bg-white text-gray-900 placeholder-gray-500 text-lg"
+                      placeholder="0"
+                      required={categoryForm.loaichiphi === 'định phí'}
+                    />
+                    <div className="absolute right-4 top-4 text-gray-400">
+                      <DollarSign className="w-6 h-6" />
+                    </div>
+                  </div>
+                  <p className="text-sm text-gray-600 mt-2 flex items-center">
+                    <span className="w-4 h-4 bg-gray-100 rounded-full flex items-center justify-center mr-2">
+                      <span className="text-xs">💡</span>
+                    </span>
+                    Nhập giá thành cố định cho loại chi phí này (ví dụ: 5.000.000)
+                  </p>
+                </div>
+              )}
 
             </div>
 
@@ -1053,6 +1282,14 @@ function ExpenseCategoriesTab({ expenseCategories, onCategoryUpdate }) {
                   <h4 className="font-semibold text-gray-900 text-lg group-hover:text-green-700 transition-colors duration-200">
                     {category.tenchiphi}
                   </h4>
+                  <p className="text-sm text-gray-600 mt-1">
+                    {category.loaichiphi}
+                    {category.loaichiphi === 'định phí' && category.giathanh && (
+                      <span className="ml-2 font-medium text-green-600">
+                        - {Number(category.giathanh).toLocaleString('vi-VN')} VND
+                      </span>
+                    )}
+                  </p>
                 </div>
               </div>
               <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
