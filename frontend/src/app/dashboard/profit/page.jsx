@@ -192,21 +192,36 @@ export default function ProfitPage() {
 
       // Call backend Excel export endpoint
       const response = await fetch(`http://localhost:8001/api/v1/accounting/export_profit_excel/?month=${selectedPeriod}`, {
-        method: 'POST',
+        method: 'GET',
         headers: {
           'Content-Type': 'application/json'
         }
       });
 
       if (response.ok) {
-        const result = await response.json();
-        console.log('Excel export result:', result);
+        // Get filename from response headers
+        const contentDisposition = response.headers.get('content-disposition');
+        let filename = `bao_cao_loi_nhuan_${selectedPeriod || 'all'}.xlsx`;
 
-        if (result.filename) {
-          alert(`Xuất Excel thành công! File: ${result.filename}`);
-        } else {
-          alert('Xuất Excel thành công!');
+        if (contentDisposition) {
+          const filenameMatch = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
+          if (filenameMatch && filenameMatch[1]) {
+            filename = filenameMatch[1].replace(/['"]/g, '');
+          }
         }
+
+        // Create blob and download
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+
+        alert(`Xuất Excel thành công! File: ${filename}`);
       } else {
         const errorData = await response.json();
         console.error('Export error:', errorData);

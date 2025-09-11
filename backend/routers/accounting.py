@@ -822,22 +822,29 @@ async def sync_profit_report(month: str):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error syncing profit report: {str(e)}")
 
-@router.post("/export_profit_excel/")
+@router.get("/export_profit_excel/")
 async def export_profit_excel(month: str = None):
     """Xuất báo cáo lợi nhuận ra file Excel"""
     try:
         import subprocess
         import os
         import time
+        import json
+        from fastapi.responses import FileResponse
 
         # Đường dẫn đến script Python
         script_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "generate_profit_excel.py")
 
+        # Sử dụng Python system executable
+        python_exe = "python"
+
         # Chạy script với timeout để tránh treo
         if month:
-            cmd = ["python", script_path, "--month", month]
+            cmd = [python_exe, script_path, "--month", month]
         else:
-            cmd = ["python", script_path]
+            cmd = [python_exe, script_path]
+
+        print(f"Running command: {' '.join(cmd)}")
 
         # Chạy với timeout 60 giây
         result = subprocess.run(
@@ -848,28 +855,37 @@ async def export_profit_excel(month: str = None):
             cwd=os.path.dirname(script_path)
         )
 
+        print(f"Return code: {result.returncode}")
+        print(f"Stdout: {result.stdout}")
+        if result.stderr:
+            print(f"Stderr: {result.stderr}")
+
         if result.returncode == 0:
-            # Lấy tên file từ output
+            # Parse output để lấy thông tin file
             output_lines = result.stdout.strip().split('\n')
-            filename_line = None
+            filename = None
+            filepath = None
+
             for line in output_lines:
                 if 'SUCCESS:' in line:
-                    filename_line = line
-                    break
+                    filename = line.split('SUCCESS:')[1].strip()
+                elif 'File duoc luu tai:' in line:
+                    filepath = line.split('File duoc luu tai:')[1].strip()
 
-            if filename_line:
-                filename = filename_line.split('SUCCESS:')[1].strip()
-                return {
-                    "message": "Xuất Excel thành công",
-                    "filename": filename,
-                    "filepath": os.path.join(os.path.dirname(script_path), filename)
-                }
+            if filename and filepath and os.path.exists(filepath):
+                # Trả về file Excel trực tiếp để download
+                return FileResponse(
+                    path=filepath,
+                    filename=filename,
+                    media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+                )
             else:
-                return {"message": "Xuất Excel thành công", "output": result.stdout}
+                raise HTTPException(status_code=500, detail=f"Khong tim thay file Excel da tao")
         else:
-            raise HTTPException(status_code=500, detail=f"Lỗi khi xuất Excel: {result.stderr}")
+            raise HTTPException(status_code=500, detail=f"Loi khi xuat Excel: {result.stderr}")
 
     except subprocess.TimeoutExpired:
-        raise HTTPException(status_code=500, detail="Quá thời gian chờ xuất Excel")
+        raise HTTPException(status_code=500, detail="Qua thoi gian cho xuat Excel")
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Lỗi xuất Excel: {str(e)}")
+        print(f"Exception in export_profit_excel: {e}")
+        raise HTTPException(status_code=500, detail=f"Loi xuat Excel: {str(e)}")
