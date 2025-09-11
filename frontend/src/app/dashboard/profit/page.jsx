@@ -11,7 +11,9 @@ const supabase = createClientComponentClient();
 export default function ProfitPage() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [syncing, setSyncing] = useState(false);
   const [selectedPeriod, setSelectedPeriod] = useState(new Date().toISOString().slice(0, 7));
+  const [allProfitData, setAllProfitData] = useState([]);
   const [revenueData, setRevenueData] = useState([]);
   const [expenseData, setExpenseData] = useState([]);
   const [profitData, setProfitData] = useState([]);
@@ -20,17 +22,27 @@ export default function ProfitPage() {
     totalExpenses: 0,
     totalProfit: 0,
     profitMargin: 0,
+    invoiceCount: 0,
+    expenseCount: 0,
+    productCount: 0,
     revenueGrowth: 0,
     expenseGrowth: 0
   });
 
   useEffect(() => {
     const getUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      setUser(user);
-      setLoading(false);
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        setUser(user);
+        setLoading(false);
 
-      if (user) {
+        // Always try to load data, regardless of authentication status
+        await loadData();
+      } catch (error) {
+        console.error('Auth error:', error);
+        setUser(null);
+        setLoading(false);
+        // Still try to load data even if auth fails
         await loadData();
       }
     };
@@ -39,14 +51,65 @@ export default function ProfitPage() {
 
   const loadData = async () => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
+      // Load all profit reports from the new endpoint
+      const profitReportsResponse = await fetch('http://localhost:8001/api/v1/accounting/profits/', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
 
-      const headers = { Authorization: `Bearer ${session.access_token}` };
+      if (profitReportsResponse.ok) {
+        const profitReports = await profitReportsResponse.json();
+        setAllProfitData(profitReports);
 
+        // Find data for selected period
+        const selectedMonthData = profitReports.find(report => report.report_month === selectedPeriod);
+
+        if (selectedMonthData) {
+          setProfitData([{
+            month: selectedPeriod,
+            revenue: selectedMonthData.total_revenue,
+            expenses: selectedMonthData.total_expenses,
+            profit: selectedMonthData.total_profit,
+            profitMargin: selectedMonthData.profit_margin
+          }]);
+          setSummaryStats({
+            totalRevenue: selectedMonthData.total_revenue,
+            totalExpenses: selectedMonthData.total_expenses,
+            totalProfit: selectedMonthData.total_profit,
+            profitMargin: selectedMonthData.profit_margin,
+            invoiceCount: selectedMonthData.invoice_count,
+            expenseCount: selectedMonthData.expense_count,
+            productCount: selectedMonthData.product_count,
+            revenueGrowth: 0,
+            expenseGrowth: 0
+          });
+        } else {
+          // If no data for selected month, load from detailed endpoint
+          await loadDetailedData();
+        }
+      } else {
+        // Fallback to detailed endpoint if profit reports endpoint fails
+        await loadDetailedData();
+      }
+    } catch (error) {
+      console.error('Error loading data:', error);
+      setRevenueData([]);
+      setExpenseData([]);
+      setProfitData([]);
+      setAllProfitData([]);
+    }
+  };
+
+  const loadDetailedData = async () => {
+    try {
       // Load profit report data from single endpoint
       const profitResponse = await fetch(`http://localhost:8001/api/v1/accounting/profit/?month=${selectedPeriod}`, {
-        headers
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json'
+        }
       });
 
       if (profitResponse.ok) {
@@ -66,6 +129,9 @@ export default function ProfitPage() {
           totalExpenses: profitData.summary.total_expenses,
           totalProfit: profitData.summary.total_profit,
           profitMargin: profitData.summary.profit_margin,
+          invoiceCount: profitData.summary.revenue_count || 0,
+          expenseCount: profitData.summary.expense_count || 0,
+          productCount: 0, // This might not be available in detailed data
           revenueGrowth: 0,
           expenseGrowth: 0
         });
@@ -76,20 +142,76 @@ export default function ProfitPage() {
         setProfitData([]);
       }
     } catch (error) {
-      console.error('Error loading data:', error);
+      console.error('Error loading detailed data:', error);
       setRevenueData([]);
       setExpenseData([]);
       setProfitData([]);
     }
   };
 
+  const syncAllData = async () => {
+    try {
+      setSyncing(true);
+
+      // Call sync all endpoint
+      const syncResponse = await fetch('http://localhost:8001/api/v1/accounting/profits/sync_all/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (syncResponse.ok) {
+        const syncResult = await syncResponse.json();
+        console.log('Sync completed:', syncResult);
+        alert(`Đã đồng bộ ${syncResult.months_processed} tháng thành công!`);
+        // Reload data after sync
+        await loadData();
+      } else {
+        console.error('Error syncing data');
+        alert('Lỗi khi đồng bộ dữ liệu');
+      }
+    } catch (error) {
+      console.error('Error syncing data:', error);
+      alert('Lỗi khi đồng bộ dữ liệu');
+    } finally {
+      setSyncing(false);
+    }
+  };
+
   const exportToExcel = () => {
-    if (revenueData.length === 0 && expenseData.length === 0) {
+    if (allProfitData.length === 0 && revenueData.length === 0 && expenseData.length === 0) {
       alert('Không có dữ liệu để xuất');
       return;
     }
 
     const wb = XLSX.utils.book_new();
+
+    // Profit summary sheet for all months
+    if (allProfitData.length > 0) {
+      const profitSummaryData = [
+        ['BÁO CÁO LỢI NHUẬN TẤT CẢ CÁC THÁNG'],
+        [],
+        ['Tháng', 'Doanh thu', 'Chi phí', 'Lợi nhuận', 'Tỷ suất lợi nhuận (%)', 'Số hóa đơn', 'Số chi phí', 'Số sản phẩm', 'Trạng thái', 'Ngày cập nhật'],
+        ...allProfitData.slice().reverse().map(report => [
+          report.report_month,
+          report.total_revenue,
+          report.total_expenses,
+          report.total_profit,
+          report.profit_margin.toFixed(2),
+          report.invoice_count,
+          report.expense_count,
+          report.product_count,
+          report.total_profit >= 0 ? 'Lợi nhuận' : 'Lỗ',
+          new Date(report.updated_at).toLocaleDateString('vi-VN')
+        ]),
+        [],
+        ['TỔNG CỘNG', '', '', '', '', '', '', '', '']
+      ];
+
+      const profitWs = XLSX.utils.aoa_to_sheet(profitSummaryData);
+      XLSX.utils.book_append_sheet(wb, profitWs, 'Tong_hop_Loi_nhuan');
+    }
 
     // Revenue sheet
     const revenueSheetData = [
@@ -125,7 +247,7 @@ export default function ProfitPage() {
       ['TỔNG CHI PHÍ', '', '', '', summaryStats.totalExpenses]
     ];
 
-    // Profit summary sheet
+    // Profit summary sheet for selected month
     const profitSheetData = [
       ['BÁO CÁO LỢI NHUẬN THÁNG ' + selectedPeriod],
       [],
@@ -146,7 +268,7 @@ export default function ProfitPage() {
     XLSX.utils.book_append_sheet(wb, expenseWs, 'Chi_Phi');
     XLSX.utils.book_append_sheet(wb, profitWs, 'Loi_Nhuan');
 
-    XLSX.writeFile(wb, `BaoCao_LoiNhuan_Thang_${selectedPeriod}.xlsx`);
+    XLSX.writeFile(wb, `BaoCao_LoiNhuan_${selectedPeriod}.xlsx`);
   };
 
   const exportToPDF = () => {
@@ -197,28 +319,40 @@ export default function ProfitPage() {
           <div class="summary">
             <h3>Tóm tắt</h3>
             <p><strong>Tỷ suất lợi nhuận:</strong> ${summaryStats.profitMargin.toFixed(2)}%</p>
+            <p><strong>Số hóa đơn:</strong> ${summaryStats.invoiceCount}</p>
+            <p><strong>Số chi phí:</strong> ${summaryStats.expenseCount}</p>
+            <p><strong>Số sản phẩm:</strong> ${summaryStats.productCount}</p>
+            <p><strong>Lợi nhuận/Hóa đơn:</strong> ${summaryStats.invoiceCount > 0 ? (summaryStats.totalProfit / summaryStats.invoiceCount).toLocaleString('vi-VN') : 0} VND</p>
             <p><strong>Trạng thái:</strong> ${summaryStats.totalProfit >= 0 ? 'LỢI NHUẬN' : 'LỖ'}</p>
           </div>
 
-          <h3>Chi tiết doanh thu</h3>
+          <h3>Báo cáo lợi nhuận tất cả các tháng</h3>
           <table>
             <thead>
               <tr>
-                <th>STT</th>
-                <th>Khách hàng</th>
-                <th>Ngày</th>
-                <th>Số sản phẩm</th>
-                <th>Tổng tiền</th>
+                <th>Tháng</th>
+                <th>Doanh thu</th>
+                <th>Chi phí</th>
+                <th>Lợi nhuận</th>
+                <th>Tỷ suất (%)</th>
+                <th>Hóa đơn</th>
+                <th>Chi phí</th>
+                <th>Sản phẩm</th>
+                <th>Trạng thái</th>
               </tr>
             </thead>
             <tbody>
-              ${revenueData.map((inv, index) => `
+              ${allProfitData.slice().reverse().map(report => `
                 <tr>
-                  <td>${index + 1}</td>
-                  <td>${inv.customer_name}</td>
-                  <td>${new Date(inv.invoice_date).toLocaleDateString('vi-VN')}</td>
-                  <td>${inv.items?.length || 0}</td>
-                  <td>${(inv.total_amount || 0).toLocaleString('vi-VN')} VND</td>
+                  <td>${report.report_month}</td>
+                  <td>${report.total_revenue.toLocaleString('vi-VN')} VND</td>
+                  <td>${report.total_expenses.toLocaleString('vi-VN')} VND</td>
+                  <td>${report.total_profit.toLocaleString('vi-VN')} VND</td>
+                  <td>${report.profit_margin.toFixed(2)}%</td>
+                  <td>${report.invoice_count}</td>
+                  <td>${report.expense_count}</td>
+                  <td>${report.product_count}</td>
+                  <td>${report.total_profit >= 0 ? 'Lợi nhuận' : 'Lỗ'}</td>
                 </tr>
               `).join('')}
             </tbody>
@@ -325,6 +459,14 @@ export default function ProfitPage() {
 
             <div className="flex items-center space-x-2">
               <button
+                onClick={syncAllData}
+                disabled={syncing}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-blue-400 flex items-center space-x-2"
+              >
+                <RefreshCw className={`w-4 h-4 ${syncing ? 'animate-spin' : ''}`} />
+                <span>{syncing ? 'Đang đồng bộ...' : 'Đồng bộ dữ liệu'}</span>
+              </button>
+              <button
                 onClick={exportToExcel}
                 className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center space-x-2"
               >
@@ -333,7 +475,7 @@ export default function ProfitPage() {
               </button>
               <button
                 onClick={exportToPDF}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center space-x-2"
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 flex items-center space-x-2"
               >
                 <Printer className="w-4 h-4" />
                 <span>Xuất PDF</span>
@@ -346,7 +488,7 @@ export default function ProfitPage() {
       {/* Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <div className="bg-white rounded-xl shadow-sm border p-6">
             <div className="flex items-center">
               <div className="p-3 bg-green-100 rounded-lg">
@@ -355,6 +497,7 @@ export default function ProfitPage() {
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">Tổng doanh thu</p>
                 <p className="text-2xl font-bold text-green-600">{summaryStats.totalRevenue.toLocaleString('vi-VN')} VND</p>
+                <p className="text-xs text-gray-500 mt-1">{summaryStats.invoiceCount || 0} hóa đơn</p>
               </div>
             </div>
           </div>
@@ -367,6 +510,7 @@ export default function ProfitPage() {
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">Tổng chi phí</p>
                 <p className="text-2xl font-bold text-red-600">{summaryStats.totalExpenses.toLocaleString('vi-VN')} VND</p>
+                <p className="text-xs text-gray-500 mt-1">{summaryStats.expenseCount || 0} khoản chi</p>
               </div>
             </div>
           </div>
@@ -381,6 +525,7 @@ export default function ProfitPage() {
                 <p className={`text-2xl font-bold ${summaryStats.totalProfit >= 0 ? 'text-blue-600' : 'text-red-600'}`}>
                   {summaryStats.totalProfit.toLocaleString('vi-VN')} VND
                 </p>
+                <p className="text-xs text-gray-500 mt-1">Tháng {selectedPeriod}</p>
               </div>
             </div>
           </div>
@@ -395,6 +540,7 @@ export default function ProfitPage() {
                 <p className={`text-2xl font-bold ${summaryStats.profitMargin >= 0 ? 'text-purple-600' : 'text-red-600'}`}>
                   {summaryStats.profitMargin.toFixed(2)}%
                 </p>
+                <p className="text-xs text-gray-500 mt-1">{summaryStats.productCount || 0} sản phẩm</p>
               </div>
             </div>
           </div>
@@ -447,6 +593,103 @@ export default function ProfitPage() {
                 <Legend />
               </PieChart>
             </ResponsiveContainer>
+          </div>
+        </div>
+
+        {/* Performance Metrics */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+          {/* Monthly Performance */}
+          <div className="bg-white rounded-xl shadow-sm border p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+              <BarChart3 className="w-5 h-5 mr-2 text-blue-600" />
+              Hiệu suất tháng {selectedPeriod}
+            </h3>
+            <div className="space-y-4">
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-gray-600">Số hóa đơn:</span>
+                <span className="text-sm font-semibold text-blue-600">{summaryStats.invoiceCount}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-gray-600">Số chi phí:</span>
+                <span className="text-sm font-semibold text-red-600">{summaryStats.expenseCount}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-gray-600">Sản phẩm:</span>
+                <span className="text-sm font-semibold text-purple-600">{summaryStats.productCount}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-gray-600">Lợi nhuận/Hóa đơn:</span>
+                <span className="text-sm font-semibold text-green-600">
+                  {summaryStats.invoiceCount > 0 ? (summaryStats.totalProfit / summaryStats.invoiceCount).toLocaleString('vi-VN') : 0} VND
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Profit Analysis */}
+          <div className="bg-white rounded-xl shadow-sm border p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+              <Target className="w-5 h-5 mr-2 text-green-600" />
+              Phân tích lợi nhuận
+            </h3>
+            <div className="space-y-4">
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-gray-600">Tỷ suất lợi nhuận:</span>
+                <span className={`text-sm font-semibold ${summaryStats.profitMargin >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                  {summaryStats.profitMargin.toFixed(2)}%
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-gray-600">Chi phí/Doanh thu:</span>
+                <span className="text-sm font-semibold text-orange-600">
+                  {summaryStats.totalRevenue > 0 ? ((summaryStats.totalExpenses / summaryStats.totalRevenue) * 100).toFixed(2) : 0}%
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-gray-600">Trạng thái:</span>
+                <span className={`text-sm font-semibold ${summaryStats.totalProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                  {summaryStats.totalProfit >= 0 ? 'Có lãi' : 'Lỗ'}
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-gray-600">Hiệu quả:</span>
+                <span className={`text-sm font-semibold ${summaryStats.profitMargin >= 20 ? 'text-green-600' : summaryStats.profitMargin >= 10 ? 'text-yellow-600' : 'text-red-600'}`}>
+                  {summaryStats.profitMargin >= 20 ? 'Xuất sắc' : summaryStats.profitMargin >= 10 ? 'Tốt' : 'Cần cải thiện'}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Data Summary */}
+          <div className="bg-white rounded-xl shadow-sm border p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+              <FileText className="w-5 h-5 mr-2 text-purple-600" />
+              Tổng quan dữ liệu
+            </h3>
+            <div className="space-y-4">
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-gray-600">Tháng báo cáo:</span>
+                <span className="text-sm font-semibold text-gray-900">{allProfitData.length}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-gray-600">Tháng có lãi:</span>
+                <span className="text-sm font-semibold text-green-600">
+                  {allProfitData.filter(report => report.total_profit >= 0).length}
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-gray-600">Tháng lỗ:</span>
+                <span className="text-sm font-semibold text-red-600">
+                  {allProfitData.filter(report => report.total_profit < 0).length}
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-gray-600">Tỷ lệ thành công:</span>
+                <span className="text-sm font-semibold text-blue-600">
+                  {allProfitData.length > 0 ? ((allProfitData.filter(report => report.total_profit >= 0).length / allProfitData.length) * 100).toFixed(1) : 0}%
+                </span>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -553,23 +796,104 @@ export default function ProfitPage() {
           </div>
         </div>
 
+        {/* All Profit Reports Table */}
+        {allProfitData.length > 0 && (
+          <div className="bg-white rounded-xl shadow-sm border p-6 mt-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+              <FileText className="w-5 h-5 mr-2 text-blue-600" />
+              Báo cáo lợi nhuận tất cả các tháng
+            </h3>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Tháng</th>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Doanh thu</th>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Chi phí</th>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Lợi nhuận</th>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Tỷ suất (%)</th>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Hóa đơn</th>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Chi phí</th>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Sản phẩm</th>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Trạng thái</th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {allProfitData.slice().reverse().map((report, index) => (
+                    <tr key={index} className={`hover:bg-gray-50 ${report.report_month === selectedPeriod ? 'bg-blue-50' : ''}`}>
+                      <td className="px-4 py-2 whitespace-nowrap text-sm font-medium text-gray-900">
+                        {report.report_month}
+                      </td>
+                      <td className="px-4 py-2 whitespace-nowrap text-sm text-green-600">
+                        {report.total_revenue.toLocaleString('vi-VN')}
+                      </td>
+                      <td className="px-4 py-2 whitespace-nowrap text-sm text-red-600">
+                        {report.total_expenses.toLocaleString('vi-VN')}
+                      </td>
+                      <td className={`px-4 py-2 whitespace-nowrap text-sm font-medium ${report.total_profit >= 0 ? 'text-blue-600' : 'text-red-600'}`}>
+                        {report.total_profit.toLocaleString('vi-VN')}
+                      </td>
+                      <td className={`px-4 py-2 whitespace-nowrap text-sm ${report.profit_margin >= 0 ? 'text-purple-600' : 'text-red-600'}`}>
+                        {report.profit_margin.toFixed(2)}%
+                      </td>
+                      <td className="px-4 py-2 whitespace-nowrap text-sm text-center text-gray-500">
+                        {report.invoice_count}
+                      </td>
+                      <td className="px-4 py-2 whitespace-nowrap text-sm text-center text-gray-500">
+                        {report.expense_count}
+                      </td>
+                      <td className="px-4 py-2 whitespace-nowrap text-sm text-center text-gray-500">
+                        {report.product_count}
+                      </td>
+                      <td className="px-4 py-2 whitespace-nowrap">
+                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${report.total_profit >= 0 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                          {report.total_profit >= 0 ? 'Lợi nhuận' : 'Lỗ'}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
         {/* Summary Footer */}
         <div className="bg-white rounded-xl shadow-sm border p-6 mt-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Tóm tắt tháng {selectedPeriod}</h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+            <Award className="w-5 h-5 mr-2 text-yellow-600" />
+            Tóm tắt tổng thể tháng {selectedPeriod}
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
             <div className="text-center p-4 bg-green-50 rounded-lg">
-              <p className="text-2xl font-bold text-green-600">{revenueData.length}</p>
+              <p className="text-2xl font-bold text-green-600">{summaryStats.invoiceCount}</p>
               <p className="text-sm text-gray-600">Tổng hóa đơn</p>
+              <p className="text-xs text-gray-500 mt-1">
+                Trung bình: {(summaryStats.invoiceCount > 0 ? summaryStats.totalRevenue / summaryStats.invoiceCount : 0).toLocaleString('vi-VN')} VND/đơn
+              </p>
             </div>
             <div className="text-center p-4 bg-red-50 rounded-lg">
-              <p className="text-2xl font-bold text-red-600">{expenseData.length}</p>
+              <p className="text-2xl font-bold text-red-600">{summaryStats.expenseCount}</p>
               <p className="text-sm text-gray-600">Tổng khoản chi phí</p>
+              <p className="text-xs text-gray-500 mt-1">
+                Trung bình: {(summaryStats.expenseCount > 0 ? summaryStats.totalExpenses / summaryStats.expenseCount : 0).toLocaleString('vi-VN')} VND/khoản
+              </p>
+            </div>
+            <div className="text-center p-4 bg-purple-50 rounded-lg">
+              <p className="text-2xl font-bold text-purple-600">{summaryStats.productCount}</p>
+              <p className="text-sm text-gray-600">Tổng sản phẩm</p>
+              <p className="text-xs text-gray-500 mt-1">
+                Trong kho
+              </p>
             </div>
             <div className={`text-center p-4 rounded-lg ${summaryStats.totalProfit >= 0 ? 'bg-blue-50' : 'bg-red-50'}`}>
               <p className={`text-2xl font-bold ${summaryStats.totalProfit >= 0 ? 'text-blue-600' : 'text-red-600'}`}>
                 {summaryStats.profitMargin.toFixed(2)}%
               </p>
               <p className="text-sm text-gray-600">Tỷ suất lợi nhuận</p>
+              <p className={`text-xs mt-1 ${summaryStats.profitMargin >= 20 ? 'text-green-600' : summaryStats.profitMargin >= 10 ? 'text-yellow-600' : 'text-red-600'}`}>
+                {summaryStats.profitMargin >= 20 ? 'Xuất sắc' : summaryStats.profitMargin >= 10 ? 'Tốt' : 'Cần cải thiện'}
+              </p>
             </div>
           </div>
         </div>

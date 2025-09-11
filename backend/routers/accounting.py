@@ -1,8 +1,9 @@
 from fastapi import APIRouter, HTTPException
 from supabase_client import supabase
 from typing import List
+from datetime import datetime
 
-router = APIRouter()
+router = APIRouter(prefix="/accounting")
 
 @router.get("/loainhom/")
 async def get_loainhom():
@@ -641,3 +642,281 @@ async def get_profit_report(month: str = None):
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error fetching profit report: {str(e)}")
+
+@router.get("/profits/")
+async def get_profit_reports(month: str = None):
+    """Lấy danh sách báo cáo lợi nhuận (sort bằng Python thay vì database index)"""
+    try:
+        query = supabase.table('profits').select('*')
+
+        if month:
+            query = query.eq('report_month', month)
+
+        result = query.execute()
+
+        # Sort bằng Python thay vì database index
+        if month:
+            # Nếu filter theo tháng, sort theo created_at
+            sorted_data = sorted(result.data, key=lambda x: x.get('created_at', ''), reverse=True)
+        else:
+            # Nếu không filter, sort theo report_month
+            sorted_data = sorted(result.data, key=lambda x: x.get('report_month', ''), reverse=True)
+
+        return sorted_data
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching profit reports: {str(e)}")
+
+@router.post("/profits/")
+async def create_profit_report(report_data: dict):
+    """Tạo báo cáo lợi nhuận mới"""
+    try:
+        result = supabase.table('profits').insert({
+            'report_month': report_data['report_month'],
+            'total_revenue': report_data.get('total_revenue', 0),
+            'total_expenses': report_data.get('total_expenses', 0),
+            'total_profit': report_data.get('total_profit', 0),
+            'profit_margin': report_data.get('profit_margin', 0),
+            'invoice_count': report_data.get('invoice_count', 0),
+            'expense_count': report_data.get('expense_count', 0),
+            'product_count': report_data.get('product_count', 0),
+            'updated_at': 'now()'
+        }).execute()
+        return result.data[0]
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error creating profit report: {str(e)}")
+
+@router.put("/profits/{report_id}")
+async def update_profit_report(report_id: int, report_data: dict):
+    """Cập nhật báo cáo lợi nhuận"""
+    try:
+        result = supabase.table('profits').update({
+            'total_revenue': report_data.get('total_revenue'),
+            'total_expenses': report_data.get('total_expenses'),
+            'total_profit': report_data.get('total_profit'),
+            'profit_margin': report_data.get('profit_margin'),
+            'invoice_count': report_data.get('invoice_count'),
+            'expense_count': report_data.get('expense_count'),
+            'product_count': report_data.get('product_count'),
+            'updated_at': 'now()'
+        }).eq('id', report_id).execute()
+        return result.data[0]
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error updating profit report: {str(e)}")
+
+@router.delete("/profits/{report_id}")
+async def delete_profit_report(report_id: int):
+    """Xóa báo cáo lợi nhuận"""
+    try:
+        result = supabase.table('profits').delete().eq('id', report_id).execute()
+        return {"message": "Profit report deleted successfully"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error deleting profit report: {str(e)}")
+
+@router.post("/profits/generate/{month}")
+async def generate_profit_report(month: str):
+    """Tự động tạo báo cáo lợi nhuận cho tháng cụ thể"""
+    try:
+        # Kiểm tra xem đã có báo cáo cho tháng này chưa
+        existing = supabase.table('profits').select('*').eq('report_month', month).execute()
+        if existing.data:
+            raise HTTPException(status_code=400, detail=f"Profit report for {month} already exists")
+
+        # Lấy dữ liệu doanh thu
+        start_date = f"{month}-01"
+        year, month_num = map(int, month.split('-'))
+        if month_num == 12:
+            end_date = f"{year + 1}-01-01"
+        else:
+            end_date = f"{year}-{month_num + 1:02d}-01"
+
+        revenue_result = supabase.table('invoices').select('*').gte('invoice_date', start_date).lt('invoice_date', end_date).execute()
+        total_revenue = sum(invoice['total_amount'] or 0 for invoice in revenue_result.data)
+
+        # Lấy dữ liệu chi phí
+        expense_result = supabase.table('quanly_chiphi').select('*').gte('created_at', start_date).lt('created_at', end_date).execute()
+        total_expenses = sum(expense['giathanh'] or 0 for expense in expense_result.data)
+
+        # Lấy số lượng sản phẩm
+        product_result = supabase.table('sanpham').select('id', count='exact').execute()
+        product_count = product_result.count or 0
+
+        # Tính lợi nhuận
+        total_profit = total_revenue - total_expenses
+        profit_margin = (total_profit / total_revenue * 100) if total_revenue > 0 else 0
+
+        # Tạo báo cáo
+        result = supabase.table('profits').insert({
+            'report_month': month,
+            'total_revenue': total_revenue,
+            'total_expenses': total_expenses,
+            'total_profit': total_profit,
+            'profit_margin': profit_margin,
+            'invoice_count': len(revenue_result.data),
+            'expense_count': len(expense_result.data),
+            'product_count': product_count,
+            'updated_at': 'now()'
+        }).execute()
+
+        return result.data[0]
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error generating profit report: {str(e)}")
+
+@router.put("/profits/sync/{month}")
+async def sync_profit_report(month: str):
+    """Đồng bộ lại báo cáo lợi nhuận cho tháng cụ thể"""
+    try:
+        # Lấy dữ liệu doanh thu
+        start_date = f"{month}-01"
+        year, month_num = map(int, month.split('-'))
+        if month_num == 12:
+            end_date = f"{year + 1}-01-01"
+        else:
+            end_date = f"{year}-{month_num + 1:02d}-01"
+
+        revenue_result = supabase.table('invoices').select('*').gte('invoice_date', start_date).lt('invoice_date', end_date).execute()
+        total_revenue = sum(invoice['total_amount'] or 0 for invoice in revenue_result.data)
+
+        # Lấy dữ liệu chi phí
+        expense_result = supabase.table('quanly_chiphi').select('*').gte('created_at', start_date).lt('created_at', end_date).execute()
+        total_expenses = sum(expense['giathanh'] or 0 for expense in expense_result.data)
+
+        # Lấy số lượng sản phẩm
+        product_result = supabase.table('sanpham').select('id', count='exact').execute()
+        product_count = product_result.count or 0
+
+        # Tính lợi nhuận
+        total_profit = total_revenue - total_expenses
+        profit_margin = (total_profit / total_revenue * 100) if total_revenue > 0 else 0
+
+        # Cập nhật hoặc tạo mới
+        existing = supabase.table('profits').select('*').eq('report_month', month).execute()
+        if existing.data:
+            # Cập nhật
+            result = supabase.table('profits').update({
+                'total_revenue': total_revenue,
+                'total_expenses': total_expenses,
+                'total_profit': total_profit,
+                'profit_margin': profit_margin,
+                'invoice_count': len(revenue_result.data),
+                'expense_count': len(expense_result.data),
+                'product_count': product_count,
+                'updated_at': 'now()'
+            }).eq('report_month', month).execute()
+        else:
+            # Tạo mới
+            result = supabase.table('profits').insert({
+                'report_month': month,
+                'total_revenue': total_revenue,
+                'total_expenses': total_expenses,
+                'total_profit': total_profit,
+                'profit_margin': profit_margin,
+                'invoice_count': len(revenue_result.data),
+                'expense_count': len(expense_result.data),
+                'product_count': product_count,
+                'updated_at': 'now()'
+            }).execute()
+
+        return result.data[0]
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error syncing profit report: {str(e)}")
+
+@router.post("/profits/sync_all/")
+async def sync_all_profit_reports():
+    """Đồng bộ tất cả báo cáo lợi nhuận cho các tháng có dữ liệu"""
+    try:
+        # Lấy tất cả các tháng có dữ liệu doanh thu hoặc chi phí
+        revenue_months = set()
+        try:
+            revenue_result = supabase.table('invoices').select('invoice_date').execute()
+            for row in revenue_result.data:
+                if row['invoice_date']:
+                    month = row['invoice_date'][:7]  # YYYY-MM
+                    revenue_months.add(month)
+        except Exception as e:
+            print(f"Error getting revenue months: {e}")
+
+        # Lấy các tháng có dữ liệu chi phí
+        expense_months = set()
+        try:
+            expense_result = supabase.table('quanly_chiphi').select('created_at').execute()
+            for row in expense_result.data:
+                if row['created_at']:
+                    month = row['created_at'][:7]  # YYYY-MM
+                    expense_months.add(month)
+        except Exception as e:
+            print(f"Error getting expense months: {e}")
+
+        # Kết hợp tất cả các tháng và sắp xếp
+        all_months = sorted(list(revenue_months | expense_months), reverse=True)
+
+        if not all_months:
+            return {"message": "Không có dữ liệu để đồng bộ", "months_processed": 0}
+
+        processed_months = []
+
+        for month in all_months:
+            try:
+                print(f"Processing month: {month}")
+
+                # Tính ngày bắt đầu và kết thúc của tháng
+                start_date = f"{month}-01"
+                year, month_num = map(int, month.split('-'))
+                if month_num == 12:
+                    end_date = f"{year + 1}-01-01"
+                else:
+                    end_date = f"{year}-{month_num + 1:02d}-01"
+
+                # Tính doanh thu
+                revenue_result = supabase.table('invoices').select('total_amount').gte('invoice_date', start_date).lt('invoice_date', end_date).execute()
+                total_revenue = sum(float(row['total_amount'] or 0) for row in revenue_result.data)
+                invoice_count = len(revenue_result.data)
+
+                # Tính chi phí
+                expense_result = supabase.table('quanly_chiphi').select('giathanh').gte('created_at', start_date).lt('created_at', end_date).execute()
+                total_expenses = sum(float(row['giathanh'] or 0) for row in expense_result.data)
+                expense_count = len(expense_result.data)
+
+                # Lấy số lượng sản phẩm
+                product_result = supabase.table('sanpham').select('id', count='exact').execute()
+                product_count = product_result.count or 0
+
+                # Tính lợi nhuận
+                total_profit = total_revenue - total_expenses
+                profit_margin = (total_profit / total_revenue * 100) if total_revenue > 0 else 0
+
+                # Upsert vào bảng profits
+                data = {
+                    'report_month': month,
+                    'total_revenue': total_revenue,
+                    'total_expenses': total_expenses,
+                    'total_profit': total_profit,
+                    'profit_margin': profit_margin,
+                    'invoice_count': invoice_count,
+                    'expense_count': expense_count,
+                    'product_count': product_count,
+                    'updated_at': datetime.now().isoformat()
+                }
+
+                result = supabase.table('profits').upsert(data, on_conflict='report_month').execute()
+                processed_months.append({
+                    'month': month,
+                    'revenue': total_revenue,
+                    'expenses': total_expenses,
+                    'profit': total_profit
+                })
+
+            except Exception as e:
+                print(f"Error processing month {month}: {e}")
+                continue
+
+        return {
+            "message": f"Đã đồng bộ {len(processed_months)} tháng",
+            "months_processed": len(processed_months),
+            "total_months_found": len(all_months),
+            "processed_months": processed_months
+        }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error syncing all profit reports: {str(e)}")
