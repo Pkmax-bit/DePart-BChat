@@ -9,7 +9,7 @@ import { uploadExpenseImage, deleteExpenseImage, testSupabaseStorage, testSupaba
 
 const supabase = createClientComponentClient();
 
-function ExpensesLayout({ user, activeTab, onTabChange, children }) {
+function ExpensesLayout({ user, activeTab, onTabChange, selectedMonth, onMonthChange, children }) {
   const tabs = [
     { id: 'overview', label: 'Tổng quan', icon: BarChart3 },
     { id: 'expenses', label: 'Chi phí', icon: Receipt },
@@ -29,12 +29,46 @@ function ExpensesLayout({ user, activeTab, onTabChange, children }) {
             <div className="flex items-center space-x-4">
               <div className="text-right">
                 <p className="text-sm text-gray-600">Xin chào</p>
-                <p className="text-lg font-semibold text-gray-900">{user?.email || user?.username || 'User'}</p>
+                <p className="text-lg font-semibold text-gray-900">{user?.email || user?.username || 'Người dùng'}</p>
               </div>
               <div className="flex items-center space-x-2">
                 <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-                <span className="text-sm text-gray-600">Online</span>
+                <span className="text-sm text-gray-600">Trực tuyến</span>
               </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Month Filter */}
+      <div className="bg-white shadow-sm border-b">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between py-4 space-y-4 sm:space-y-0">
+            <div className="flex items-center space-x-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center">
+                  <Calendar className="w-4 h-4 mr-2 text-gray-500" />
+                  Chọn tháng
+                </label>
+                <input
+                  type="month"
+                  value={selectedMonth}
+                  onChange={(e) => onMonthChange(e.target.value)}
+                  className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent text-black bg-white"
+                />
+              </div>
+              <div className="flex items-end">
+                <button
+                  onClick={() => onMonthChange(new Date().toISOString().slice(0, 7))}
+                  className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 flex items-center space-x-2"
+                >
+                  <RefreshCw className="w-4 h-4" />
+                  <span>Tháng hiện tại</span>
+                </button>
+              </div>
+            </div>
+            <div className="text-sm text-gray-600">
+              <span className="font-medium">Đang xem:</span> Tháng {selectedMonth}
             </div>
           </div>
         </div>
@@ -77,8 +111,94 @@ function ExpensesOverviewTab({ expenses, expenseCategories, selectedMonth }) {
   const totalExpenses = expenses.reduce((sum, expense) => sum + (expense.giathanh || 0), 0);
   const expenseCount = expenses.length;
 
+  const exportToExcel = async (exportType = 'current') => {
+    let exportData = [];
+    let fileName = '';
+
+    if (exportType === 'current') {
+      // Export current month data
+      exportData = expenses.map(expense => ({
+        'Ngày': expense.created_at ? new Date(expense.created_at).toLocaleDateString('vi-VN') : '',
+        'Loại chi phí': expense.loaichiphi?.tenchiphi || 'N/A',
+        'Mô tả': expense.mo_ta || '',
+        'Số tiền (VND)': expense.giathanh || 0,
+        'Loại': expense.loaichiphi?.loaichiphi || 'N/A'
+      }));
+      fileName = `chi_phi_${selectedMonth}.xlsx`;
+    } else if (exportType === 'all') {
+      // Export all expenses data
+      try {
+        const response = await fetch('http://localhost:8001/api/v1/quanly_chiphi/');
+        if (response.ok) {
+          const allExpenses = await response.json();
+          exportData = allExpenses.map(expense => ({
+            'Ngày': expense.created_at ? new Date(expense.created_at).toLocaleDateString('vi-VN') : '',
+            'Loại chi phí': expense.loaichiphi?.tenchiphi || 'N/A',
+            'Mô tả': expense.mo_ta || '',
+            'Số tiền (VND)': expense.giathanh || 0,
+            'Loại': expense.loaichiphi?.loaichiphi || 'N/A'
+          }));
+          fileName = `tat_ca_chi_phi.xlsx`;
+        } else {
+          alert('Không thể tải dữ liệu tất cả chi phí');
+          return;
+        }
+      } catch (error) {
+        console.error('Error loading all expenses:', error);
+        alert('Có lỗi xảy ra khi tải dữ liệu');
+        return;
+      }
+    }
+
+    // Create worksheet
+    const ws = XLSX.utils.json_to_sheet(exportData);
+
+    // Set column widths
+    const colWidths = [
+      { wch: 12 }, // Ngày
+      { wch: 20 }, // Loại chi phí
+      { wch: 30 }, // Mô tả
+      { wch: 15 }, // Số tiền
+      { wch: 12 }  // Loại
+    ];
+    ws['!cols'] = colWidths;
+
+    // Create workbook
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Chi phí');
+
+    // Save file
+    XLSX.writeFile(wb, fileName);
+  };
+
   return (
     <div className="space-y-6">
+      {/* Header with Export Buttons */}
+      <div className="flex justify-between items-center">
+        <div>
+          <h2 className="text-2xl font-bold text-gray-900">Tổng quan chi phí tháng {selectedMonth}</h2>
+          <p className="text-gray-600 mt-1">Thống kê và phân tích chi phí</p>
+        </div>
+        <div className="flex items-center space-x-3">
+          <button
+            onClick={() => exportToExcel('current')}
+            disabled={expenses.length === 0}
+            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+            title="Xuất dữ liệu chi phí tháng hiện tại"
+          >
+            <Download className="w-4 h-4" />
+            <span>Xuất tháng hiện tại</span>
+          </button>
+          <button
+            onClick={() => exportToExcel('all')}
+            className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 flex items-center space-x-2"
+            title="Xuất tất cả dữ liệu chi phí"
+          >
+            <Download className="w-4 h-4" />
+            <span>Xuất tất cả</span>
+          </button>
+        </div>
+      </div>
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <div className="bg-white rounded-lg shadow-sm border p-6">
@@ -194,8 +314,39 @@ function ExpensesManagementTab({ expenses, expenseCategories, selectedMonth, onE
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState('');
   const [selectedExpense, setSelectedExpense] = useState(null);
+  const exportToExcel = () => {
+    // Prepare data for Excel export
+    const exportData = expenses.map(expense => ({
+      'Ngày': expense.created_at ? new Date(expense.created_at).toLocaleDateString('vi-VN') : '',
+      'Loại chi phí': expense.loaichiphi?.tenchiphi || 'N/A',
+      'Mô tả': expense.mo_ta || '',
+      'Số tiền (VND)': expense.giathanh || 0,
+      'Loại': expense.loaichiphi?.loaichiphi || 'N/A'
+    }));
 
-  // Handle file selection
+    // Create worksheet
+    const ws = XLSX.utils.json_to_sheet(exportData);
+
+    // Set column widths
+    const colWidths = [
+      { wch: 12 }, // Ngày
+      { wch: 20 }, // Loại chi phí
+      { wch: 30 }, // Mô tả
+      { wch: 15 }, // Số tiền
+      { wch: 12 }  // Loại
+    ];
+    ws['!cols'] = colWidths;
+
+    // Create workbook
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Chi phí');
+
+    // Generate filename with current month
+    const fileName = `chi_phi_${selectedMonth}.xlsx`;
+
+    // Save file
+    XLSX.writeFile(wb, fileName);
+  };
   const handleFileSelect = (e) => {
     const file = e.target.files[0];
     if (file) {
@@ -382,27 +533,38 @@ function ExpensesManagementTab({ expenses, expenseCategories, selectedMonth, onE
           <h2 className="text-2xl font-bold text-gray-900">Danh sách chi phí tháng {selectedMonth}</h2>
           <p className="text-gray-600 mt-1">Quản lý chi phí theo tháng</p>
         </div>
-        <button
-          onClick={() => {
-            setShowExpenseForm(true);
-            setEditingExpense(null);
-            setExpenseForm({
-              id_lcp: '',
-              giathanh: '',
-              mo_ta: '',
-              hinhanh: '',
-              created_at: new Date().toISOString().split('T')[0]
-            });
-            setSelectedFile(null);
-            setPreviewUrl('');
-            setError('');
-            setSuccess(false);
-          }}
-          className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 flex items-center space-x-2"
-        >
-          <Plus className="w-4 h-4" />
-          <span>Thêm chi phí</span>
-        </button>
+        <div className="flex items-center space-x-3">
+          <button
+            onClick={exportToExcel}
+            disabled={expenses.length === 0}
+            className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+            title="Xuất dữ liệu chi phí ra file Excel"
+          >
+            <Download className="w-4 h-4" />
+            <span>Xuất Excel</span>
+          </button>
+          <button
+            onClick={() => {
+              setShowExpenseForm(true);
+              setEditingExpense(null);
+              setExpenseForm({
+                id_lcp: '',
+                giathanh: '',
+                mo_ta: '',
+                hinhanh: '',
+                created_at: new Date().toISOString().split('T')[0]
+              });
+              setSelectedFile(null);
+              setPreviewUrl('');
+              setError('');
+              setSuccess(false);
+            }}
+            className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 flex items-center space-x-2"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Thêm chi phí</span>
+          </button>
+        </div>
       </div>
 
       {/* Expense Form Modal */}
@@ -1442,7 +1604,13 @@ export default function ExpensesPage() {
   }
 
   return (
-    <ExpensesLayout user={user} activeTab={activeTab} onTabChange={setActiveTab}>
+    <ExpensesLayout 
+      user={user} 
+      activeTab={activeTab} 
+      onTabChange={setActiveTab}
+      selectedMonth={selectedMonth}
+      onMonthChange={setSelectedMonth}
+    >
       {activeTab === 'overview' && (
         <ExpensesOverviewTab
           expenses={expenses}

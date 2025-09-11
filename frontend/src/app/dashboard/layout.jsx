@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from 'react';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'; // Import client mới
-import { LogOut, ChevronFirst, ChevronLast, Bot, DollarSign, Receipt } from "lucide-react";
+import { LogOut, ChevronFirst, ChevronLast, Bot, DollarSign, Receipt, BarChart3 } from "lucide-react";
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 
 // Thay vì import từ file helper cũ, chúng ta có thể tạo client trực tiếp ở đây
 // Hoặc bạn có thể cập nhật file lib/supabaseClient.js để dùng createClientComponentClient
@@ -15,6 +16,7 @@ export default function DashboardLayout({ children }) {
   const [sidebarExpanded, setSidebarExpanded] = useState(false);
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
   const [role, setRole] = useState(null);
+  const pathname = usePathname();
 
   useEffect(() => {
     const getUser = async () => {
@@ -47,6 +49,17 @@ export default function DashboardLayout({ children }) {
     window.location.href = '/login';
   };
 
+  // Function để xác định tab active dựa trên pathname
+  const getActiveTab = () => {
+    if (pathname === '/dashboard') return 'chatflows';
+    if (pathname.startsWith('/dashboard/accounting')) return 'revenue';
+    if (pathname.startsWith('/dashboard/profit')) return 'profit';
+    if (pathname.startsWith('/dashboard/expenses')) return 'expenses';
+    return 'chatflows'; // Default
+  };
+
+  const activeTab = getActiveTab();
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -68,24 +81,58 @@ export default function DashboardLayout({ children }) {
            </div>
  
            <ul className="flex-1 px-3">
-             <li className="relative flex items-center py-2 px-3 my-1 font-medium rounded-md cursor-pointer transition-colors bg-gradient-to-tr from-blue-200 to-blue-100 text-blue-800">
+             <li className={`relative flex items-center py-2 px-3 my-1 font-medium rounded-md cursor-pointer transition-colors ${
+               activeTab === 'chatflows' 
+                 ? 'bg-gradient-to-tr from-blue-200 to-blue-100 text-blue-800' 
+                 : 'text-gray-600 hover:bg-blue-50'
+             }`}>
                  <Bot className="w-6 h-6 mr-3 text-blue-700 flex-shrink-0" />
                  <span className={`overflow-hidden transition-all font-heading text-blue-900 ${sidebarExpanded ? "w-52 ml-3" : "w-0"}`}>Chatflows</span>
              </li>
              <Link href="/dashboard/accounting">
-               <li className="relative flex items-center py-2 px-3 my-1 font-medium rounded-md cursor-pointer transition-colors text-gray-600 hover:bg-blue-50 group">
-                 <DollarSign className="w-6 h-6 mr-3 text-gray-700 group-hover:text-blue-600 group-hover:scale-110 transition-all duration-200 flex-shrink-0" />
+               <li className={`relative flex items-center py-2 px-3 my-1 font-medium rounded-md cursor-pointer transition-colors ${
+                 activeTab === 'revenue' 
+                   ? 'bg-gradient-to-tr from-blue-200 to-blue-100 text-blue-800' 
+                   : 'text-gray-600 hover:bg-blue-50 group'
+               }`}>
+                 <DollarSign className={`w-6 h-6 mr-3 text-gray-700 group-hover:text-blue-600 group-hover:scale-110 transition-all duration-200 flex-shrink-0 ${
+                   activeTab === 'revenue' ? 'text-blue-700' : ''
+                 }`} />
                  <span className={`overflow-hidden transition-all font-heading text-gray-800 ${sidebarExpanded ? "w-52 ml-3" : "w-0"}`}>Revenue</span>
                </li>
              </Link>
+             <Link href="/dashboard/profit">
+               <li className={`relative flex items-center py-2 px-3 my-1 font-medium rounded-md cursor-pointer transition-colors ${
+                 activeTab === 'profit' 
+                   ? 'bg-gradient-to-tr from-blue-200 to-blue-100 text-blue-800' 
+                   : 'text-gray-600 hover:bg-blue-50 group'
+               }`}>
+                 <BarChart3 className={`w-6 h-6 mr-3 text-gray-700 group-hover:text-blue-600 group-hover:scale-110 transition-all duration-200 flex-shrink-0 ${
+                   activeTab === 'profit' ? 'text-blue-700' : ''
+                 }`} />
+                 <span className={`overflow-hidden transition-all font-heading text-gray-800 ${sidebarExpanded ? "w-52 ml-3" : "w-0"}`}>Profit</span>
+               </li>
+             </Link>
              <Link href="/dashboard/expenses">
-               <li className="relative flex items-center py-2 px-3 my-1 font-medium rounded-md cursor-pointer transition-colors text-gray-600 hover:bg-blue-50 group">
-                 <Receipt className="w-6 h-6 mr-3 text-gray-700 group-hover:text-blue-600 group-hover:scale-110 transition-all duration-200 flex-shrink-0" />
+               <li className={`relative flex items-center py-2 px-3 my-1 font-medium rounded-md cursor-pointer transition-colors ${
+                 activeTab === 'expenses' 
+                   ? 'bg-gradient-to-tr from-blue-200 to-blue-100 text-blue-800' 
+                   : 'text-gray-600 hover:bg-blue-50 group'
+               }`}>
+                 <Receipt className={`w-6 h-6 mr-3 text-gray-700 group-hover:text-blue-600 group-hover:scale-110 transition-all duration-200 flex-shrink-0 ${
+                   activeTab === 'expenses' ? 'text-blue-700' : ''
+                 }`} />
                  <span className={`overflow-hidden transition-all font-heading text-gray-800 ${sidebarExpanded ? "w-52 ml-3" : "w-0"}`}>Expense</span>
                </li>
              </Link>
-             <li className="relative flex items-center py-2 px-3 my-1 font-medium rounded-md cursor-pointer transition-colors text-gray-600 hover:bg-blue-50 group" onClick={() => setShowFeedbackModal(true)}>
-                 <svg className="w-6 h-6 mr-3 text-gray-700 group-hover:text-blue-600 group-hover:scale-110 transition-all duration-200 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+             <li className={`relative flex items-center py-2 px-3 my-1 font-medium rounded-md cursor-pointer transition-colors ${
+               activeTab === 'feedback' 
+                 ? 'bg-gradient-to-tr from-blue-200 to-blue-100 text-blue-800' 
+                 : 'text-gray-600 hover:bg-blue-50 group'
+             }`} onClick={() => setShowFeedbackModal(true)}>
+                 <svg className={`w-6 h-6 mr-3 text-gray-700 group-hover:text-blue-600 group-hover:scale-110 transition-all duration-200 flex-shrink-0 ${
+                   activeTab === 'feedback' ? 'text-blue-700' : ''
+                 }`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                  </svg>
                  <span className={`overflow-hidden transition-all font-heading text-gray-800 ${sidebarExpanded ? "w-52 ml-3" : "w-0"}`}>Feedback</span>

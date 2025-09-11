@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { DollarSign, BarChart3, Receipt, CreditCard, FileText, Menu, X, ArrowLeft, History, Package, Settings } from 'lucide-react';
+import { DollarSign, BarChart3, Receipt, CreditCard, FileText, Menu, X, ArrowLeft, History, Package, Settings, TrendingUp } from 'lucide-react';
 
 export default function AccountingLayout({ user, activeTab, onTabChange, children }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -10,6 +10,7 @@ export default function AccountingLayout({ user, activeTab, onTabChange, childre
     { id: 'dashboard', label: 'Dashboard Báo cáo', icon: BarChart3 },
     { id: 'revenue', label: 'Quản lý Doanh thu', icon: Receipt },
     { id: 'expenses', label: 'Quản lý Chi phí', icon: CreditCard },
+    { id: 'profit', label: 'Báo cáo Lợi nhuận', icon: TrendingUp },
     { id: 'products', label: 'Quản lý Sản phẩm', icon: Package },
     { id: 'categories', label: 'Quản lý Danh mục', icon: Settings },
     { id: 'generate', label: 'Tạo Báo cáo', icon: FileText },
@@ -32,7 +33,7 @@ export default function AccountingLayout({ user, activeTab, onTabChange, childre
       )}
 
       {/* Sidebar */}
-      <div className={`fixed inset-y-0 left-0 z-50 w-64 bg-white shadow-lg transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0 ${
+      <div className={`fixed inset-y-0 left-0 z-50 w-56 bg-white shadow-lg transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0 ${
         sidebarOpen ? 'translate-x-0' : '-translate-x-full'
       }`}>
         <div className="p-4 border-b bg-gradient-to-r from-blue-600 to-purple-600">
@@ -64,18 +65,18 @@ export default function AccountingLayout({ user, activeTab, onTabChange, childre
                 }}
                 className={`w-full text-left px-3 py-3 rounded-lg text-sm font-medium mb-2 flex items-center transition-all duration-200 ${
                   activeTab === tab.id
-                    ? 'bg-blue-100 text-blue-700 shadow-sm'
+                    ? 'bg-blue-600 text-white shadow-sm'
                     : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'
                 }`}
               >
-                <Icon className={`w-5 h-5 mr-3 ${activeTab === tab.id ? 'text-blue-600' : 'text-gray-500'}`} />
+                <Icon className={`w-5 h-5 mr-3 ${activeTab === tab.id ? 'text-white' : 'text-gray-500'}`} />
                 {tab.label}
               </button>
             );
           })}
         </nav>
 
-        <div className="absolute bottom-0 w-64 p-4 border-t bg-gray-50">
+        <div className="absolute bottom-0 w-56 p-4 border-t bg-gray-50">
           <button
             onClick={() => {
               window.location.href = '/dashboard';
@@ -124,7 +125,7 @@ export default function AccountingLayout({ user, activeTab, onTabChange, childre
                 </div>
                 <div className="text-right">
                   <p className="text-sm font-medium text-gray-900">
-                    {user?.email || 'User'}
+                    {user?.email || 'Người dùng'}
                   </p>
                   <p className="text-xs text-gray-600">Kế toán</p>
                 </div>

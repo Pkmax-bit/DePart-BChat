@@ -404,6 +404,19 @@ async def get_quanly_chiphi(month: str = None):
         # Get quanly_chiphi data first with basic columns
         query = supabase.table('quanly_chiphi').select('*')
 
+        # Lọc theo tháng nếu có tham số month
+        if month:
+            # Lọc theo tháng (định dạng YYYY-MM)
+            start_date = f"{month}-01"
+            # Tính ngày cuối tháng
+            year, month_num = map(int, month.split('-'))
+            if month_num == 12:
+                end_date = f"{year + 1}-01-01"
+            else:
+                end_date = f"{year}-{month_num + 1:02d}-01"
+
+            query = query.gte('created_at', start_date).lt('created_at', end_date)
+
         result = query.order('id', desc=True).execute()
 
         # Transform the data to match expected format and fetch related loaichiphi data
@@ -547,3 +560,84 @@ async def get_chiphi_tong_quan(month: str = None):
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error fetching expense overview: {str(e)}")
+
+@router.get("/profit/")
+async def get_profit_report(month: str = None):
+    """Lấy báo cáo lợi nhuận tổng hợp"""
+    try:
+        # Lấy dữ liệu doanh thu
+        revenue_query = supabase.table('invoices').select('*')
+        if month:
+            start_date = f"{month}-01"
+            year, month_num = map(int, month.split('-'))
+            if month_num == 12:
+                end_date = f"{year + 1}-01-01"
+            else:
+                end_date = f"{year}-{month_num + 1:02d}-01"
+            revenue_query = revenue_query.gte('invoice_date', start_date).lt('invoice_date', end_date)
+
+        revenue_result = revenue_query.execute()
+        total_revenue = sum(invoice['total_amount'] or 0 for invoice in revenue_result.data)
+
+        # Lấy dữ liệu chi phí
+        expense_query = supabase.table('quanly_chiphi').select('*')
+        if month:
+            expense_query = expense_query.gte('created_at', start_date).lt('created_at', end_date)
+
+        expense_result = expense_query.execute()
+        total_expenses = sum(expense['giathanh'] or 0 for expense in expense_result.data)
+
+        # Tính lợi nhuận
+        total_profit = total_revenue - total_expenses
+        if total_revenue > 0:
+            profit_margin = (total_profit / total_revenue) * 100
+        else:
+            profit_margin = 0
+
+        # Phân tích chi tiết theo loại
+        expense_by_category = {}
+        expense_by_type = {'định phí': 0, 'biến phí': 0}
+
+        # Lấy thông tin loại chi phí
+        if expense_result.data:
+            loaichiphi_ids = list(set(item.get('id_lcp') for item in expense_result.data if item.get('id_lcp')))
+            if loaichiphi_ids:
+                try:
+                    loaichiphi_result = supabase.table('loaichiphi').select('*').in_('id', loaichiphi_ids).execute()
+                    loaichiphi_map = {item['id']: item for item in loaichiphi_result.data}
+
+                    for expense in expense_result.data:
+                        loaichiphi_data = loaichiphi_map.get(expense.get('id_lcp'))
+                        if loaichiphi_data:
+                            category_name = loaichiphi_data.get('tenchiphi', 'Chưa phân loại')
+                            type_name = loaichiphi_data.get('loaichiphi', 'Chưa phân loại')
+
+                            if category_name not in expense_by_category:
+                                expense_by_category[category_name] = 0
+                            expense_by_category[category_name] += expense['giathanh'] or 0
+
+                            if type_name in expense_by_type:
+                                expense_by_type[type_name] += expense['giathanh'] or 0
+                except Exception as e:
+                    print(f"Error fetching loaichiphi data: {e}")
+
+        return {
+            "period": month or "all",
+            "summary": {
+                "total_revenue": total_revenue,
+                "total_expenses": total_expenses,
+                "total_profit": total_profit,
+                "profit_margin": profit_margin,
+                "revenue_count": len(revenue_result.data),
+                "expense_count": len(expense_result.data)
+            },
+            "details": {
+                "revenue": revenue_result.data,
+                "expenses": expense_result.data,
+                "expense_by_category": expense_by_category,
+                "expense_by_type": expense_by_type
+            },
+            "status": "profit" if total_profit >= 0 else "loss"
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching profit report: {str(e)}")
