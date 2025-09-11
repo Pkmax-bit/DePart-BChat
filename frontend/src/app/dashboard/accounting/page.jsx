@@ -193,12 +193,12 @@ function InvoicesTab() {
   const fetchData = async () => {
     try {
       const [sanphamRes, chitietsanphamRes, loainhomRes, loaikinhRes, loaitaynamRes, bophanRes] = await Promise.all([
-        fetch('http://localhost:8001/api/v1/sanpham/'),
-        fetch('http://localhost:8001/api/v1/chitietsanpham/'),
-        fetch('http://localhost:8001/api/v1/loainhom/'),
-        fetch('http://localhost:8001/api/v1/loaikinh/'),
-        fetch('http://localhost:8001/api/v1/loaitaynam/'),
-        fetch('http://localhost:8001/api/v1/bophan/')
+        fetch('http://localhost:8001/api/v1/accounting/sanpham/'),
+        fetch('http://localhost:8001/api/v1/accounting/chitietsanpham/'),
+        fetch('http://localhost:8001/api/v1/accounting/loainhom/'),
+        fetch('http://localhost:8001/api/v1/accounting/loaikinh/'),
+        fetch('http://localhost:8001/api/v1/accounting/loaitaynam/'),
+        fetch('http://localhost:8001/api/v1/accounting/bophan/')
       ]);
 
       if (sanphamRes.ok) setSanphamList(await sanphamRes.json());
@@ -589,7 +589,7 @@ function InvoicesTab() {
         total_amount: calculateTotal()
       };
 
-      const response = await fetch('http://localhost:8001/api/v1/invoices/', {
+      const response = await fetch('http://localhost:8001/api/v1/accounting/invoices/', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -1277,7 +1277,7 @@ function RevenueTab({ salesData, products, setSalesData }) {
     try {
       console.log('Loading invoices for month:', selectedMonth);
 
-      const response = await fetch(`http://localhost:8001/api/v1/invoices?month=${selectedMonth}`, {
+      const response = await fetch(`http://localhost:8001/api/v1/accounting/invoices?month=${selectedMonth}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -2037,12 +2037,12 @@ function ProductsManagementTab({ products, setProducts }) {
   const fetchMaterials = async () => {
     try {
       const [nhomRes, kinhRes, taynamRes, bophanRes, productDetailsRes, sanphamRes] = await Promise.all([
-        fetch('http://localhost:8001/api/v1/loainhom/'),
-        fetch('http://localhost:8001/api/v1/loaikinh/'),
-        fetch('http://localhost:8001/api/v1/loaitaynam/'),
-        fetch('http://localhost:8001/api/v1/bophan/'),
-        fetch('http://localhost:8001/api/v1/chitietsanpham/'),
-        fetch('http://localhost:8001/api/v1/sanpham/')
+        fetch('http://localhost:8001/api/v1/accounting/loainhom/'),
+        fetch('http://localhost:8001/api/v1/accounting/loaikinh/'),
+        fetch('http://localhost:8001/api/v1/accounting/loaitaynam/'),
+        fetch('http://localhost:8001/api/v1/accounting/bophan/'),
+        fetch('http://localhost:8001/api/v1/accounting/chitietsanpham/'),
+        fetch('http://localhost:8001/api/v1/accounting/sanpham/')
       ]);
 
       if (nhomRes.ok) setNhomList(await nhomRes.json());
@@ -2077,8 +2077,8 @@ function ProductsManagementTab({ products, setProducts }) {
 
       // Use the correct endpoint for sanpham table
       const url = editingProduct
-        ? `http://localhost:8001/api/v1/sanpham/${editingProduct.id}`
-        : 'http://localhost:8001/api/v1/sanpham/';
+        ? `http://localhost:8001/api/v1/accounting/sanpham/${editingProduct.id}`
+        : 'http://localhost:8001/api/v1/accounting/sanpham/';
 
       const method = editingProduct ? 'PUT' : 'POST';
 
@@ -2140,7 +2140,7 @@ function ProductsManagementTab({ products, setProducts }) {
       if (!session) return;
 
       // Use the correct endpoint for sanpham table
-      const response = await fetch(`http://localhost:8001/api/v1/sanpham/${productId}`, {
+      const response = await fetch(`http://localhost:8001/api/v1/accounting/sanpham/${productId}`, {
         method: 'DELETE',
         headers: {
           Authorization: `Bearer ${session.access_token}`
@@ -2206,7 +2206,7 @@ function ProductsManagementTab({ products, setProducts }) {
     }
     
     try {
-      const url = `http://localhost:8001/api/v1/chitietsanpham/`;
+      const url = `http://localhost:8001/api/v1/accounting/chitietsanpham/`;
       const method = 'POST'; // Always create new or update existing
 
       const response = await fetch(url, {
@@ -2622,10 +2622,10 @@ function MaterialsManagementTab() {
   const fetchMaterials = async () => {
     try {
       const [nhomRes, kinhRes, taynamRes, bophanRes] = await Promise.all([
-        fetch('http://localhost:8001/api/v1/loainhom/'),
-        fetch('http://localhost:8001/api/v1/loaikinh/'),
-        fetch('http://localhost:8001/api/v1/loaitaynam/'),
-        fetch('http://localhost:8001/api/v1/bophan/')
+        fetch('http://localhost:8001/api/v1/accounting/loainhom/'),
+        fetch('http://localhost:8001/api/v1/accounting/loaikinh/'),
+        fetch('http://localhost:8001/api/v1/accounting/loaitaynam/'),
+        fetch('http://localhost:8001/api/v1/accounting/bophan/')
       ]);
 
       if (nhomRes.ok) setNhomList(await nhomRes.json());
@@ -2684,8 +2684,8 @@ function MaterialsManagementTab() {
     try {
       const endpoint = getApiEndpoint();
       const url = editingItem 
-        ? `http://localhost:8001/api/v1/${endpoint}/${editingItem.id}`
-        : `http://localhost:8001/api/v1/${endpoint}/`;
+        ? `http://localhost:8001/api/v1/accounting/${endpoint}/${editingItem.id}`
+        : `http://localhost:8001/api/v1/accounting/${endpoint}/`;
       
       const method = editingItem ? 'PUT' : 'POST';
 
@@ -2734,7 +2734,7 @@ function MaterialsManagementTab() {
 
     try {
       const endpoint = getApiEndpoint();
-      const response = await fetch(`http://localhost:8001/api/v1/${endpoint}/${itemId}`, {
+      const response = await fetch(`http://localhost:8001/api/v1/accounting/${endpoint}/${itemId}`, {
         method: 'DELETE'
       });
 
@@ -2949,8 +2949,8 @@ function ExpenseCategoriesTab({ expenseCategories, setExpenseCategories }) {
       if (!session) return;
 
       const url = editingCategory 
-        ? `http://localhost:8001/api/v1/loaichiphi/${editingCategory.id}`
-        : 'http://localhost:8001/api/v1/loaichiphi/';
+        ? `http://localhost:8001/api/v1/accounting/loaichiphi/${editingCategory.id}`
+        : 'http://localhost:8001/api/v1/accounting/loaichiphi/';
       
       const method = editingCategory ? 'PUT' : 'POST';
 
@@ -2999,7 +2999,7 @@ function ExpenseCategoriesTab({ expenseCategories, setExpenseCategories }) {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
 
-      const response = await fetch(`http://localhost:8001/api/v1/loaichiphi/${categoryId}`, {
+      const response = await fetch(`http://localhost:8001/api/v1/accounting/loaichiphi/${categoryId}`, {
         method: 'DELETE',
         headers: {
           Authorization: `Bearer ${session.access_token}`
@@ -3411,8 +3411,8 @@ function ExpensesManagementTab() {
     setLoading(true);
     try {
       const [expensesRes, categoriesRes] = await Promise.all([
-        fetch(`http://localhost:8001/api/v1/quanly_chiphi/?month=${selectedMonth}`),
-        fetch('http://localhost:8001/api/v1/loaichiphi/')
+        fetch(`http://localhost:8001/api/v1/accounting/quanly_chiphi/?month=${selectedMonth}`),
+        fetch('http://localhost:8001/api/v1/accounting/loaichiphi/')
       ]);
 
       if (expensesRes.ok) {

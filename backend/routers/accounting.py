@@ -822,101 +822,54 @@ async def sync_profit_report(month: str):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error syncing profit report: {str(e)}")
 
-@router.post("/profits/sync_all/")
-async def sync_all_profit_reports():
-    """Đồng bộ tất cả báo cáo lợi nhuận cho các tháng có dữ liệu"""
+@router.post("/export_profit_excel/")
+async def export_profit_excel(month: str = None):
+    """Xuất báo cáo lợi nhuận ra file Excel"""
     try:
-        # Lấy tất cả các tháng có dữ liệu doanh thu hoặc chi phí
-        revenue_months = set()
-        try:
-            revenue_result = supabase.table('invoices').select('invoice_date').execute()
-            for row in revenue_result.data:
-                if row['invoice_date']:
-                    month = row['invoice_date'][:7]  # YYYY-MM
-                    revenue_months.add(month)
-        except Exception as e:
-            print(f"Error getting revenue months: {e}")
+        import subprocess
+        import os
+        import time
 
-        # Lấy các tháng có dữ liệu chi phí
-        expense_months = set()
-        try:
-            expense_result = supabase.table('quanly_chiphi').select('created_at').execute()
-            for row in expense_result.data:
-                if row['created_at']:
-                    month = row['created_at'][:7]  # YYYY-MM
-                    expense_months.add(month)
-        except Exception as e:
-            print(f"Error getting expense months: {e}")
+        # Đường dẫn đến script Python
+        script_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "generate_profit_excel.py")
 
-        # Kết hợp tất cả các tháng và sắp xếp
-        all_months = sorted(list(revenue_months | expense_months), reverse=True)
+        # Chạy script với timeout để tránh treo
+        if month:
+            cmd = ["python", script_path, "--month", month]
+        else:
+            cmd = ["python", script_path]
 
-        if not all_months:
-            return {"message": "Không có dữ liệu để đồng bộ", "months_processed": 0}
+        # Chạy với timeout 60 giây
+        result = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            timeout=60,
+            cwd=os.path.dirname(script_path)
+        )
 
-        processed_months = []
+        if result.returncode == 0:
+            # Lấy tên file từ output
+            output_lines = result.stdout.strip().split('\n')
+            filename_line = None
+            for line in output_lines:
+                if 'SUCCESS:' in line:
+                    filename_line = line
+                    break
 
-        for month in all_months:
-            try:
-                print(f"Processing month: {month}")
-
-                # Tính ngày bắt đầu và kết thúc của tháng
-                start_date = f"{month}-01"
-                year, month_num = map(int, month.split('-'))
-                if month_num == 12:
-                    end_date = f"{year + 1}-01-01"
-                else:
-                    end_date = f"{year}-{month_num + 1:02d}-01"
-
-                # Tính doanh thu
-                revenue_result = supabase.table('invoices').select('total_amount').gte('invoice_date', start_date).lt('invoice_date', end_date).execute()
-                total_revenue = sum(float(row['total_amount'] or 0) for row in revenue_result.data)
-                invoice_count = len(revenue_result.data)
-
-                # Tính chi phí
-                expense_result = supabase.table('quanly_chiphi').select('giathanh').gte('created_at', start_date).lt('created_at', end_date).execute()
-                total_expenses = sum(float(row['giathanh'] or 0) for row in expense_result.data)
-                expense_count = len(expense_result.data)
-
-                # Lấy số lượng sản phẩm
-                product_result = supabase.table('sanpham').select('id', count='exact').execute()
-                product_count = product_result.count or 0
-
-                # Tính lợi nhuận
-                total_profit = total_revenue - total_expenses
-                profit_margin = (total_profit / total_revenue * 100) if total_revenue > 0 else 0
-
-                # Upsert vào bảng profits
-                data = {
-                    'report_month': month,
-                    'total_revenue': total_revenue,
-                    'total_expenses': total_expenses,
-                    'total_profit': total_profit,
-                    'profit_margin': profit_margin,
-                    'invoice_count': invoice_count,
-                    'expense_count': expense_count,
-                    'product_count': product_count,
-                    'updated_at': datetime.now().isoformat()
+            if filename_line:
+                filename = filename_line.split('SUCCESS:')[1].strip()
+                return {
+                    "message": "Xuất Excel thành công",
+                    "filename": filename,
+                    "filepath": os.path.join(os.path.dirname(script_path), filename)
                 }
+            else:
+                return {"message": "Xuất Excel thành công", "output": result.stdout}
+        else:
+            raise HTTPException(status_code=500, detail=f"Lỗi khi xuất Excel: {result.stderr}")
 
-                result = supabase.table('profits').upsert(data, on_conflict='report_month').execute()
-                processed_months.append({
-                    'month': month,
-                    'revenue': total_revenue,
-                    'expenses': total_expenses,
-                    'profit': total_profit
-                })
-
-            except Exception as e:
-                print(f"Error processing month {month}: {e}")
-                continue
-
-        return {
-            "message": f"Đã đồng bộ {len(processed_months)} tháng",
-            "months_processed": len(processed_months),
-            "total_months_found": len(all_months),
-            "processed_months": processed_months
-        }
-
+    except subprocess.TimeoutExpired:
+        raise HTTPException(status_code=500, detail="Quá thời gian chờ xuất Excel")
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error syncing all profit reports: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Lỗi xuất Excel: {str(e)}")

@@ -179,96 +179,50 @@ export default function ProfitPage() {
     }
   };
 
-  const exportToExcel = () => {
-    if (allProfitData.length === 0 && revenueData.length === 0 && expenseData.length === 0) {
-      alert('Không có dữ liệu để xuất');
-      return;
+  const exportToExcel = async () => {
+    try {
+      console.log('Starting Excel export for month:', selectedPeriod);
+
+      // Show loading state
+      const exportButton = document.querySelector('button[title="Xuất Excel"]');
+      if (exportButton) {
+        exportButton.disabled = true;
+        exportButton.innerHTML = '<div class="flex items-center space-x-2"><div class="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div><span>Đang xuất...</span></div>';
+      }
+
+      // Call backend Excel export endpoint
+      const response = await fetch(`http://localhost:8001/api/v1/accounting/export_profit_excel/?month=${selectedPeriod}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        console.log('Excel export result:', result);
+
+        if (result.filename) {
+          alert(`Xuất Excel thành công! File: ${result.filename}`);
+        } else {
+          alert('Xuất Excel thành công!');
+        }
+      } else {
+        const errorData = await response.json();
+        console.error('Export error:', errorData);
+        alert(`Lỗi xuất Excel: ${errorData.detail || 'Có lỗi xảy ra'}`);
+      }
+    } catch (error) {
+      console.error('Network error during export:', error);
+      alert('Lỗi kết nối khi xuất Excel. Vui lòng thử lại.');
+    } finally {
+      // Reset button state
+      const exportButton = document.querySelector('button[title="Xuất Excel"]');
+      if (exportButton) {
+        exportButton.disabled = false;
+        exportButton.innerHTML = '<div class="flex items-center space-x-2"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg><span>Xuất Excel</span></div>';
+      }
     }
-
-    const wb = XLSX.utils.book_new();
-
-    // Profit summary sheet for all months
-    if (allProfitData.length > 0) {
-      const profitSummaryData = [
-        ['BÁO CÁO LỢI NHUẬN TẤT CẢ CÁC THÁNG'],
-        [],
-        ['Tháng', 'Doanh thu', 'Chi phí', 'Lợi nhuận', 'Tỷ suất lợi nhuận (%)', 'Số hóa đơn', 'Số chi phí', 'Số sản phẩm', 'Trạng thái', 'Ngày cập nhật'],
-        ...allProfitData.slice().reverse().map(report => [
-          report.report_month,
-          report.total_revenue,
-          report.total_expenses,
-          report.total_profit,
-          report.profit_margin.toFixed(2),
-          report.invoice_count,
-          report.expense_count,
-          report.product_count,
-          report.total_profit >= 0 ? 'Lợi nhuận' : 'Lỗ',
-          new Date(report.updated_at).toLocaleDateString('vi-VN')
-        ]),
-        [],
-        ['TỔNG CỘNG', '', '', '', '', '', '', '', '']
-      ];
-
-      const profitWs = XLSX.utils.aoa_to_sheet(profitSummaryData);
-      XLSX.utils.book_append_sheet(wb, profitWs, 'Tong_hop_Loi_nhuan');
-    }
-
-    // Revenue sheet
-    const revenueSheetData = [
-      ['BÁO CÁO DOANH THU THÁNG ' + selectedPeriod],
-      [],
-      ['STT', 'Khách hàng', 'Ngày', 'Số sản phẩm', 'Tổng tiền', 'Trạng thái'],
-      ...revenueData.map((inv, index) => [
-        index + 1,
-        inv.customer_name,
-        new Date(inv.invoice_date).toLocaleDateString('vi-VN'),
-        inv.items?.length || 0,
-        inv.total_amount || 0,
-        'Hoàn thành'
-      ]),
-      [],
-      ['TỔNG DOANH THU', '', '', '', summaryStats.totalRevenue]
-    ];
-
-    // Expense sheet
-    const expenseSheetData = [
-      ['BÁO CÁO CHI PHÍ THÁNG ' + selectedPeriod],
-      [],
-      ['STT', 'Loại chi phí', 'Mô tả', 'Số tiền', 'Ngày', 'Trạng thái'],
-      ...expenseData.map((exp, index) => [
-        index + 1,
-        exp.loaichiphi?.tenchiphi || 'N/A',
-        exp.mo_ta || '',
-        exp.giathanh || 0,
-        exp.created_at ? new Date(exp.created_at).toLocaleDateString('vi-VN') : '',
-        'Hoàn thành'
-      ]),
-      [],
-      ['TỔNG CHI PHÍ', '', '', '', summaryStats.totalExpenses]
-    ];
-
-    // Profit summary sheet for selected month
-    const profitSheetData = [
-      ['BÁO CÁO LỢI NHUẬN THÁNG ' + selectedPeriod],
-      [],
-      ['Chỉ số', 'Giá trị', 'Đơn vị'],
-      ['Tổng doanh thu', summaryStats.totalRevenue, 'VND'],
-      ['Tổng chi phí', summaryStats.totalExpenses, 'VND'],
-      ['Lợi nhuận', summaryStats.totalProfit, 'VND'],
-      ['Tỷ suất lợi nhuận', summaryStats.profitMargin.toFixed(2), '%'],
-      [],
-      ['Trạng thái', summaryStats.totalProfit >= 0 ? 'LỢI NHUẬN' : 'LỖ', '']
-    ];
-
-    const revenueWs = XLSX.utils.aoa_to_sheet(revenueSheetData);
-    const expenseWs = XLSX.utils.aoa_to_sheet(expenseSheetData);
-    const profitWs = XLSX.utils.aoa_to_sheet(profitSheetData);
-
-    XLSX.utils.book_append_sheet(wb, revenueWs, 'Doanh_Thu');
-    XLSX.utils.book_append_sheet(wb, expenseWs, 'Chi_Phi');
-    XLSX.utils.book_append_sheet(wb, profitWs, 'Loi_Nhuan');
-
-    XLSX.writeFile(wb, `BaoCao_LoiNhuan_${selectedPeriod}.xlsx`);
   };
 
   const exportToPDF = () => {

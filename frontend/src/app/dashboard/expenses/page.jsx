@@ -128,7 +128,7 @@ function ExpensesOverviewTab({ expenses, expenseCategories, selectedMonth }) {
     } else if (exportType === 'all') {
       // Export all expenses data
       try {
-        const response = await fetch('http://localhost:8001/api/v1/quanly_chiphi/');
+        const response = await fetch('http://localhost:8001/api/v1/accounting/quanly_chiphi/');
         if (response.ok) {
           const allExpenses = await response.json();
           exportData = allExpenses.map(expense => ({
@@ -422,8 +422,8 @@ function ExpensesManagementTab({ expenses, expenseCategories, selectedMonth, onE
     try {
       const method = editingExpense ? 'PUT' : 'POST';
       const url = editingExpense
-        ? `http://localhost:8001/api/v1/quanly_chiphi/${editingExpense.id}`
-        : 'http://localhost:8001/api/v1/quanly_chiphi/';
+        ? `http://localhost:8001/api/v1/accounting/quanly_chiphi/${editingExpense.id}`
+        : 'http://localhost:8001/api/v1/accounting/quanly_chiphi/';
 
       // Prepare the data to send
       const dataToSend = {
@@ -480,7 +480,7 @@ function ExpensesManagementTab({ expenses, expenseCategories, selectedMonth, onE
     if (!confirm('Bạn có chắc chắn muốn xóa chi phí này?')) return;
 
     try {
-      const response = await fetch(`http://localhost:8001/api/v1/quanly_chiphi/${expenseId}`, {
+      const response = await fetch(`http://localhost:8001/api/v1/accounting/quanly_chiphi/${expenseId}`, {
         method: 'DELETE'
       });
 
@@ -1133,8 +1133,8 @@ function ExpenseCategoriesTab({ expenseCategories, onCategoryUpdate }) {
     try {
       const method = editingCategory ? 'PUT' : 'POST';
       const url = editingCategory
-        ? `http://localhost:8001/api/v1/loaichiphi/${editingCategory.id}`
-        : 'http://localhost:8001/api/v1/loaichiphi/';
+        ? `http://localhost:8001/api/v1/accounting/loaichiphi/${editingCategory.id}`
+        : 'http://localhost:8001/api/v1/accounting/loaichiphi/';
 
       const response = await fetch(url, {
         method,
@@ -1175,7 +1175,7 @@ function ExpenseCategoriesTab({ expenseCategories, onCategoryUpdate }) {
     if (!confirm('Bạn có chắc chắn muốn xóa loại chi phí này?')) return;
 
     try {
-      const response = await fetch(`http://localhost:8001/api/v1/loaichiphi/${categoryId}`, {
+      const response = await fetch(`http://localhost:8001/api/v1/accounting/loaichiphi/${categoryId}`, {
         method: 'DELETE'
       });
 
@@ -1560,7 +1560,7 @@ export default function ExpensesPage() {
 
   const loadExpenses = async () => {
     try {
-      const response = await fetch(`http://localhost:8001/api/v1/quanly_chiphi/?month=${selectedMonth}`);
+      const response = await fetch(`http://localhost:8001/api/v1/accounting/quanly_chiphi/?month=${selectedMonth}`);
       if (response.ok) {
         const data = await response.json();
         setExpenses(data);
@@ -1576,7 +1576,7 @@ export default function ExpensesPage() {
 
   const loadExpenseCategories = async () => {
     try {
-      const response = await fetch('http://localhost:8001/api/v1/loaichiphi/');
+      const response = await fetch('http://localhost:8001/api/v1/accounting/loaichiphi/');
       if (response.ok) {
         const data = await response.json();
         setExpenseCategories(data);
