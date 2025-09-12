@@ -1118,9 +1118,7 @@ function InvoicesTab() {
                           const nhomName = loainhomList.find(n => n.id === (detail?.id_nhom || sanpham.id_nhom))?.tenloai || 'N/A';
                           const kinhName = loaikinhList.find(k => k.id === (detail?.id_kinh || sanpham.id_kinh))?.tenloai || 'N/A';
                           const taynamName = loaitaynamList.find(t => t.id === (detail?.id_taynam || sanpham.id_taynam))?.tenloai || 'N/A';
-                          const displayName = detail 
-                            ? `${sanpham.tensp} (${nhomName}/${kinhName}/${taynamName} - ${detail.ngang}x${detail.cao}x${detail.sau}mm - ${detail.don_gia?.toLocaleString('vi-VN')} VND)`
-                            : `${sanpham.tensp} (${nhomName}/${kinhName}/${taynamName})`;
+                          const displayName = sanpham.tensp;
                           return (
                             <option key={sanpham.id} value={sanpham.id}>
                               {displayName}
@@ -1919,7 +1917,7 @@ function RevenueTab({ salesData, products, setSalesData }) {
       
       if (invoice.items && invoice.items.length > 0) {
         invoice.items.forEach((item, itemIndex) => {
-          const isPhuKienBep = item.loai_sanpham === 'phukienbep';
+          const isPhuKienBep = item.loai_sanpham === 'phu_kien_bep';
           
           excelData.push([
             invoiceIndex + 1, // STT hóa đơn
@@ -1928,13 +1926,13 @@ function RevenueTab({ salesData, products, setSalesData }) {
             timeStr,
             isPhuKienBep ? 'Phụ kiện bếp' : 'Tủ bếp', // Loại sản phẩm
             isPhuKienBep 
-              ? (item.phukienbep?.ten_phukien || item.ten_phukien || 'N/A')
+              ? (item.phukien?.tenphukien || item.tenphukien || 'N/A')
               : (item.sanpham?.tensp || item.tensp || 'N/A'), // Tên sản phẩm
             isPhuKienBep 
-              ? (item.phukienbep?.loai_phukien?.tenloai || item.ten_loai_phukien || 'N/A')
+              ? (item.phukien?.ten_loai_phukien || item.ten_loai_phukien || 'N/A')
               : (item.sanpham?.ten_nhom || item.ten_nhom || 'N/A'), // Loại/Thông số
             isPhuKienBep 
-              ? (item.phukienbep?.kich_thuoc || item.kich_thuoc || 'N/A')
+              ? (item.phukien?.kich_thuoc || item.kich_thuoc || 'N/A')
               : `${item.ngang || 0} x ${item.cao || 0} x ${item.sau || 0} mm`, // Kích thước
             item.so_luong,
             item.don_gia || 0,
