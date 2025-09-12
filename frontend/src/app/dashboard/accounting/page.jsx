@@ -1445,8 +1445,8 @@ function InvoicesTab() {
                     </div>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                       <div>
-                        <span className="text-gray-700 font-medium">Diện tích kế hoạch:</span>
-                        <p className="font-medium text-black">{(item.dien_tich_ke_hoach || 0).toLocaleString('vi-VN')} mm²</p>
+                        <span className="text-gray-700 font-medium">Kích thước thực tế:</span>
+                        <p className="font-medium text-black">{item.ngang} x {item.cao} x {item.sau} mm</p>
                       </div>
                       <div>
                         <span className="text-gray-700 font-medium">Diện tích thực tế:</span>
