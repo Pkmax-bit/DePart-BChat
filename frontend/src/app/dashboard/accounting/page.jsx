@@ -186,19 +186,26 @@ function InvoicesTab() {
   const [globalKinh, setGlobalKinh] = useState('');
   const [globalTaynam, setGlobalTaynam] = useState('');
 
+  // States cho phụ kiện bếp
+  const [phukienList, setPhukienList] = useState([]);
+  const [loaiphukienList, setLoaiphukienList] = useState([]);
+  const [selectedProductType, setSelectedProductType] = useState('tu_bep'); // 'tu_bep' hoặc 'phu_kien_bep'
+
   useEffect(() => {
     fetchData();
   }, []);
 
   const fetchData = async () => {
     try {
-      const [sanphamRes, chitietsanphamRes, loainhomRes, loaikinhRes, loaitaynamRes, bophanRes] = await Promise.all([
+      const [sanphamRes, chitietsanphamRes, loainhomRes, loaikinhRes, loaitaynamRes, bophanRes, phukienRes, loaiphukienRes] = await Promise.all([
         fetch('http://localhost:8001/api/v1/accounting/sanpham/'),
         fetch('http://localhost:8001/api/v1/accounting/chitietsanpham/'),
         fetch('http://localhost:8001/api/v1/accounting/loainhom/'),
         fetch('http://localhost:8001/api/v1/accounting/loaikinh/'),
         fetch('http://localhost:8001/api/v1/accounting/loaitaynam/'),
-        fetch('http://localhost:8001/api/v1/accounting/bophan/')
+        fetch('http://localhost:8001/api/v1/accounting/bophan/'),
+        fetch('http://localhost:8001/api/v1/accounting/phukienbep/'),
+        fetch('http://localhost:8001/api/v1/accounting/loaiphukienbep/')
       ]);
 
       if (sanphamRes.ok) setSanphamList(await sanphamRes.json());
@@ -207,6 +214,8 @@ function InvoicesTab() {
       if (loaikinhRes.ok) setLoaikinhList(await loaikinhRes.json());
       if (loaitaynamRes.ok) setLoaitaynamList(await loaitaynamRes.json());
       if (bophanRes.ok) setBophanList(await bophanRes.json());
+      if (phukienRes.ok) setPhukienList(await phukienRes.json());
+      if (loaiphukienRes.ok) setLoaiphukienList(await loaiphukienRes.json());
     } catch (error) {
       console.error('Error fetching data:', error);
     } finally {
@@ -215,24 +224,40 @@ function InvoicesTab() {
   };
 
   const addInvoiceItem = () => {
-    const newItem = {
-      id: Date.now(),
-      id_nhom: '',
-      id_kinh: '',
-      id_taynam: '',
-      id_bophan: '',
-      sanpham: null,
-      ngang: 0,
-      cao: 0,
-      sau: 0,
-      so_luong: 1,
-      don_gia: 0,
-      dien_tich_ke_hoach: 0,
-      dien_tich_thuc_te: 0,
-      ti_le: 0,
-      thanh_tien: 0
-    };
-    setInvoiceItems([...invoiceItems, newItem]);
+    if (selectedProductType === 'tu_bep') {
+      // Thêm sản phẩm tủ bếp
+      const newItem = {
+        id: Date.now(),
+        loai_san_pham: 'tu_bep',
+        id_nhom: '',
+        id_kinh: '',
+        id_taynam: '',
+        id_bophan: '',
+        sanpham: null,
+        ngang: 0,
+        cao: 0,
+        sau: 0,
+        so_luong: 1,
+        don_gia: 0,
+        dien_tich_ke_hoach: 0,
+        dien_tich_thuc_te: 0,
+        ti_le: 0,
+        thanh_tien: 0
+      };
+      setInvoiceItems([...invoiceItems, newItem]);
+    } else {
+      // Thêm phụ kiện bếp
+      const newItem = {
+        id: Date.now(),
+        loai_san_pham: 'phu_kien_bep',
+        id_phukien: '',
+        phukien: null,
+        so_luong: 1,
+        don_gia: 0,
+        thanh_tien: 0
+      };
+      setInvoiceItems([...invoiceItems, newItem]);
+    }
   };
 
   const removeInvoiceItem = (id) => {
@@ -499,6 +524,89 @@ function InvoicesTab() {
           }
         }
         
+        // Xử lý khi chọn sản phẩm trực tiếp từ dropdown
+        if (field === 'sanpham_id') {
+          if (value) {
+            const selectedSanpham = sanphamList.find(sp => sp.id === value);
+            if (selectedSanpham) {
+              updatedItem.sanpham = selectedSanpham;
+              // Tự động cập nhật các loại từ sản phẩm đã chọn
+              updatedItem.id_nhom = selectedSanpham.id_nhom;
+              updatedItem.id_kinh = selectedSanpham.id_kinh;
+              updatedItem.id_taynam = selectedSanpham.id_taynam;
+              updatedItem.id_bophan = selectedSanpham.id_bophan;
+              
+              // Tìm chi tiết sản phẩm
+              const foundDetail = chitietsanphamList.find(detail => detail.id_sanpham === selectedSanpham.id);
+              if (foundDetail) {
+                updatedItem.ngang = foundDetail.ngang;
+                // Cho phép bộ phận "Tầng nhôm" (TN) và "Mặc cánh" (MC) có kích thước nhỏ hơn 300mm
+                const isSpecialDepartment = updatedItem.id_bophan === 'TN' || updatedItem.id_bophan === 'MC' || updatedItem.id_bophan === 'TL';
+                const minSize = isSpecialDepartment ? 1 : 300;
+                const maxSize = updatedItem.id_bophan === 'TL' ? 1000 : 900;
+                
+                updatedItem.cao = Math.max(minSize, Math.min(maxSize, foundDetail.cao));
+                updatedItem.sau = Math.max(minSize, Math.min(maxSize, foundDetail.sau));
+                updatedItem.don_gia = foundDetail.don_gia;
+                // Tính diện tích kế hoạch với kích thước gốc
+                updatedItem.dien_tich_ke_hoach = (foundDetail.ngang * foundDetail.cao + foundDetail.ngang * foundDetail.sau + foundDetail.cao * foundDetail.sau) * 2;
+                // Tính lại diện tích thực tế và thành tiền
+                calculateInvoiceItem(updatedItem);
+              }
+            }
+          } else {
+            // Reset khi không chọn sản phẩm
+            updatedItem.sanpham = null;
+            updatedItem.ngang = 0;
+            updatedItem.cao = 0;
+            updatedItem.sau = 0;
+            updatedItem.don_gia = 0;
+            updatedItem.dien_tich_ke_hoach = 0;
+            updatedItem.dien_tich_thuc_te = 0;
+            updatedItem.ti_le = 0;
+            updatedItem.thanh_tien = 0;
+            calculateInvoiceItem(updatedItem);
+          }
+        }
+        
+        // Xử lý cho phụ kiện bếp
+        if (field === 'id_loaiphukien') {
+          // Khi chọn loại phụ kiện, reset tên phụ kiện và các giá trị liên quan
+          updatedItem.id_phukien = '';
+          updatedItem.phukien = null;
+          updatedItem.loaiphukien = loaiphukienList.find(loai => parseInt(loai.id) === parseInt(value)) || null;
+          updatedItem.don_gia = 0;
+          updatedItem.thanh_tien = 0;
+          calculateInvoiceItem(updatedItem);
+        }
+        
+        if (field === 'id_phukien') {
+          // Khi chọn tên phụ kiện, tự động điền giá và kích thước
+          if (value && value !== '') {
+            const phukienId = parseInt(value);
+            const foundPhukien = phukienList.find(phukien => phukien.id === phukienId);
+            if (foundPhukien) {
+              updatedItem.phukien = foundPhukien;
+              // Tự động điền giá từ phụ kiện
+              updatedItem.don_gia = foundPhukien.don_gia || 0;
+              // Nếu chưa có loaiphukien, set từ phụ kiện
+              if (!updatedItem.loaiphukien) {
+                updatedItem.loaiphukien = loaiphukienList.find(loai => parseInt(loai.id) === parseInt(foundPhukien.id_loaiphukien)) || null;
+              }
+              // Tính lại thành tiền
+              calculateInvoiceItem(updatedItem);
+            } else {
+              updatedItem.phukien = null;
+              updatedItem.don_gia = 0;
+              calculateInvoiceItem(updatedItem);
+            }
+          } else {
+            updatedItem.phukien = null;
+            updatedItem.don_gia = 0;
+            calculateInvoiceItem(updatedItem);
+          }
+        }
+        
         // Tính toán khi thay đổi kích thước hoặc số lượng
         if (['cao', 'sau'].includes(field)) {
           // Cho phép bộ phận "Tầng nhôm" (TN), "Mặc cánh" (MC) và "Tủ lạnh" (TL) có kích thước nhỏ hơn 300mm
@@ -523,6 +631,14 @@ function InvoicesTab() {
   };
 
   const calculateInvoiceItem = (item) => {
+    // Nếu là phụ kiện bếp, chỉ cần tính đơn giá * số lượng
+    if (item.loai_san_pham === 'phu_kien_bep') {
+      const thanh_tien = (item.don_gia || 0) * (item.so_luong || 1);
+      item.thanh_tien = thanh_tien;
+      return;
+    }
+
+    // Tính toán cho tủ bếp (logic cũ)
     const ngang = item.ngang || 0;
     const cao = item.cao || 0;
     const sau = item.sau || 0;
@@ -569,26 +685,52 @@ function InvoicesTab() {
       return;
     }
 
+    // Kiểm tra phụ kiện bếp có đầy đủ thông tin không
+    const invalidPhukienItems = invoiceItems.filter(item => 
+      item.loai_san_pham === 'phu_kien_bep' && (
+        !item.id_loaiphukien || !item.id_phukien || !item.so_luong || item.don_gia <= 0
+      )
+    );
+
+    if (invalidPhukienItems.length > 0) {
+      alert('Vui lòng chọn đầy đủ thông tin cho tất cả phụ kiện bếp (loại phụ kiện, tên phụ kiện, số lượng, đơn giá)');
+      return;
+    }
+
     try {
       const invoiceData = {
         customer_name: customerName,
         invoice_date: `${invoiceDate}T${invoiceTime}`,
-        items: invoiceItems.map(item => ({
-          id_nhom: item.id_nhom,
-          id_kinh: item.id_kinh,
-          id_taynam: item.id_taynam,
-          id_bophan: item.id_bophan,
-          sanpham_id: item.sanpham?.id,
-          ngang: item.ngang,
-          cao: item.cao,
-          sau: item.sau,
-          so_luong: item.so_luong,
-          don_gia: item.don_gia,
-          dien_tich_ke_hoach: item.dien_tich_ke_hoach,
-          dien_tich_thuc_te: item.dien_tich_thuc_te,
-          ti_le: item.ti_le,
-          thanh_tien: item.thanh_tien
-        })),
+        items: invoiceItems.map(item => {
+          if (item.loai_san_pham === 'phu_kien_bep') {
+            return {
+              loai_san_pham: 'phu_kien_bep',
+              id_loaiphukien: item.id_loaiphukien,
+              id_phukien: item.id_phukien,
+              so_luong: item.so_luong,
+              don_gia: item.don_gia,
+              thanh_tien: item.thanh_tien
+            };
+          } else {
+            return {
+              loai_san_pham: 'tu_bep',
+              id_nhom: item.id_nhom,
+              id_kinh: item.id_kinh,
+              id_taynam: item.id_taynam,
+              id_bophan: item.id_bophan,
+              sanpham_id: item.sanpham?.id,
+              ngang: item.ngang,
+              cao: item.cao,
+              sau: item.sau,
+              so_luong: item.so_luong,
+              don_gia: item.don_gia,
+              dien_tich_ke_hoach: item.dien_tich_ke_hoach,
+              dien_tich_thuc_te: item.dien_tich_thuc_te,
+              ti_le: item.ti_le,
+              thanh_tien: item.thanh_tien
+            };
+          }
+        }),
         total_amount: calculateTotal()
       };
 
@@ -688,13 +830,41 @@ function InvoicesTab() {
       <div className="bg-white rounded-lg shadow-sm border p-6">
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-lg font-semibold text-gray-900">Chi tiết sản phẩm</h3>
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center space-x-4">
+            {/* Chọn loại sản phẩm */}
+            <div className="flex items-center space-x-4">
+              <label className="text-sm font-medium text-gray-700">Loại sản phẩm:</label>
+              <div className="flex items-center space-x-2">
+                <label className="flex items-center">
+                  <input
+                    type="radio"
+                    name="productType"
+                    value="tu_bep"
+                    checked={selectedProductType === 'tu_bep'}
+                    onChange={(e) => setSelectedProductType(e.target.value)}
+                    className="mr-2"
+                  />
+                  <span className="text-sm">Tủ bếp</span>
+                </label>
+                <label className="flex items-center">
+                  <input
+                    type="radio"
+                    name="productType"
+                    value="phu_kien_bep"
+                    checked={selectedProductType === 'phu_kien_bep'}
+                    onChange={(e) => setSelectedProductType(e.target.value)}
+                    className="mr-2"
+                  />
+                  <span className="text-sm">Phụ kiện bếp</span>
+                </label>
+              </div>
+            </div>
             <button
               onClick={addInvoiceItem}
               className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center space-x-2"
             >
               <Plus className="w-4 h-4" />
-              <span>Thêm hóa đơn sản phẩm</span>
+              <span>Thêm {selectedProductType === 'tu_bep' ? 'sản phẩm tủ bếp' : 'phụ kiện bếp'}</span>
             </button>
             <button
               onClick={addInvoiceItem}
@@ -787,7 +957,7 @@ function InvoicesTab() {
         )}
 
         {/* Form chi tiết cho các bộ phận được chọn */}
-        {selectedBophans.length > 0 && (
+        {selectedBophans.length > 0 && selectedProductType === 'tu_bep' && (
           <div className="space-y-4">
             {selectedBophans.map((bophanId, index) => {
               const bophan = bophanList.find(b => b.id === bophanId);
@@ -887,21 +1057,77 @@ function InvoicesTab() {
 
                   <div className="mb-4">
                     <label className="block text-sm font-medium text-gray-700 mb-2">Tên sản phẩm</label>
-                    <input
-                      type="text"
-                      value={item.sanpham ? item.sanpham.tensp : ''}
-                      className={`w-full px-3 py-2 border border-gray-300 rounded-lg ${
+                    <select
+                      value={item.sanpham ? item.sanpham.id : ''}
+                      onChange={(e) => {
+                        const selectedSanphamId = e.target.value;
+                        if (selectedSanphamId) {
+                          const selectedSanpham = sanphamList.find(sp => sp.id === selectedSanphamId);
+                          if (selectedSanpham) {
+                            // Tự động điền thông tin từ sản phẩm đã chọn
+                            const foundDetail = chitietsanphamList.find(detail => detail.id_sanpham === selectedSanpham.id);
+                            if (foundDetail) {
+                              const isSpecialDepartment = item.id_bophan === 'TN' || item.id_bophan === 'MC' || item.id_bophan === 'TL';
+                              const minSize = isSpecialDepartment ? 1 : 300;
+                              const maxSize = item.id_bophan === 'TL' ? 1000 : 900;
+                              
+                              // Cập nhật các trường select cho loại nhôm, kính, tay nắm
+                              updateInvoiceItem(item.id, 'id_nhom', foundDetail.id_nhom || selectedSanpham.id_nhom || globalNhom);
+                              updateInvoiceItem(item.id, 'id_kinh', foundDetail.id_kinh || selectedSanpham.id_kinh || globalKinh);
+                              updateInvoiceItem(item.id, 'id_taynam', foundDetail.id_taynam || selectedSanpham.id_taynam || globalTaynam);
+                              
+                              updateInvoiceItem(item.id, 'sanpham_id', selectedSanpham.id);
+                              updateInvoiceItem(item.id, 'ngang', foundDetail.ngang);
+                              updateInvoiceItem(item.id, 'cao', Math.max(minSize, Math.min(maxSize, foundDetail.cao)));
+                              updateInvoiceItem(item.id, 'sau', Math.max(minSize, Math.min(maxSize, foundDetail.sau)));
+                              updateInvoiceItem(item.id, 'don_gia', foundDetail.don_gia);
+                            }
+                          }
+                        } else {
+                          // Reset khi không chọn sản phẩm
+                          updateInvoiceItem(item.id, 'sanpham_id', '');
+                        }
+                      }}
+                      className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
                         !(item.id_nhom || globalNhom) || !(item.id_kinh || globalKinh) || !(item.id_taynam || globalTaynam) 
                           ? 'bg-red-50 text-red-700' 
-                          : 'bg-white text-black'
+                          : 'bg-green-100 text-black'
                       }`}
-                      readOnly
-                      placeholder={
-                        !(item.id_nhom || globalNhom) || !(item.id_kinh || globalKinh) || !(item.id_taynam || globalTaynam) 
+                    >
+                      <option value="">
+                        {!(item.id_nhom || globalNhom) || !(item.id_kinh || globalKinh) || !(item.id_taynam || globalTaynam) 
                           ? "Vui lòng chọn đầy đủ các loại (nhôm, kính, tay nắm)" 
-                          : "Sản phẩm sẽ được tự động chọn khi chọn đủ các loại"
-                      }
-                    />
+                          : "Chọn sản phẩm hoặc để tự động chọn"
+                        }
+                      </option>
+                      {sanphamList
+                        .filter(sp => {
+                          // Lọc sản phẩm theo các loại đã chọn
+                          const currentNhom = item.id_nhom || globalNhom;
+                          const currentKinh = item.id_kinh || globalKinh;
+                          const currentTaynam = item.id_taynam || globalTaynam;
+                          const currentBophan = item.id_bophan;
+                          
+                          return (!currentNhom || sp.id_nhom === currentNhom) &&
+                                 (!currentKinh || sp.id_kinh === currentKinh) &&
+                                 (!currentTaynam || sp.id_taynam === currentTaynam) &&
+                                 (!currentBophan || sp.id_bophan === currentBophan);
+                        })
+                        .map(sanpham => {
+                          const detail = chitietsanphamList.find(d => d.id_sanpham === sanpham.id);
+                          const nhomName = loainhomList.find(n => n.id === (detail?.id_nhom || sanpham.id_nhom))?.tenloai || 'N/A';
+                          const kinhName = loaikinhList.find(k => k.id === (detail?.id_kinh || sanpham.id_kinh))?.tenloai || 'N/A';
+                          const taynamName = loaitaynamList.find(t => t.id === (detail?.id_taynam || sanpham.id_taynam))?.tenloai || 'N/A';
+                          const displayName = detail 
+                            ? `${sanpham.tensp} (${nhomName}/${kinhName}/${taynamName} - ${detail.ngang}x${detail.cao}x${detail.sau}mm - ${detail.don_gia?.toLocaleString('vi-VN')} VND)`
+                            : `${sanpham.tensp} (${nhomName}/${kinhName}/${taynamName})`;
+                          return (
+                            <option key={sanpham.id} value={sanpham.id}>
+                              {displayName}
+                            </option>
+                          );
+                        })}
+                    </select>
                     {(!(item.id_nhom || globalNhom) || !(item.id_kinh || globalKinh) || !(item.id_taynam || globalTaynam)) && (
                       <p className="text-red-500 text-xs mt-1">⚠️ Chưa chọn đầy đủ các loại</p>
                     )}
@@ -1036,6 +1262,148 @@ function InvoicesTab() {
           </div>
         )}
 
+        {/* Form chi tiết cho phụ kiện bếp */}
+        {selectedProductType === 'phu_kien_bep' && (
+          <div className="space-y-4">
+            {invoiceItems.filter(item => item.loai_san_pham === 'phu_kien_bep').map((item, index) => (
+              <div key={item.id} className="border border-gray-200 rounded-lg p-4">
+                <div className="flex justify-between items-center mb-4">
+                  <h4 className="font-medium text-gray-900">Phụ kiện bếp {index + 1}</h4>
+                  <button
+                    onClick={() => removeInvoiceItem(item.id)}
+                    className="text-red-600 hover:text-red-900 p-1"
+                    title="Xóa phụ kiện này"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Loại phụ kiện</label>
+                    <select
+                      value={item.id_loaiphukien || ''}
+                      onChange={(e) => {
+                        const newValue = e.target.value;
+                        updateInvoiceItem(item.id, 'id_loaiphukien', newValue);
+                      }}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-green-100 text-black"
+                    >
+                      <option value="">Chọn loại phụ kiện</option>
+                      {loaiphukienList.map(loai => (
+                        <option key={loai.id} value={loai.id}>{loai.tenloai}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Tên phụ kiện</label>
+                    <select
+                      key={`phukien-${item.id}-${item.id_loaiphukien}`}
+                      value={item.id_phukien || ''}
+                      onChange={(e) => {
+                        const selectedValue = e.target.value;
+                        updateInvoiceItem(item.id, 'id_phukien', selectedValue);
+                      }}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-green-100 text-black"
+                    >
+                      <option value="">Chọn phụ kiện</option>
+                      {phukienList
+                        .filter(phukien => {
+                          const currentLoaiId = item.id_loaiphukien ? parseInt(item.id_loaiphukien) : null;
+                          const phukienLoaiId = parseInt(phukien.id_loaiphukien);
+                          const shouldInclude = !currentLoaiId || phukienLoaiId === currentLoaiId;
+                          return shouldInclude;
+                        })
+                        .map(phukien => {
+                          const loaiPhukien = loaiphukienList.find(loai => parseInt(loai.id) === parseInt(phukien.id_loaiphukien));
+                          const displayName = loaiPhukien ? `${loaiPhukien.tenloai} - ${phukien.tenphukien}` : phukien.tenphukien;
+                          return (
+                            <option key={phukien.id} value={phukien.id}>{displayName}</option>
+                          );
+                        })}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Số lượng</label>
+                    <input
+                      type="number"
+                      min="1"
+                      value={item.so_luong}
+                      onChange={(e) => updateInvoiceItem(item.id, 'so_luong', parseInt(e.target.value) || 1)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-yellow-100 text-black"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Đơn giá (VND)</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={item.don_gia}
+                      onChange={(e) => updateInvoiceItem(item.id, 'don_gia', parseFloat(e.target.value) || 0)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-yellow-100 text-black"
+                      placeholder="Nhập đơn giá"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Thành tiền (VND)</label>
+                    <input
+                      type="text"
+                      value={`${item.thanh_tien.toLocaleString('vi-VN')} VND`}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-green-50 text-green-700 font-semibold"
+                      readOnly
+                    />
+                  </div>
+                </div>
+
+                {/* Hiển thị thông tin chi tiết phụ kiện */}
+                {item.phukien && (
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <h5 className="font-medium text-gray-900 mb-2">Thông tin chi tiết:</h5>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                      <div>
+                        <span className="text-gray-700 font-medium">Thương hiệu:</span>
+                        <p className="font-semibold text-gray-900">{item.phukien.thuong_hieu || 'N/A'}</p>
+                      </div>
+                      <div>
+                        <span className="text-gray-700 font-medium">Model:</span>
+                        <p className="font-semibold text-gray-900">{item.phukien.model || 'N/A'}</p>
+                      </div>
+                      <div>
+                        <span className="text-gray-700 font-medium">Công suất:</span>
+                        <p className="font-semibold text-gray-900">{item.phukien.cong_suat || 'N/A'}</p>
+                      </div>
+                      <div>
+                        <span className="text-gray-700 font-medium">Kích thước:</span>
+                        <p className="font-semibold text-gray-900">{item.phukien.kich_thuoc || 'N/A'}</p>
+                      </div>
+                      <div>
+                        <span className="text-gray-700 font-medium">Trọng lượng:</span>
+                        <p className="font-semibold text-gray-900">{item.phukien.trong_luong ? `${item.phukien.trong_luong} kg` : 'N/A'}</p>
+                      </div>
+                      <div>
+                        <span className="text-gray-700 font-medium">Bảo hành:</span>
+                        <p className="font-semibold text-gray-900">{item.phukien.bao_hanh || 'N/A'}</p>
+                      </div>
+                      <div>
+                        <span className="text-gray-700 font-medium">Xuất xứ:</span>
+                        <p className="font-semibold text-gray-900">{item.phukien.xuat_xu || 'N/A'}</p>
+                      </div>
+                      <div>
+                        <span className="text-gray-700 font-medium">Mô tả:</span>
+                        <p className="font-semibold text-gray-900">{item.phukien.mo_ta || 'N/A'}</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+
         {selectedBophans.length === 0 && (
           <div className="text-center py-12">
             <Package className="w-12 h-12 text-gray-400 mx-auto mb-4" />
@@ -1045,10 +1413,11 @@ function InvoicesTab() {
         )}
 
         {/* Summary Section */}
-        {selectedBophans.length > 0 && (
+        {selectedBophans.length > 0 || invoiceItems.filter(item => item.loai_san_pham === 'phu_kien_bep').length > 0 ? (
           <div className="bg-white rounded-lg shadow-sm border p-6 mt-6">
             <h3 className="text-lg font-semibold text-black mb-4">Tóm tắt đơn hàng</h3>
             <div className="space-y-4">
+              {/* Hiển thị sản phẩm tủ bếp */}
               {selectedBophans.map(bophanId => {
                 const bophan = bophanList.find(b => b.id === bophanId);
                 if (!bophan) return null;
@@ -1065,6 +1434,7 @@ function InvoicesTab() {
                       <div>
                         <h4 className="font-medium text-black">{item.sanpham.tensp}</h4>
                         <p className="text-sm text-gray-700">Bộ phận: {bophan.tenloai}</p>
+                        <p className="text-xs text-blue-600">Loại: Tủ bếp</p>
                       </div>
                       <div className="text-right">
                         <p className="text-lg font-bold text-green-600">
@@ -1096,6 +1466,45 @@ function InvoicesTab() {
                   </div>
                 );
               })}
+
+              {/* Hiển thị phụ kiện bếp */}
+              {invoiceItems.filter(item => item.loai_san_pham === 'phu_kien_bep').map((item, index) => (
+                <div key={item.id} className="border border-gray-200 rounded-lg p-4 bg-blue-50">
+                  <div className="flex justify-between items-start mb-3">
+                    <div>
+                      <h4 className="font-medium text-black">{item.phukien?.tenphukien || 'Phụ kiện'}</h4>
+                      <p className="text-sm text-gray-700">Loại: {item.loaiphukien?.tenloai || 'Phụ kiện bếp'}</p>
+                      <p className="text-xs text-purple-600">Loại: Phụ kiện bếp</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-lg font-bold text-green-600">
+                        {item.thanh_tien.toLocaleString('vi-VN')} VND
+                      </p>
+                      <p className="text-sm text-gray-600">
+                        Số lượng: {item.so_luong}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                    <div>
+                      <span className="text-gray-700 font-medium">Thương hiệu:</span>
+                      <p className="font-medium text-black">{item.phukien?.thuong_hieu || 'N/A'}</p>
+                    </div>
+                    <div>
+                      <span className="text-gray-700 font-medium">Kích thước:</span>
+                      <p className="font-medium text-black">{item.phukien?.kich_thuoc || 'N/A'}</p>
+                    </div>
+                    <div>
+                      <span className="text-gray-700 font-medium">Công suất:</span>
+                      <p className="font-medium text-black">{item.phukien?.cong_suat || 'N/A'}</p>
+                    </div>
+                    <div>
+                      <span className="text-gray-700 font-medium">Đơn giá:</span>
+                      <p className="font-medium text-black">{item.don_gia.toLocaleString('vi-VN')} VND</p>
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
 
             {/* Total Summary */}
@@ -1104,7 +1513,7 @@ function InvoicesTab() {
                 <div>
                   <h4 className="text-lg font-semibold text-black">Tổng cộng</h4>
                   <p className="text-sm text-gray-700">
-                    {selectedBophans.length} bộ phận • {invoiceItems.reduce((sum, item) => sum + (item.so_luong || 0), 0)} sản phẩm
+                    {selectedBophans.length} bộ phận tủ bếp • {invoiceItems.filter(item => item.loai_san_pham === 'phu_kien_bep').length} phụ kiện bếp • {invoiceItems.reduce((sum, item) => sum + (item.so_luong || 0), 0)} sản phẩm
                   </p>
                 </div>
                 <div className="text-right">
@@ -1126,7 +1535,7 @@ function InvoicesTab() {
               </button>
             </div>
           </div>
-        )}
+        ) : null}
       </div>
     </div>
   );
@@ -1280,8 +1689,6 @@ function RevenueTab({ salesData, products, setSalesData }) {
   const loadInvoices = async () => {
     setLoading(true);
     try {
-      console.log('Loading invoices for month:', selectedMonth);
-
       const response = await fetch(`http://localhost:8001/api/v1/accounting/invoices?month=${selectedMonth}`, {
         method: 'GET',
         headers: {
@@ -1291,7 +1698,6 @@ function RevenueTab({ salesData, products, setSalesData }) {
 
       if (response.ok) {
         const data = await response.json();
-        console.log('Invoices loaded successfully:', data);
         setInvoices(data.invoices || []);
       } else {
         const errorText = await response.text();
@@ -1347,6 +1753,7 @@ function RevenueTab({ salesData, products, setSalesData }) {
                 <thead>
                   <tr>
                     <th>STT</th>
+                    <th>Loại sản phẩm</th>
                     <th>Tên sản phẩm</th>
                     <th>Loại nhôm</th>
                     <th>Loại kính</th>
@@ -1362,11 +1769,12 @@ function RevenueTab({ salesData, products, setSalesData }) {
                   ${invoice.items.map((item, index) => `
                     <tr>
                       <td>${index + 1}</td>
-                      <td>${item.sanpham?.tensp || 'N/A'}</td>
-                      <td>${item.sanpham?.ten_nhom || item.ten_nhom || 'N/A'}</td>
-                      <td>${item.sanpham?.ten_kinh || item.ten_kinh || 'N/A'}</td>
-                      <td>${item.sanpham?.ten_taynam || item.ten_taynam || 'N/A'}</td>
-                      <td>${item.sanpham?.ten_bophan || item.ten_bophan || 'N/A'}</td>
+                      <td>${item.loai_san_pham === 'phukienbep' ? 'Phụ kiện bếp' : 'Tủ bếp'}</td>
+                      <td>${item.phukienbep?.ten_phukien || item.sanpham?.tensp || 'N/A'}</td>
+                      <td>${item.phukienbep?.loaiphukienbep?.ten_loai || item.sanpham?.ten_nhom || item.ten_nhom || 'N/A'}</td>
+                      <td>${item.loai_san_pham === 'phukienbep' ? (item.phukienbep?.kich_thuoc || 'N/A') : (item.sanpham?.ten_kinh || item.ten_kinh || 'N/A')}</td>
+                      <td>${item.loai_san_pham === 'phukienbep' ? 'N/A' : (item.sanpham?.ten_taynam || item.ten_taynam || 'N/A')}</td>
+                      <td>${item.loai_san_pham === 'phukienbep' ? 'N/A' : (item.sanpham?.ten_bophan || item.ten_bophan || 'N/A')}</td>
                       <td>${item.ngang} x ${item.cao} x ${item.sau} mm</td>
                       <td>${item.so_luong}</td>
                       <td>${item.don_gia?.toLocaleString('vi-VN')} VND</td>
@@ -1435,6 +1843,7 @@ function RevenueTab({ salesData, products, setSalesData }) {
                 <thead>
                   <tr>
                     <th>STT</th>
+                    <th>Loại sản phẩm</th>
                     <th>Tên sản phẩm</th>
                     <th>Loại nhôm</th>
                     <th>Loại kính</th>
@@ -1450,11 +1859,12 @@ function RevenueTab({ salesData, products, setSalesData }) {
                   ${invoice.items.map((item, index) => `
                     <tr>
                       <td>${index + 1}</td>
-                      <td>${item.sanpham?.tensp || 'N/A'}</td>
-                      <td>${item.sanpham?.ten_nhom || item.ten_nhom || 'N/A'}</td>
-                      <td>${item.sanpham?.ten_kinh || item.ten_kinh || 'N/A'}</td>
-                      <td>${item.sanpham?.ten_taynam || item.ten_taynam || 'N/A'}</td>
-                      <td>${item.sanpham?.ten_bophan || item.ten_bophan || 'N/A'}</td>
+                      <td>${item.loai_san_pham === 'phukienbep' ? 'Phụ kiện bếp' : 'Tủ bếp'}</td>
+                      <td>${item.phukienbep?.ten_phukien || item.sanpham?.tensp || 'N/A'}</td>
+                      <td>${item.phukienbep?.loaiphukienbep?.ten_loai || item.sanpham?.ten_nhom || item.ten_nhom || 'N/A'}</td>
+                      <td>${item.loai_san_pham === 'phukienbep' ? (item.phukienbep?.kich_thuoc || 'N/A') : (item.sanpham?.ten_kinh || item.ten_kinh || 'N/A')}</td>
+                      <td>${item.loai_san_pham === 'phukienbep' ? 'N/A' : (item.sanpham?.ten_taynam || item.ten_taynam || 'N/A')}</td>
+                      <td>${item.loai_san_pham === 'phukienbep' ? 'N/A' : (item.sanpham?.ten_bophan || item.ten_bophan || 'N/A')}</td>
                       <td>${item.ngang} x ${item.cao} x ${item.sau} mm</td>
                       <td>${item.so_luong}</td>
                       <td>${item.don_gia?.toLocaleString('vi-VN')} VND</td>
@@ -1498,7 +1908,7 @@ function RevenueTab({ salesData, products, setSalesData }) {
     // Header
     excelData.push(['DANH SÁCH HÓA ĐƠN THÁNG ' + selectedMonth]);
     excelData.push([]);
-    excelData.push(['STT', 'Khách hàng', 'Ngày', 'Giờ', 'Tên sản phẩm', 'Loại nhôm', 'Loại kính', 'Loại tay nắm', 'Bộ phận', 'Kích thước', 'Số lượng', 'Đơn giá', 'Thành tiền', 'Tổng hóa đơn']);
+    excelData.push(['STT', 'Khách hàng', 'Ngày', 'Giờ', 'Loại sản phẩm', 'Tên sản phẩm', 'Loại/Thông số', 'Kích thước', 'Số lượng', 'Đơn giá', 'Thành tiền', 'Tổng hóa đơn']);
 
     let rowIndex = 4; // Bắt đầu từ dòng 4 (index 3)
     
@@ -1509,17 +1919,23 @@ function RevenueTab({ salesData, products, setSalesData }) {
       
       if (invoice.items && invoice.items.length > 0) {
         invoice.items.forEach((item, itemIndex) => {
+          const isPhuKienBep = item.loai_sanpham === 'phukienbep';
+          
           excelData.push([
             invoiceIndex + 1, // STT hóa đơn
             invoice.customer_name,
             dateStr,
             timeStr,
-            item.sanpham?.tensp || 'N/A',
-            item.sanpham?.ten_nhom || item.ten_nhom || 'N/A',
-            item.sanpham?.ten_kinh || item.ten_kinh || 'N/A',
-            item.sanpham?.ten_taynam || item.ten_taynam || 'N/A',
-            item.sanpham?.ten_bophan || item.ten_bophan || 'N/A',
-            `${item.ngang} x ${item.cao} x ${item.sau} mm`,
+            isPhuKienBep ? 'Phụ kiện bếp' : 'Tủ bếp', // Loại sản phẩm
+            isPhuKienBep 
+              ? (item.phukienbep?.ten_phukien || item.ten_phukien || 'N/A')
+              : (item.sanpham?.tensp || item.tensp || 'N/A'), // Tên sản phẩm
+            isPhuKienBep 
+              ? (item.phukienbep?.loai_phukien?.tenloai || item.ten_loai_phukien || 'N/A')
+              : (item.sanpham?.ten_nhom || item.ten_nhom || 'N/A'), // Loại/Thông số
+            isPhuKienBep 
+              ? (item.phukienbep?.kich_thuoc || item.kich_thuoc || 'N/A')
+              : `${item.ngang || 0} x ${item.cao || 0} x ${item.sau || 0} mm`, // Kích thước
             item.so_luong,
             item.don_gia || 0,
             item.thanh_tien || 0,
@@ -1533,12 +1949,10 @@ function RevenueTab({ salesData, products, setSalesData }) {
           invoice.customer_name,
           dateStr,
           timeStr,
-          'N/A',
-          'N/A',
-          'N/A',
-          'N/A',
-          'N/A',
-          'N/A',
+          'N/A', // Loại sản phẩm
+          'N/A', // Tên sản phẩm
+          'N/A', // Loại/Thông số
+          'N/A', // Kích thước
           0,
           0,
           0,
@@ -1553,7 +1967,7 @@ function RevenueTab({ salesData, products, setSalesData }) {
 
     // Thêm tổng kết tháng
     excelData.push([]);
-    excelData.push(['', '', '', '', '', '', '', '', '', '', '', 'TỔNG DOANH THU THÁNG:', totalRevenue]);
+    excelData.push(['', '', '', '', '', '', '', '', 'TỔNG DOANH THU THÁNG:', totalRevenue]);
 
     // Tạo workbook và worksheet
     const wb = XLSX.utils.book_new();
@@ -1565,12 +1979,10 @@ function RevenueTab({ salesData, products, setSalesData }) {
       { wch: 25 },  // Khách hàng
       { wch: 12 },  // Ngày
       { wch: 10 },  // Giờ
+      { wch: 15 },  // Loại sản phẩm
       { wch: 30 },  // Tên sản phẩm
-      { wch: 20 },  // Loại nhôm
-      { wch: 20 },  // Loại kính
-      { wch: 20 },  // Loại tay nắm
-      { wch: 20 },  // Bộ phận
-      { wch: 25 },  // Kích thước
+      { wch: 25 },  // Loại/Thông số
+      { wch: 20 },  // Kích thước
       { wch: 12 },  // Số lượng
       { wch: 15 },  // Đơn giá
       { wch: 15 },  // Thành tiền
@@ -1623,7 +2035,7 @@ function RevenueTab({ salesData, products, setSalesData }) {
         };
         
         // Căn giữa cho các cột số
-        if (col === 0 || col === 10 || col === 11 || col === 12 || col === 13) {
+        if (col === 0 || col === 8 || col === 9 || col === 10) {
           ws[cellAddress].s.alignment = { horizontal: "center", vertical: "center" };
         } else {
           ws[cellAddress].s.alignment = { horizontal: "left", vertical: "center" };
@@ -2611,11 +3023,20 @@ function MaterialsManagementTab() {
   const [kinhList, setKinhList] = useState([]);
   const [taynamList, setTaynamList] = useState([]);
   const [departments, setDepartments] = useState([]);
+  const [loaiphukienbepList, setLoaiphukienbepList] = useState([]);
+  const [phukienbepList, setPhukienbepList] = useState([]);
   const [loading, setLoading] = useState(true);
 
   const [formData, setFormData] = useState({
     tenloai: '',
-    mota: ''
+    mota: '',
+    // For phukienbep
+    id_loaiphukien: '',
+    ten_phukien: '',
+    gia: 0,
+    kich_thuoc: '',
+    thuong_hieu: '',
+    mo_ta: ''
   });
   const [showForm, setShowForm] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
@@ -2626,22 +3047,59 @@ function MaterialsManagementTab() {
 
   const fetchMaterials = async () => {
     try {
-      const [nhomRes, kinhRes, taynamRes, bophanRes] = await Promise.all([
+      const [nhomRes, kinhRes, taynamRes, bophanRes, loaiphukienRes, phukienRes] = await Promise.all([
         fetch('http://localhost:8001/api/v1/accounting/loainhom/'),
         fetch('http://localhost:8001/api/v1/accounting/loaikinh/'),
         fetch('http://localhost:8001/api/v1/accounting/loaitaynam/'),
-        fetch('http://localhost:8001/api/v1/accounting/bophan/')
+        fetch('http://localhost:8001/api/v1/accounting/bophan/'),
+        fetch('http://localhost:8001/api/v1/accounting/loaiphukienbep/'),
+        fetch('http://localhost:8001/api/v1/accounting/phukienbep/')
       ]);
 
-      if (nhomRes.ok) setNhomList(await nhomRes.json());
-      if (kinhRes.ok) setKinhList(await kinhRes.json());
-      if (taynamRes.ok) setTaynamList(await taynamRes.json());
-      if (bophanRes.ok) setDepartments(await bophanRes.json());
+      if (nhomRes.ok) {
+        const nhomData = await nhomRes.json();
+        setNhomList(nhomData);
+      }
+      if (kinhRes.ok) {
+        const kinhData = await kinhRes.json();
+        setKinhList(kinhData);
+      }
+      if (taynamRes.ok) {
+        const taynamData = await taynamRes.json();
+        setTaynamList(taynamData);
+      }
+      if (bophanRes.ok) {
+        const bophanData = await bophanRes.json();
+        setDepartments(bophanData);
+      }
+      if (loaiphukienRes.ok) {
+        const loaiphukienData = await loaiphukienRes.json();
+        setLoaiphukienbepList(loaiphukienData);
+      }
+      if (phukienRes.ok) {
+        const phukienData = await phukienRes.json();
+        setPhukienbepList(phukienData);
+      }
     } catch (error) {
       console.error('Error fetching materials:', error);
     } finally {
       setLoading(false);
     }
+  };
+
+  // Tạo danh sách loại phụ kiện từ bảng phukienbep
+  const getLoaiPhukienFromPhukienbep = () => {
+    const uniqueLoaiIds = [...new Set(phukienbepList.map(item => item.id_loaiphukien).filter(id => id))];
+    
+    const result = uniqueLoaiIds.map(id => {
+      const loaiInfo = loaiphukienbepList.find(loai => loai.id === id);
+      return {
+        id: id,
+        tenloai: loaiInfo ? loaiInfo.tenloai : `Loại ${id}`
+      };
+    });
+    
+    return result;
   };
 
   const getCurrentList = () => {
@@ -2650,6 +3108,8 @@ function MaterialsManagementTab() {
       case 'kinh': return kinhList;
       case 'taynam': return taynamList;
       case 'departments': return departments;
+      case 'loaiphukienbep': return getLoaiPhukienFromPhukienbep();
+      case 'phukienbep': return phukienbepList;
       default: return [];
     }
   };
@@ -2660,6 +3120,8 @@ function MaterialsManagementTab() {
       case 'kinh': return setKinhList;
       case 'taynam': return setTaynamList;
       case 'departments': return setDepartments;
+      case 'loaiphukienbep': return setLoaiphukienbepList;
+      case 'phukienbep': return setPhukienbepList;
       default: return () => {};
     }
   };
@@ -2670,6 +3132,8 @@ function MaterialsManagementTab() {
       case 'kinh': return 'loaikinh';
       case 'taynam': return 'loaitaynam';
       case 'departments': return 'bophan';
+      case 'loaiphukienbep': return 'loaiphukienbep';
+      case 'phukienbep': return 'phukienbep';
       default: return '';
     }
   };
@@ -2680,6 +3144,8 @@ function MaterialsManagementTab() {
       case 'kinh': return 'Loại kính';
       case 'taynam': return 'Loại tay nắm';
       case 'departments': return 'Bộ phận';
+      case 'loaiphukienbep': return 'Loại phụ kiện bếp';
+      case 'phukienbep': return 'Phụ kiện bếp';
       default: return '';
     }
   };
@@ -2694,15 +3160,29 @@ function MaterialsManagementTab() {
       
       const method = editingItem ? 'PUT' : 'POST';
 
+      let requestData;
+      if (activeMaterialTab === 'phukienbep') {
+        requestData = {
+          id_loaiphukien: parseInt(formData.id_loaiphukien),
+          tenphukien: formData.ten_phukien,
+          don_gia: parseFloat(formData.don_gia),
+          kich_thuoc: formData.kich_thuoc,
+          thuong_hieu: formData.thuong_hieu,
+          mo_ta: formData.mo_ta
+        };
+      } else {
+        requestData = {
+          tenloai: formData.tenloai,
+          mota: formData.mota
+        };
+      }
+
       const response = await fetch(url, {
         method,
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({
-          tenloai: formData.tenloai,
-          mota: formData.mota
-        })
+        body: JSON.stringify(requestData)
       });
 
       if (response.ok) {
@@ -2716,7 +3196,16 @@ function MaterialsManagementTab() {
           setter([...currentList, result]);
         }
         
-        setFormData({ tenloai: '', mota: '' });
+        setFormData({
+          tenloai: '',
+          mota: '',
+          id_loaiphukien: '',
+          tenphukien: '',
+          don_gia: 0,
+          kich_thuoc: '',
+          thuong_hieu: '',
+          mo_ta: ''
+        });
         setShowForm(false);
         setEditingItem(null);
       }
@@ -2726,11 +3215,31 @@ function MaterialsManagementTab() {
   };
 
   const handleEdit = (item) => {
+    if (activeMaterialTab === 'loaiphukienbep') {
+      // Đối với tab loaiphukienbep, item chỉ có id và tenloai, cần tìm full item từ loaiphukienbepList
+      const fullItem = loaiphukienbepList.find(loai => loai.id === item.id);
+      if (fullItem) {
+        setFormData({
+          tenloai: fullItem.tenloai,
+          mota: fullItem.mota || ''
+        });
+      }
+    } else if (activeMaterialTab === 'phukienbep') {
+      setFormData({
+        id_loaiphukien: item.id_loaiphukien || '',
+        tenphukien: item.tenphukien || '',
+        don_gia: item.don_gia || 0,
+        kich_thuoc: item.kich_thuoc || '',
+        thuong_hieu: item.thuong_hieu || '',
+        mo_ta: item.mo_ta || ''
+      });
+    } else {
+      setFormData({
+        tenloai: item.tenloai,
+        mota: item.mota || ''
+      });
+    }
     setEditingItem(item);
-    setFormData({
-      tenloai: item.tenloai,
-      mota: item.mota || ''
-    });
     setShowForm(true);
   };
 
@@ -2747,6 +3256,19 @@ function MaterialsManagementTab() {
         const setter = getCurrentSetter();
         const currentList = getCurrentList();
         setter(currentList.filter(item => item.id !== itemId));
+        
+        // Nếu xóa loại phụ kiện bếp, cần refresh lại danh sách phụ kiện bếp
+        if (activeMaterialTab === 'loaiphukienbep') {
+          // Kiểm tra xem loại này có được sử dụng trong phụ kiện bếp không
+          const isUsedInPhukien = phukienbepList.some(phukien => phukien.id_loaiphukien === itemId);
+          if (isUsedInPhukien) {
+            // Refresh lại danh sách phụ kiện để cập nhật dropdown
+            const phukienRes = await fetch('http://localhost:8001/api/v1/accounting/phukienbep/');
+            if (phukienRes.ok) {
+              setPhukienbepList(await phukienRes.json());
+            }
+          }
+        }
       }
     } catch (error) {
       console.error('Error deleting material:', error);
@@ -2756,7 +3278,16 @@ function MaterialsManagementTab() {
   const handleCancel = () => {
     setShowForm(false);
     setEditingItem(null);
-    setFormData({ tenloai: '', mota: '' });
+    setFormData({
+      tenloai: '',
+      mota: '',
+      id_loaiphukien: '',
+      tenphukien: '',
+      don_gia: 0,
+      kich_thuoc: '',
+      thuong_hieu: '',
+      mo_ta: ''
+    });
   };
 
   if (loading) {
@@ -2769,19 +3300,27 @@ function MaterialsManagementTab() {
       <div className="flex justify-between items-center">
         <div>
           <h2 className="text-2xl font-bold text-gray-900">Quản lý Vật liệu</h2>
-          <p className="text-gray-600 mt-1">Quản lý các loại nhôm, kính, tay nắm và bộ phận</p>
+          <p className="text-gray-600 mt-1">Quản lý các loại nhôm, kính, tay nắm, bộ phận và phụ kiện bếp</p>
         </div>
         <div className="flex items-center space-x-4">
           <div className="text-right">
             <p className="text-sm text-gray-600">Tổng {getMaterialTitle().toLowerCase()}</p>
-            <p className="text-xl font-bold text-purple-600">{getCurrentList().length}</p>
+            <p className="text-xl font-bold text-purple-600">
+              {activeMaterialTab === 'loaiphukienbep' ? getLoaiPhukienFromPhukienbep().length : getCurrentList().length}
+            </p>
           </div>
           <button
             onClick={() => setShowForm(true)}
             className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 flex items-center space-x-2"
           >
             <Plus className="w-4 h-4" />
-            <span>Thêm {getMaterialTitle().toLowerCase()}</span>
+            <span>
+              {activeMaterialTab === 'phukienbep' 
+                ? 'Thêm phụ kiện bếp' 
+                : activeMaterialTab === 'loaiphukienbep'
+                ? 'Thêm loại phụ kiện bếp'
+                : `Thêm ${getMaterialTitle().toLowerCase()}`}
+            </span>
           </button>
           <button
             onClick={fetchMaterials}
@@ -2802,7 +3341,9 @@ function MaterialsManagementTab() {
               { id: 'nhom', label: 'Loại nhôm', count: nhomList.length },
               { id: 'kinh', label: 'Loại kính', count: kinhList.length },
               { id: 'taynam', label: 'Loại tay nắm', count: taynamList.length },
-              { id: 'departments', label: 'Bộ phận', count: departments.length }
+              { id: 'departments', label: 'Bộ phận', count: departments.length },
+              { id: 'loaiphukienbep', label: 'Loại phụ kiện bếp', count: getLoaiPhukienFromPhukienbep().length },
+              { id: 'phukienbep', label: 'Phụ kiện bếp', count: phukienbepList.length }
             ].map((tab) => (
               <button
                 key={tab.id}
@@ -2829,29 +3370,133 @@ function MaterialsManagementTab() {
               {editingItem ? `Chỉnh sửa ${getMaterialTitle().toLowerCase()}` : `Thêm ${getMaterialTitle().toLowerCase()} mới`}
             </h3>
             <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Tên loại</label>
-                  <input
-                    type="text"
-                    placeholder={`Nhập tên ${getMaterialTitle().toLowerCase()}`}
-                    value={formData.tenloai}
-                    onChange={(e) => setFormData({...formData, tenloai: e.target.value})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-black"
-                    required
-                  />
+              {activeMaterialTab === 'phukienbep' ? (
+                // Form for Phụ kiện bếp
+                <div className="space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                      <label className="block text-sm font-semibold text-gray-700">
+                        Loại phụ kiện bếp <span className="text-red-500">*</span>
+                      </label>
+                      <select
+                        value={formData.id_loaiphukien}
+                        onChange={(e) => setFormData({...formData, id_loaiphukien: e.target.value})}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-black bg-white"
+                        required
+                      >
+                        <option value="">-- Chọn loại phụ kiện bếp --</option>
+                        {getLoaiPhukienFromPhukienbep().length === 0 ? (
+                          <option value="" disabled>Không có loại phụ kiện nào. Hãy thêm phụ kiện trước.</option>
+                        ) : (
+                          getLoaiPhukienFromPhukienbep().map(loai => (
+                            <option key={loai.id} value={loai.id}>
+                              {loai.tenloai}
+                            </option>
+                          ))
+                        )}
+                      </select>
+                      {getLoaiPhukienFromPhukienbep().length === 0 && (
+                        <p className="text-xs text-amber-600 mt-1">
+                          ⚠️ Cần thêm ít nhất một phụ kiện để có loại phụ kiện
+                        </p>
+                      )}
+                    </div>
+                    <div className="space-y-2">
+                      <label className="block text-sm font-semibold text-gray-700">
+                        Tên phụ kiện bếp <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="Ví dụ: Bếp từ Electrolux, Lò nướng Bosch..."
+                        value={formData.tenphukien}
+                        onChange={(e) => setFormData({...formData, tenphukien: e.target.value})}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-black"
+                        required
+                      />
+                    </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div className="space-y-2">
+                      <label className="block text-sm font-semibold text-gray-700">
+                        Giá (VND) <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        placeholder="0"
+                        value={formData.don_gia}
+                        onChange={(e) => setFormData({...formData, don_gia: parseFloat(e.target.value) || 0})}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-black"
+                        required
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="block text-sm font-semibold text-gray-700">
+                        Kích thước
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="Ví dụ: 60x52x5 cm"
+                        value={formData.kich_thuoc}
+                        onChange={(e) => setFormData({...formData, kich_thuoc: e.target.value})}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-black"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="block text-sm font-semibold text-gray-700">
+                        Thương hiệu
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="Ví dụ: Electrolux, Bosch..."
+                        value={formData.thuong_hieu || ''}
+                        onChange={(e) => setFormData({...formData, thuong_hieu: e.target.value})}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-black"
+                      />
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <label className="block text-sm font-semibold text-gray-700">
+                      Mô tả chi tiết
+                    </label>
+                    <textarea
+                      placeholder="Mô tả chi tiết về phụ kiện bếp, tính năng, thông số kỹ thuật..."
+                      value={formData.mo_ta}
+                      onChange={(e) => setFormData({...formData, mo_ta: e.target.value})}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-black"
+                      rows="4"
+                    />
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Mô tả</label>
-                  <input
-                    type="text"
-                    placeholder="Nhập mô tả (tùy chọn)"
-                    value={formData.mota}
-                    onChange={(e) => setFormData({...formData, mota: e.target.value})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-black"
-                  />
+              ) : (
+                // Form for other materials (nhom, kinh, taynam, departments, loaiphukienbep)
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Tên loại</label>
+                    <input
+                      type="text"
+                      placeholder={`Nhập tên ${getMaterialTitle().toLowerCase()}`}
+                      value={formData.tenloai}
+                      onChange={(e) => setFormData({...formData, tenloai: e.target.value})}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-black"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Mô tả</label>
+                    <input
+                      type="text"
+                      placeholder="Nhập mô tả (tùy chọn)"
+                      value={formData.mota}
+                      onChange={(e) => setFormData({...formData, mota: e.target.value})}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-black"
+                    />
+                  </div>
                 </div>
-              </div>
+              )}
               <div className="flex justify-end space-x-3">
                 <button
                   type="button"
@@ -2877,47 +3522,198 @@ function MaterialsManagementTab() {
             <table className="w-full">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Tên loại
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Mô tả
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Thao tác</th>
+                  {activeMaterialTab === 'phukienbep' ? (
+                    <>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Tên phụ kiện
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Loại phụ kiện
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Giá & Kích thước
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Mô tả
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Thao tác</th>
+                    </>
+                  ) : activeMaterialTab === 'loaiphukienbep' ? (
+                    <>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Tên loại phụ kiện
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Mô tả
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Thao tác</th>
+                    </>
+                  ) : (
+                    <>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Tên loại
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Mô tả
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Thao tác</th>
+                    </>
+                  )}
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {getCurrentList().map((item) => (
                   <tr key={item.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center">
-                        <Settings className="w-4 h-4 text-gray-400 mr-2" />
-                        <span className="text-sm font-medium text-gray-900">
-                          {item.tenloai}
-                        </span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {item.mota || 'Không có mô tả'}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      <div className="flex items-center space-x-2">
-                        <button
-                          onClick={() => handleEdit(item)}
-                          className="text-blue-600 hover:text-blue-900 p-1"
-                          title="Chỉnh sửa"
-                        >
-                          <Edit className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => handleDelete(item.id)}
-                          className="text-red-600 hover:text-red-900 p-1"
-                          title="Xóa"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </td>
+                    {activeMaterialTab === 'phukienbep' ? (
+                      <>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center">
+                            <div className="flex-shrink-0 w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                              <Settings className="w-4 h-4 text-blue-600" />
+                            </div>
+                            <div className="ml-3">
+                              <div className="text-sm font-medium text-gray-900">
+                                {item.tenphukien || 'Chưa có tên'}
+                              </div>
+                              {item.thuong_hieu && (
+                                <div className="text-xs text-blue-600 font-medium">
+                                  {item.thuong_hieu}
+                                </div>
+                              )}
+                              <div className="text-xs text-gray-500">
+                                ID: {item.id}
+                              </div>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                            {getLoaiPhukienFromPhukienbep().find(loai => loai.id === item.id_loaiphukien)?.tenloai || 'N/A'}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm font-medium text-green-600">
+                            {item.don_gia ? item.don_gia.toLocaleString('vi-VN') : '0'} VND
+                          </div>
+                          {item.kich_thuoc && (
+                            <div className="text-xs text-gray-500">
+                              Kích thước: {item.kich_thuoc}
+                            </div>
+                          )}
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="text-sm text-gray-900 max-w-xs truncate">
+                            {item.mo_ta || 'Không có mô tả'}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                          <div className="flex items-center space-x-2">
+                            <button
+                              onClick={() => handleEdit(item)}
+                              className="inline-flex items-center px-2 py-1 text-xs font-medium text-blue-700 bg-blue-100 rounded-md hover:bg-blue-200 transition-colors duration-150"
+                              title="Chỉnh sửa"
+                            >
+                              <Edit className="w-3 h-3 mr-1" />
+                              Sửa
+                            </button>
+                            <button
+                              onClick={() => handleDelete(item.id)}
+                              className="inline-flex items-center px-2 py-1 text-xs font-medium text-red-700 bg-red-100 rounded-md hover:bg-red-200 transition-colors duration-150"
+                              title="Xóa"
+                            >
+                              <Trash2 className="w-3 h-3 mr-1" />
+                              Xóa
+                            </button>
+                          </div>
+                        </td>
+                      </>
+                    ) : activeMaterialTab === 'loaiphukienbep' ? (
+                      <>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center">
+                            <div className="flex-shrink-0 w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center">
+                              <Settings className="w-4 h-4 text-purple-600" />
+                            </div>
+                            <div className="ml-3">
+                              <div className="text-sm font-medium text-gray-900">
+                                {item.tenloai || 'Chưa có tên'}
+                              </div>
+                              <div className="text-xs text-gray-500">
+                                ID: {item.id}
+                              </div>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="text-sm text-gray-900 max-w-xs truncate">
+                            {loaiphukienbepList.find(loai => loai.id === item.id)?.mota || 'Không có mô tả'}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                          <div className="flex items-center space-x-2">
+                            <button
+                              onClick={() => handleEdit(loaiphukienbepList.find(loai => loai.id === item.id))}
+                              className="inline-flex items-center px-2 py-1 text-xs font-medium text-blue-700 bg-blue-100 rounded-md hover:bg-blue-200 transition-colors duration-150"
+                              title="Chỉnh sửa"
+                            >
+                              <Edit className="w-3 h-3 mr-1" />
+                              Sửa
+                            </button>
+                            <button
+                              onClick={() => handleDelete(item.id)}
+                              className="inline-flex items-center px-2 py-1 text-xs font-medium text-red-700 bg-red-100 rounded-md hover:bg-red-200 transition-colors duration-150"
+                              title="Xóa"
+                            >
+                              <Trash2 className="w-3 h-3 mr-1" />
+                              Xóa
+                            </button>
+                          </div>
+                        </td>
+                      </>
+                    ) : (
+                      <>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center">
+                            <div className="flex-shrink-0 w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center">
+                              <Settings className="w-4 h-4 text-gray-600" />
+                            </div>
+                            <div className="ml-3">
+                              <div className="text-sm font-medium text-gray-900">
+                                {item.tenloai || 'Chưa có tên'}
+                              </div>
+                              <div className="text-xs text-gray-500">
+                                ID: {item.id}
+                              </div>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="text-sm text-gray-900 max-w-xs truncate">
+                            {item.mota || 'Không có mô tả'}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                          <div className="flex items-center space-x-2">
+                            <button
+                              onClick={() => handleEdit(item)}
+                              className="inline-flex items-center px-2 py-1 text-xs font-medium text-blue-700 bg-blue-100 rounded-md hover:bg-blue-200 transition-colors duration-150"
+                              title="Chỉnh sửa"
+                            >
+                              <Edit className="w-3 h-3 mr-1" />
+                              Sửa
+                            </button>
+                            <button
+                              onClick={() => handleDelete(item.id)}
+                              className="inline-flex items-center px-2 py-1 text-xs font-medium text-red-700 bg-red-100 rounded-md hover:bg-red-200 transition-colors duration-150"
+                              title="Xóa"
+                            >
+                              <Trash2 className="w-3 h-3 mr-1" />
+                              Xóa
+                            </button>
+                          </div>
+                        </td>
+                      </>
+                    )}
                   </tr>
                 ))}
               </tbody>
@@ -2929,7 +3725,13 @@ function MaterialsManagementTab() {
           <div className="text-center py-12">
             <Settings className="w-12 h-12 text-gray-400 mx-auto mb-4" />
             <p className="text-gray-500">Chưa có {getMaterialTitle().toLowerCase()} nào</p>
-            <p className="text-sm text-gray-400 mt-1">Thêm {getMaterialTitle().toLowerCase()} đầu tiên để bắt đầu</p>
+            <p className="text-sm text-gray-400 mt-1">
+              {activeMaterialTab === 'phukienbep' 
+                ? 'Thêm phụ kiện bếp đầu tiên để bắt đầu' 
+                : activeMaterialTab === 'loaiphukienbep'
+                ? 'Thêm phụ kiện bếp trước để có loại phụ kiện'
+                : `Thêm ${getMaterialTitle().toLowerCase()} đầu tiên để bắt đầu`}
+            </p>
           </div>
         )}
       </div>

@@ -14,6 +14,146 @@ async def get_loainhom():
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error fetching loainhom: {str(e)}")
 
+@router.post("/loainhom/")
+async def create_loainhom(loainhom_data: dict):
+    """Tạo loại nhôm mới"""
+    try:
+        result = supabase.table('loainhom').insert({
+            'tenloai': loainhom_data['tenloai'],
+            'mo_ta': loainhom_data.get('mo_ta', '')
+        }).execute()
+        return result.data[0]
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error creating loainhom: {str(e)}")
+
+@router.put("/loainhom/{loai_id}")
+async def update_loainhom(loai_id: int, loainhom_data: dict):
+    """Cập nhật loại nhôm"""
+    try:
+        result = supabase.table('loainhom').update({
+            'tenloai': loainhom_data['tenloai'],
+            'mo_ta': loainhom_data.get('mo_ta', '')
+        }).eq('id', loai_id).execute()
+        return result.data[0]
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error updating loainhom: {str(e)}")
+
+@router.delete("/loainhom/{loai_id}")
+async def delete_loainhom(loai_id: int):
+    """Xóa loại nhôm"""
+    try:
+        result = supabase.table('loainhom').delete().eq('id', loai_id).execute()
+        return {"message": "Loại nhôm đã được xóa thành công"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error deleting loainhom: {str(e)}")
+
+@router.get("/loaiphukienbep/")
+async def get_loaiphukienbep():
+    """Lấy danh sách loại phụ kiện bếp"""
+    try:
+        result = supabase.table('loaiphukienbep').select('*').execute()
+        return result.data
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching loaiphukienbep: {str(e)}")
+
+@router.get("/phukienbep/")
+async def get_phukienbep():
+    """Lấy danh sách phụ kiện bếp"""
+    try:
+        result = supabase.table('phukienbep').select('*').execute()
+        return result.data
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching phukienbep: {str(e)}")
+
+@router.post("/phukienbep/")
+async def create_phukienbep(phukien_data: dict):
+    """Tạo phụ kiện bếp mới"""
+    try:
+        result = supabase.table('phukienbep').insert({
+            'id_loaiphukien': phukien_data['id_loaiphukien'],
+            'tenphukien': phukien_data['tenphukien'],
+            'thuong_hieu': phukien_data.get('thuong_hieu', ''),
+            'model': phukien_data.get('model', ''),
+            'cong_suat': phukien_data.get('cong_suat', ''),
+            'kich_thuoc': phukien_data.get('kich_thuoc', ''),
+            'trong_luong': phukien_data.get('trong_luong'),
+            'don_gia': phukien_data['don_gia'],
+            'mo_ta': phukien_data.get('mo_ta', ''),
+            'hinh_anh': phukien_data.get('hinh_anh', ''),
+            'thong_so_ky_thuat': phukien_data.get('thong_so_ky_thuat', ''),
+            'bao_hanh': phukien_data.get('bao_hanh', ''),
+            'xuat_xu': phukien_data.get('xuat_xu', '')
+        }).execute()
+        return result.data[0]
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error creating phukienbep: {str(e)}")
+
+@router.put("/phukienbep/{phukien_id}")
+async def update_phukienbep(phukien_id: int, phukien_data: dict):
+    """Cập nhật phụ kiện bếp"""
+    try:
+        result = supabase.table('phukienbep').update({
+            'id_loaiphukien': phukien_data['id_loaiphukien'],
+            'tenphukien': phukien_data['tenphukien'],
+            'thuong_hieu': phukien_data.get('thuong_hieu', ''),
+            'model': phukien_data.get('model', ''),
+            'cong_suat': phukien_data.get('cong_suat', ''),
+            'kich_thuoc': phukien_data.get('kich_thuoc', ''),
+            'trong_luong': phukien_data.get('trong_luong'),
+            'don_gia': phukien_data['don_gia'],
+            'mo_ta': phukien_data.get('mo_ta', ''),
+            'hinh_anh': phukien_data.get('hinh_anh', ''),
+            'thong_so_ky_thuat': phukien_data.get('thong_so_ky_thuat', ''),
+            'bao_hanh': phukien_data.get('bao_hanh', ''),
+            'xuat_xu': phukien_data.get('xuat_xu', ''),
+            'updated_at': 'now()'
+        }).eq('id', phukien_id).execute()
+        return result.data[0]
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error updating phukienbep: {str(e)}")
+
+@router.delete("/phukienbep/{phukien_id}")
+async def delete_phukienbep(phukien_id: int):
+    """Xóa phụ kiện bếp"""
+    try:
+        result = supabase.table('phukienbep').delete().eq('id', phukien_id).execute()
+        return {"message": "Phụ kiện bếp đã được xóa thành công"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error deleting phukienbep: {str(e)}")
+
+@router.post("/loaiphukienbep/")
+async def create_loaiphukienbep(loaiphukien_data: dict):
+    """Tạo loại phụ kiện bếp mới"""
+    try:
+        result = supabase.table('loaiphukienbep').insert({
+            'tenloai': loaiphukien_data['tenloai'],
+            'mo_ta': loaiphukien_data.get('mo_ta', '')
+        }).execute()
+        return result.data[0]
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error creating loaiphukienbep: {str(e)}")
+
+@router.put("/loaiphukienbep/{loai_id}")
+async def update_loaiphukienbep(loai_id: int, loaiphukien_data: dict):
+    """Cập nhật loại phụ kiện bếp"""
+    try:
+        result = supabase.table('loaiphukienbep').update({
+            'tenloai': loaiphukien_data['tenloai'],
+            'mo_ta': loaiphukien_data.get('mo_ta', '')
+        }).eq('id', loai_id).execute()
+        return result.data[0]
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error updating loaiphukienbep: {str(e)}")
+
+@router.delete("/loaiphukienbep/{loai_id}")
+async def delete_loaiphukienbep(loai_id: int):
+    """Xóa loại phụ kiện bếp"""
+    try:
+        result = supabase.table('loaiphukienbep').delete().eq('id', loai_id).execute()
+        return {"message": "Loại phụ kiện bếp đã được xóa thành công"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error deleting loaiphukienbep: {str(e)}")
+
 @router.get("/loaikinh/")
 async def get_loaikinh():
     """Lấy danh sách loại kính"""
@@ -155,23 +295,39 @@ async def create_invoice(invoice_data: dict):
 
         # Thêm chi tiết hóa đơn
         for item in invoice_data['items']:
-            supabase.table('invoice_items').insert({
-                'invoice_id': invoice_id,
-                'id_nhom': item['id_nhom'],
-                'id_kinh': item['id_kinh'],
-                'id_taynam': item['id_taynam'],
-                'id_bophan': item['id_bophan'],
-                'sanpham_id': item['sanpham_id'],
-                'ngang': item['ngang'],
-                'cao': item['cao'],
-                'sau': item['sau'],
-                'so_luong': item['so_luong'],
-                'don_gia': item['don_gia'],
-                'dien_tich_ke_hoach': item['dien_tich_ke_hoach'],
-                'dien_tich_thuc_te': item['dien_tich_thuc_te'],
-                'ti_le': item['ti_le'],
-                'thanh_tien': item['thanh_tien']
-            }).execute()
+            # Kiểm tra loại sản phẩm
+            loai_san_pham = item.get('loai_san_pham', 'tu_bep')
+
+            if loai_san_pham == 'phu_kien_bep':
+                # Thêm phụ kiện bếp vào hóa đơn
+                supabase.table('invoice_items').insert({
+                    'invoice_id': invoice_id,
+                    'loai_san_pham': 'phu_kien_bep',
+                    'id_phukien': item['id_phukien'],
+                    'so_luong': item.get('so_luong', 1),
+                    'don_gia': item['don_gia'],
+                    'thanh_tien': item['thanh_tien']
+                }).execute()
+            else:
+                # Thêm sản phẩm tủ bếp vào hóa đơn (như cũ)
+                supabase.table('invoice_items').insert({
+                    'invoice_id': invoice_id,
+                    'loai_san_pham': 'tu_bep',
+                    'id_nhom': item['id_nhom'],
+                    'id_kinh': item['id_kinh'],
+                    'id_taynam': item['id_taynam'],
+                    'id_bophan': item['id_bophan'],
+                    'sanpham_id': item['sanpham_id'],
+                    'ngang': item['ngang'],
+                    'cao': item['cao'],
+                    'sau': item['sau'],
+                    'so_luong': item['so_luong'],
+                    'don_gia': item['don_gia'],
+                    'dien_tich_ke_hoach': item['dien_tich_ke_hoach'],
+                    'dien_tich_thuc_te': item['dien_tich_thuc_te'],
+                    'ti_le': item['ti_le'],
+                    'thanh_tien': item['thanh_tien']
+                }).execute()
 
         return {"message": "Invoice created successfully", "invoice_id": invoice_id}
     except Exception as e:
@@ -265,8 +421,30 @@ async def get_invoices(month: str = None):
                     except (ValueError, TypeError):
                         pass
 
+                # Xử lý phụ kiện bếp nếu có
+                if item.get('id_phukien') and item.get('loai_san_pham') == 'phu_kien_bep':
+                    try:
+                        phukien_id = item['id_phukien']
+                        if phukien_id:
+                            phukien_result = supabase.table('phukienbep').select('*').eq('id', phukien_id).execute()
+                            if phukien_result.data:
+                                phukien = phukien_result.data[0]
+
+                                # Lấy tên loại phụ kiện bếp
+                                if phukien.get('id_loaiphukien'):
+                                    try:
+                                        loaiphukien_result = supabase.table('loaiphukienbep').select('tenloai').eq('id', phukien['id_loaiphukien']).execute()
+                                        if loaiphukien_result.data:
+                                            phukien['ten_loai_phukien'] = loaiphukien_result.data[0]['tenloai']
+                                    except:
+                                        pass
+
+                                item_with_details['phukien'] = phukien
+                    except (ValueError, TypeError):
+                        pass
+
                 # Nếu không có sanpham_id hoặc không tìm thấy sản phẩm, lấy thông tin từ item trực tiếp
-                if not item_with_details.get('sanpham'):
+                if not item_with_details.get('sanpham') and not item_with_details.get('phukien'):
                     # Lấy tên loại nhôm từ item
                     if item.get('id_nhom'):
                         try:
