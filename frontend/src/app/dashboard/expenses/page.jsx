@@ -1472,10 +1472,26 @@ function ExpensesHierarchyTab({ expenses, expenseCategories, selectedMonth, onEx
     setExpandedNodes(newExpanded);
   };
 
-  const renderExpenseNode = (expense, level = 0) => {
+  const renderExpenseNode = (expense, level = 0, parentAmount = null, parentName = null) => {
     const hasChildren = expense.children && expense.children.length > 0;
     const isExpanded = expandedNodes.has(expense.id);
     const indent = level * 24;
+
+    // Tính tỉ lệ phần trăm so với chi phí cha
+    let percentage = null;
+    if (parentAmount && parentAmount > 0) {
+      percentage = ((expense.giathanh || 0) / parentAmount) * 100;
+    }
+
+    // Tính tổng tỉ lệ của tất cả chi phí con
+    let totalChildrenAmount = 0;
+    let totalChildrenPercentage = null;
+    if (hasChildren) {
+      totalChildrenAmount = expense.children.reduce((sum, child) => sum + (child.giathanh || 0), 0);
+      if (expense.giathanh && expense.giathanh > 0) {
+        totalChildrenPercentage = (totalChildrenAmount / expense.giathanh) * 100;
+      }
+    }
 
     return (
       <div key={expense.id}>
@@ -1517,6 +1533,16 @@ function ExpensesHierarchyTab({ expenses, expenseCategories, selectedMonth, onEx
           <div className="flex items-center space-x-4">
             <div className="text-right">
               <p className="font-bold text-red-600">{(expense.giathanh || 0).toLocaleString('vi-VN')} VND</p>
+              {percentage !== null && parentName && (
+                <p className="text-sm text-blue-600 font-medium">
+                  {percentage.toFixed(1)}% của {parentName}
+                </p>
+              )}
+              {hasChildren && totalChildrenPercentage !== null && (
+                <p className="text-sm text-green-600 font-medium">
+                  Tổng con: {totalChildrenPercentage.toFixed(1)}% ({totalChildrenAmount.toLocaleString('vi-VN')} VND)
+                </p>
+              )}
               {expense.total_amount && expense.total_amount !== expense.giathanh && (
                 <p className="text-sm text-gray-600">Tổng: {expense.total_amount.toLocaleString('vi-VN')} VND</p>
               )}
@@ -1543,7 +1569,7 @@ function ExpensesHierarchyTab({ expenses, expenseCategories, selectedMonth, onEx
         
         {hasChildren && isExpanded && (
           <div className="ml-4">
-            {expense.children.map(child => renderExpenseNode(child, level + 1))}
+            {expense.children.map(child => renderExpenseNode(child, level + 1, expense.giathanh || 0, expense.loaichiphi?.tenchiphi || expense.mo_ta || 'Chi phí cha'))}
           </div>
         )}
       </div>
