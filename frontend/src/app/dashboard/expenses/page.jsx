@@ -1439,6 +1439,7 @@ function ExpensesHierarchyTab({ expenses, expenseCategories, selectedMonth, onEx
   const [hierarchyData, setHierarchyData] = useState([]);
   const [loading, setLoading] = useState(false);
   const [expandedNodes, setExpandedNodes] = useState(new Set());
+  const [filterType, setFilterType] = useState('all'); // 'all', 'dinh-phi', 'bien-phi'
 
   useEffect(() => {
     loadHierarchyData();
@@ -1470,6 +1471,23 @@ function ExpensesHierarchyTab({ expenses, expenseCategories, selectedMonth, onEx
       newExpanded.add(nodeId);
     }
     setExpandedNodes(newExpanded);
+  };
+
+  // Lọc dữ liệu theo loại chi phí (chỉ áp dụng cho bậc 1)
+  const getFilteredData = () => {
+    if (filterType === 'all') {
+      return hierarchyData;
+    }
+    
+    return hierarchyData.filter(expense => {
+      const expenseType = expense.loaichiphi?.loaichiphi;
+      if (filterType === 'dinh-phi') {
+        return expenseType === 'định phí';
+      } else if (filterType === 'bien-phi') {
+        return expenseType === 'biến phí';
+      }
+      return true;
+    });
   };
 
   const renderExpenseNode = (expense, level = 0, parentAmount = null, parentName = null) => {
@@ -1590,13 +1608,50 @@ function ExpensesHierarchyTab({ expenses, expenseCategories, selectedMonth, onEx
             </h2>
             <p className="text-gray-600 mt-1">Xem chi phí theo cấu trúc phân cấp tháng {selectedMonth}</p>
           </div>
+          <div className="flex items-center space-x-3">
+            <button
+              onClick={loadHierarchyData}
+              disabled={loading}
+              className="bg-blue-600 text-white px-6 py-3 rounded-xl hover:bg-blue-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 flex items-center space-x-2"
+            >
+              <RefreshCw className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
+              <span>Làm mới</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Filter Buttons */}
+        <div className="mt-6 flex flex-wrap items-center gap-3">
+          <span className="text-sm font-medium text-gray-700 mr-2">Lọc theo loại:</span>
           <button
-            onClick={loadHierarchyData}
-            disabled={loading}
-            className="bg-blue-600 text-white px-6 py-3 rounded-xl hover:bg-blue-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 flex items-center space-x-2"
+            onClick={() => setFilterType('all')}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+              filterType === 'all'
+                ? 'bg-blue-600 text-white shadow-md'
+                : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+            }`}
           >
-            <RefreshCw className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
-            <span>Làm mới</span>
+            Tất cả ({hierarchyData.length})
+          </button>
+          <button
+            onClick={() => setFilterType('dinh-phi')}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+              filterType === 'dinh-phi'
+                ? 'bg-green-600 text-white shadow-md'
+                : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+            }`}
+          >
+            Định phí ({hierarchyData.filter(exp => exp.loaichiphi?.loaichiphi === 'định phí').length})
+          </button>
+          <button
+            onClick={() => setFilterType('bien-phi')}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+              filterType === 'bien-phi'
+                ? 'bg-purple-600 text-white shadow-md'
+                : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+            }`}
+          >
+            Biến phí ({hierarchyData.filter(exp => exp.loaichiphi?.loaichiphi === 'biến phí').length})
           </button>
         </div>
       </div>
@@ -1615,7 +1670,7 @@ function ExpensesHierarchyTab({ expenses, expenseCategories, selectedMonth, onEx
           </div>
         ) : (
           <div className="space-y-2">
-            {hierarchyData.map(expense => renderExpenseNode(expense))}
+            {getFilteredData().map(expense => renderExpenseNode(expense))}
           </div>
         )}
       </div>
