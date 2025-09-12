@@ -449,19 +449,108 @@ async def get_quanly_chiphi(month: str = None):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error fetching quanly_chiphi: {str(e)}")
 
+@router.get("/quanly_chiphi/hierarchy/")
+async def get_quanly_chiphi_hierarchy(month: str = None):
+    """Lấy danh sách chi phí theo cấu trúc cây phân cấp"""
+    try:
+        # Get all expenses with their category info
+        query = supabase.table('quanly_chiphi').select('*')
+
+        if month:
+            start_date = f"{month}-01"
+            year, month_num = map(int, month.split('-'))
+            if month_num == 12:
+                end_date = f"{year + 1}-01-01"
+            else:
+                end_date = f"{year}-{month_num + 1:02d}-01"
+            query = query.gte('created_at', start_date).lt('created_at', end_date)
+
+        result = query.order('id', desc=True).execute()
+
+        # Get all categories for mapping
+        categories_result = supabase.table('loaichiphi').select('*').execute()
+        categories_map = {cat['id']: cat for cat in categories_result.data}
+
+        # Build hierarchy
+        expenses_map = {}
+        root_expenses = []
+
+        # First pass: create expense objects with category info
+        for item in result.data:
+            expense = dict(item)
+            if item.get('id_lcp') and item['id_lcp'] in categories_map:
+                expense['loaichiphi'] = {
+                    'id': categories_map[item['id_lcp']]['id'],
+                    'tenchiphi': categories_map[item['id_lcp']].get('tenchiphi', ''),
+                    'loaichiphi': categories_map[item['id_lcp']].get('loaichiphi', ''),
+                    'giathanh': categories_map[item['id_lcp']].get('giathanh')
+                }
+            else:
+                expense['loaichiphi'] = None
+
+            expense['children'] = []
+            expenses_map[item['id']] = expense
+
+        # Second pass: build hierarchy
+        for expense in expenses_map.values():
+            parent_id = expense.get('parent_id')
+            if parent_id and parent_id in expenses_map:
+                expenses_map[parent_id]['children'].append(expense)
+            else:
+                root_expenses.append(expense)
+
+        # Calculate totals for each level
+        def calculate_totals(expense):
+            total = expense['giathanh'] or 0
+            for child in expense['children']:
+                total += calculate_totals(child)
+            expense['total_amount'] = total
+            return total
+
+        for expense in root_expenses:
+            calculate_totals(expense)
+
+        return {"hierarchy": root_expenses}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching expense hierarchy: {str(e)}")
+
 @router.post("/quanly_chiphi/")
 async def create_quanly_chiphi(chiphi_data: dict):
     """Tạo chi phí mới"""
     try:
+        # Validate parent_id to prevent circular references
+        parent_id = chiphi_data.get('parent_id')
+        if parent_id:
+            # Check if parent exists
+            parent_result = supabase.table('quanly_chiphi').select('id').eq('id', parent_id).execute()
+            if not parent_result.data:
+                raise HTTPException(status_code=400, detail="Parent expense does not exist")
+
+            # Check for circular reference
+            current_id = parent_id
+            visited = set()
+            while current_id:
+                if current_id in visited:
+                    raise HTTPException(status_code=400, detail="Circular reference detected in expense hierarchy")
+                visited.add(current_id)
+                parent_result = supabase.table('quanly_chiphi').select('parent_id').eq('id', current_id).execute()
+                if parent_result.data:
+                    current_id = parent_result.data[0].get('parent_id')
+                else:
+                    current_id = None
+
         # Try to insert with basic columns that might exist
         result = supabase.table('quanly_chiphi').insert({
             'id_lcp': chiphi_data['id_lcp'],
             'giathanh': chiphi_data['giathanh'],
             'mo_ta': chiphi_data.get('mo_ta', ''),
             'hinhanh': chiphi_data.get('hinhanh', ''),
+            'parent_id': parent_id,
             'created_at': chiphi_data.get('created_at')
         }).execute()
         return result.data[0]
+    except HTTPException:
+        raise
     except Exception as e:
         # If insert fails, return a success message anyway for now
         print(f"Insert failed: {e}")
@@ -471,24 +560,62 @@ async def create_quanly_chiphi(chiphi_data: dict):
 async def update_quanly_chiphi(chiphi_id: int, chiphi_data: dict):
     """Cập nhật chi phí"""
     try:
+        # Validate parent_id to prevent circular references
+        parent_id = chiphi_data.get('parent_id')
+        if parent_id:
+            # Check if parent exists
+            parent_result = supabase.table('quanly_chiphi').select('id').eq('id', parent_id).execute()
+            if not parent_result.data:
+                raise HTTPException(status_code=400, detail="Parent expense does not exist")
+
+            # Check for circular reference
+            current_id = parent_id
+            visited = set()
+            while current_id:
+                if current_id in visited:
+                    raise HTTPException(status_code=400, detail="Circular reference detected in expense hierarchy")
+                visited.add(current_id)
+                if current_id == chiphi_id:
+                    raise HTTPException(status_code=400, detail="Cannot set parent to itself or its descendant")
+                parent_result = supabase.table('quanly_chiphi').select('parent_id').eq('id', current_id).execute()
+                if parent_result.data:
+                    current_id = parent_result.data[0].get('parent_id')
+                else:
+                    current_id = None
+
         result = supabase.table('quanly_chiphi').update({
             'id_lcp': chiphi_data['id_lcp'],
             'giathanh': chiphi_data['giathanh'],
             'mo_ta': chiphi_data.get('mo_ta', ''),
             'hinhanh': chiphi_data.get('hinhanh', ''),
+            'parent_id': parent_id,
             'created_at': chiphi_data.get('created_at'),
             'updated_at': 'now()'
         }).eq('id', chiphi_id).execute()
         return result.data[0]
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error updating quanly_chiphi: {str(e)}")
 
 @router.delete("/quanly_chiphi/{chiphi_id}")
 async def delete_quanly_chiphi(chiphi_id: int):
-    """Xóa chi phí"""
+    """Xóa chi phí và tất cả chi phí con"""
     try:
-        result = supabase.table('quanly_chiphi').delete().eq('id', chiphi_id).execute()
-        return {"message": "Chi phí đã được xóa thành công"}
+        # Function to recursively delete expense and its children
+        def delete_expense_recursive(expense_id):
+            # Find all children
+            children_result = supabase.table('quanly_chiphi').select('id').eq('parent_id', expense_id).execute()
+            for child in children_result.data:
+                delete_expense_recursive(child['id'])
+            
+            # Delete the expense itself
+            supabase.table('quanly_chiphi').delete().eq('id', expense_id).execute()
+
+        # Start recursive deletion
+        delete_expense_recursive(chiphi_id)
+        
+        return {"message": "Chi phí và tất cả chi phí con đã được xóa thành công"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error deleting quanly_chiphi: {str(e)}")
 
