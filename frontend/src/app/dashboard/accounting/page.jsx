@@ -512,6 +512,9 @@ function InvoicesTab() {
         if (field === 'so_luong') {
           calculateInvoiceItem(updatedItem);
         }
+        if (field === 'don_gia') {
+          calculateInvoiceItem(updatedItem);
+        }
         
         return updatedItem;
       }
@@ -969,9 +972,11 @@ function InvoicesTab() {
                       <input
                         type="number"
                         step="0.01"
+                        min="0"
                         value={item.don_gia}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-black"
-                        readOnly
+                        onChange={(e) => updateInvoiceItem(item.id, 'don_gia', parseFloat(e.target.value) || 0)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-yellow-100 text-black"
+                        placeholder="Nhập đơn giá"
                       />
                     </div>
                     <div>
@@ -1042,7 +1047,7 @@ function InvoicesTab() {
         {/* Summary Section */}
         {selectedBophans.length > 0 && (
           <div className="bg-white rounded-lg shadow-sm border p-6 mt-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Tóm tắt đơn hàng</h3>
+            <h3 className="text-lg font-semibold text-black mb-4">Tóm tắt đơn hàng</h3>
             <div className="space-y-4">
               {selectedBophans.map(bophanId => {
                 const bophan = bophanList.find(b => b.id === bophanId);
@@ -1055,37 +1060,37 @@ function InvoicesTab() {
                 const totalPrice = item.thanh_tien || 0;
 
                 return (
-                  <div key={bophanId} className="border rounded-lg p-4 bg-gray-50">
+                  <div key={bophanId} className="border border-gray-200 rounded-lg p-4 bg-gray-50">
                     <div className="flex justify-between items-start mb-3">
                       <div>
-                        <h4 className="font-medium text-gray-900">{item.sanpham.tensp}</h4>
-                        <p className="text-sm text-gray-600">Bộ phận: {bophan.tenloai}</p>
+                        <h4 className="font-medium text-black">{item.sanpham.tensp}</h4>
+                        <p className="text-sm text-gray-700">Bộ phận: {bophan.tenloai}</p>
                       </div>
                       <div className="text-right">
                         <p className="text-lg font-bold text-green-600">
                           {totalPrice.toLocaleString('vi-VN')} VND
                         </p>
-                        <p className="text-sm text-gray-500">
+                        <p className="text-sm text-gray-600">
                           Số lượng: {item.so_luong || 0}
                         </p>
                       </div>
                     </div>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                       <div>
-                        <span className="text-gray-600">Diện tích kế hoạch:</span>
-                        <p className="font-medium">{(item.dien_tich_ke_hoach || 0).toLocaleString('vi-VN')} mm²</p>
+                        <span className="text-gray-700 font-medium">Diện tích kế hoạch:</span>
+                        <p className="font-medium text-black">{(item.dien_tich_ke_hoach || 0).toLocaleString('vi-VN')} mm²</p>
                       </div>
                       <div>
-                        <span className="text-gray-600">Diện tích thực tế:</span>
-                        <p className="font-medium">{(item.dien_tich_thuc_te || 0).toLocaleString('vi-VN')} mm²</p>
+                        <span className="text-gray-700 font-medium">Diện tích thực tế:</span>
+                        <p className="font-medium text-black">{(item.dien_tich_thuc_te || 0).toLocaleString('vi-VN')} mm²</p>
                       </div>
                       <div>
-                        <span className="text-gray-600">Tỉ lệ:</span>
-                        <p className="font-medium">{(item.ti_le * 100 || 0).toFixed(2)}%</p>
+                        <span className="text-gray-700 font-medium">Tỉ lệ:</span>
+                        <p className="font-medium text-black">{(item.ti_le * 100 || 0).toFixed(2)}%</p>
                       </div>
                       <div>
-                        <span className="text-gray-600">Đơn giá:</span>
-                        <p className="font-medium">{(item.don_gia || 0).toLocaleString('vi-VN')} VND</p>
+                        <span className="text-gray-700 font-medium">Đơn giá:</span>
+                        <p className="font-medium text-black">{(item.don_gia || 0).toLocaleString('vi-VN')} VND</p>
                       </div>
                     </div>
                   </div>
@@ -1097,8 +1102,8 @@ function InvoicesTab() {
             <div className="mt-6 pt-4 border-t">
               <div className="flex justify-between items-center">
                 <div>
-                  <h4 className="text-lg font-semibold text-gray-900">Tổng cộng</h4>
-                  <p className="text-sm text-gray-600">
+                  <h4 className="text-lg font-semibold text-black">Tổng cộng</h4>
+                  <p className="text-sm text-gray-700">
                     {selectedBophans.length} bộ phận • {invoiceItems.reduce((sum, item) => sum + (item.so_luong || 0), 0)} sản phẩm
                   </p>
                 </div>
