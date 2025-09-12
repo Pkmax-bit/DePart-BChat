@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
-import { Plus, Edit, Trash2, TrendingUp, TrendingDown, DollarSign, Package, Receipt, CreditCard, FileText, Info, Calendar, BarChart3, History, Settings, RotateCcw, Save, RefreshCw, Download, Users, Wrench, Eye, EyeOff, X } from 'lucide-react';
+import { Plus, Edit, Trash2, TrendingUp, TrendingDown, DollarSign, Package, Receipt, CreditCard, FileText, Info, Calendar, BarChart3, History, Settings, RotateCcw, Save, RefreshCw, Download, Users, Wrench, Eye, EyeOff, X, Check } from 'lucide-react';
 import * as XLSX from 'xlsx';
 
 const supabase = createClientComponentClient();
@@ -3040,6 +3040,9 @@ function MaterialsManagementTab() {
   });
   const [showForm, setShowForm] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
+  const [inlineEditData, setInlineEditData] = useState({});
+  const [editingLoaiPhukien, setEditingLoaiPhukien] = useState(null);
+  const [inlineEditLoaiPhukienData, setInlineEditLoaiPhukienData] = useState({});
 
   useEffect(() => {
     fetchMaterials();
@@ -3215,7 +3218,18 @@ function MaterialsManagementTab() {
   };
 
   const handleEdit = (item) => {
-    if (activeMaterialTab === 'loaiphukienbep') {
+    if (activeMaterialTab === 'phukienbep') {
+      // Inline editing cho phụ kiện bếp
+      setEditingItem(item.id);
+      setInlineEditData({
+        id_loaiphukien: item.id_loaiphukien || '',
+        tenphukien: item.tenphukien || '',
+        don_gia: item.don_gia || 0,
+        kich_thuoc: item.kich_thuoc || '',
+        thuong_hieu: item.thuong_hieu || '',
+        mo_ta: item.mo_ta || ''
+      });
+    } else if (activeMaterialTab === 'loaiphukienbep') {
       // Đối với tab loaiphukienbep, item chỉ có id và tenloai, cần tìm full item từ loaiphukienbepList
       const fullItem = loaiphukienbepList.find(loai => loai.id === item.id);
       if (fullItem) {
@@ -3224,23 +3238,53 @@ function MaterialsManagementTab() {
           mota: fullItem.mota || ''
         });
       }
-    } else if (activeMaterialTab === 'phukienbep') {
-      setFormData({
-        id_loaiphukien: item.id_loaiphukien || '',
-        tenphukien: item.tenphukien || '',
-        don_gia: item.don_gia || 0,
-        kich_thuoc: item.kich_thuoc || '',
-        thuong_hieu: item.thuong_hieu || '',
-        mo_ta: item.mo_ta || ''
-      });
+      setShowForm(true);
+      setEditingItem(item);
     } else {
       setFormData({
         tenloai: item.tenloai,
         mota: item.mota || ''
       });
+      setShowForm(true);
+      setEditingItem(item);
     }
-    setEditingItem(item);
-    setShowForm(true);
+  };
+
+  const handleInlineSave = async (itemId) => {
+    try {
+      const url = `http://localhost:8001/api/v1/accounting/phukienbep/${itemId}`;
+      
+      const response = await fetch(url, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          id_loaiphukien: parseInt(inlineEditData.id_loaiphukien),
+          tenphukien: inlineEditData.tenphukien,
+          don_gia: parseFloat(inlineEditData.don_gia),
+          kich_thuoc: inlineEditData.kich_thuoc,
+          thuong_hieu: inlineEditData.thuong_hieu,
+          mo_ta: inlineEditData.mo_ta
+        })
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        const currentList = getCurrentList();
+        const setter = getCurrentSetter();
+        setter(currentList.map(item => item.id === itemId ? result : item));
+        setEditingItem(null);
+        setInlineEditData({});
+      }
+    } catch (error) {
+      console.error('Error saving inline edit:', error);
+    }
+  };
+
+  const handleInlineCancel = () => {
+    setEditingItem(null);
+    setInlineEditData({});
   };
 
   const handleDelete = async (itemId) => {
@@ -3565,68 +3609,175 @@ function MaterialsManagementTab() {
                 {getCurrentList().map((item) => (
                   <tr key={item.id} className="hover:bg-gray-50">
                     {activeMaterialTab === 'phukienbep' ? (
-                      <>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex items-center">
-                            <div className="flex-shrink-0 w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                              <Settings className="w-4 h-4 text-blue-600" />
-                            </div>
-                            <div className="ml-3">
-                              <div className="text-sm font-medium text-gray-900">
-                                {item.tenphukien || 'Chưa có tên'}
-                              </div>
-                              {item.thuong_hieu && (
-                                <div className="text-xs text-blue-600 font-medium">
-                                  {item.thuong_hieu}
+                      editingItem === item.id ? (
+                        // Inline editing form
+                        <>
+                          <td className="px-6 py-4" colSpan="5">
+                            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                              <h4 className="text-sm font-medium text-blue-900 mb-3">Chỉnh sửa phụ kiện bếp</h4>
+                              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                <div>
+                                  <label className="block text-xs font-medium text-blue-700 mb-1">
+                                    Loại phụ kiện bếp <span className="text-red-500">*</span>
+                                  </label>
+                                  <select
+                                    value={inlineEditData.id_loaiphukien}
+                                    onChange={(e) => setInlineEditData({...inlineEditData, id_loaiphukien: e.target.value})}
+                                    className="w-full px-3 py-2 text-sm border border-blue-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black bg-white"
+                                    required
+                                  >
+                                    <option value="">-- Chọn loại --</option>
+                                    {getLoaiPhukienFromPhukienbep().map(loai => (
+                                      <option key={loai.id} value={loai.id}>
+                                        {loai.tenloai}
+                                      </option>
+                                    ))}
+                                  </select>
                                 </div>
-                              )}
-                              <div className="text-xs text-gray-500">
-                                ID: {item.id}
+                                <div>
+                                  <label className="block text-xs font-medium text-blue-700 mb-1">
+                                    Tên phụ kiện <span className="text-red-500">*</span>
+                                  </label>
+                                  <input
+                                    type="text"
+                                    value={inlineEditData.tenphukien}
+                                    onChange={(e) => setInlineEditData({...inlineEditData, tenphukien: e.target.value})}
+                                    className="w-full px-3 py-2 text-sm border border-blue-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black"
+                                    required
+                                  />
+                                </div>
+                                <div>
+                                  <label className="block text-xs font-medium text-blue-700 mb-1">
+                                    Giá (VND) <span className="text-red-500">*</span>
+                                  </label>
+                                  <input
+                                    type="number"
+                                    step="0.01"
+                                    min="0"
+                                    value={inlineEditData.don_gia}
+                                    onChange={(e) => setInlineEditData({...inlineEditData, don_gia: parseFloat(e.target.value) || 0})}
+                                    className="w-full px-3 py-2 text-sm border border-blue-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black"
+                                    required
+                                  />
+                                </div>
+                                <div>
+                                  <label className="block text-xs font-medium text-blue-700 mb-1">
+                                    Kích thước
+                                  </label>
+                                  <input
+                                    type="text"
+                                    value={inlineEditData.kich_thuoc}
+                                    onChange={(e) => setInlineEditData({...inlineEditData, kich_thuoc: e.target.value})}
+                                    className="w-full px-3 py-2 text-sm border border-blue-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="block text-xs font-medium text-blue-700 mb-1">
+                                    Thương hiệu
+                                  </label>
+                                  <input
+                                    type="text"
+                                    value={inlineEditData.thuong_hieu}
+                                    onChange={(e) => setInlineEditData({...inlineEditData, thuong_hieu: e.target.value})}
+                                    className="w-full px-3 py-2 text-sm border border-blue-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black"
+                                  />
+                                </div>
+                                <div className="flex items-end space-x-2">
+                                  <button
+                                    onClick={() => handleInlineSave(item.id)}
+                                    className="px-3 py-2 bg-green-600 text-white text-sm rounded hover:bg-green-700 flex items-center"
+                                  >
+                                    <Check className="w-4 h-4 mr-1" />
+                                    Lưu
+                                  </button>
+                                  <button
+                                    onClick={handleInlineCancel}
+                                    className="px-3 py-2 bg-gray-600 text-white text-sm rounded hover:bg-gray-700 flex items-center"
+                                  >
+                                    <X className="w-4 h-4 mr-1" />
+                                    Hủy
+                                  </button>
+                                </div>
+                              </div>
+                              <div className="mt-3">
+                                <label className="block text-xs font-medium text-blue-700 mb-1">
+                                  Mô tả chi tiết
+                                </label>
+                                <textarea
+                                  value={inlineEditData.mo_ta}
+                                  onChange={(e) => setInlineEditData({...inlineEditData, mo_ta: e.target.value})}
+                                  className="w-full px-3 py-2 text-sm border border-blue-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black"
+                                  rows="2"
+                                />
                               </div>
                             </div>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
-                            {getLoaiPhukienFromPhukienbep().find(loai => loai.id === item.id_loaiphukien)?.tenloai || 'N/A'}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm font-medium text-green-600">
-                            {item.don_gia ? item.don_gia.toLocaleString('vi-VN') : '0'} VND
-                          </div>
-                          {item.kich_thuoc && (
-                            <div className="text-xs text-gray-500">
-                              Kích thước: {item.kich_thuoc}
+                          </td>
+                        </>
+                      ) : (
+                        // Normal display
+                        <>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="flex items-center">
+                              <div className="flex-shrink-0 w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                                <Settings className="w-4 h-4 text-blue-600" />
+                              </div>
+                              <div className="ml-3">
+                                <div className="text-sm font-medium text-gray-900">
+                                  {item.tenphukien || 'Chưa có tên'}
+                                </div>
+                                {item.thuong_hieu && (
+                                  <div className="text-xs text-blue-600 font-medium">
+                                    {item.thuong_hieu}
+                                  </div>
+                                )}
+                                <div className="text-xs text-gray-500">
+                                  ID: {item.id}
+                                </div>
+                              </div>
                             </div>
-                          )}
-                        </td>
-                        <td className="px-6 py-4">
-                          <div className="text-sm text-gray-900 max-w-xs truncate">
-                            {item.mo_ta || 'Không có mô tả'}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                          <div className="flex items-center space-x-2">
-                            <button
-                              onClick={() => handleEdit(item)}
-                              className="inline-flex items-center px-2 py-1 text-xs font-medium text-blue-700 bg-blue-100 rounded-md hover:bg-blue-200 transition-colors duration-150"
-                              title="Chỉnh sửa"
-                            >
-                              <Edit className="w-3 h-3 mr-1" />
-                              Sửa
-                            </button>
-                            <button
-                              onClick={() => handleDelete(item.id)}
-                              className="inline-flex items-center px-2 py-1 text-xs font-medium text-red-700 bg-red-100 rounded-md hover:bg-red-200 transition-colors duration-150"
-                              title="Xóa"
-                            >
-                              <Trash2 className="w-3 h-3 mr-1" />
-                              Xóa
-                            </button>
-                          </div>
-                        </td>
-                      </>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                              {getLoaiPhukienFromPhukienbep().find(loai => loai.id === item.id_loaiphukien)?.tenloai || 'N/A'}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="text-sm font-medium text-green-600">
+                              {item.don_gia ? item.don_gia.toLocaleString('vi-VN') : '0'} VND
+                            </div>
+                            {item.kich_thuoc && (
+                              <div className="text-xs text-gray-500">
+                                Kích thước: {item.kich_thuoc}
+                              </div>
+                            )}
+                          </td>
+                          <td className="px-6 py-4">
+                            <div className="text-sm text-gray-900 max-w-xs truncate">
+                              {item.mo_ta || 'Không có mô tả'}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                            <div className="flex items-center space-x-2">
+                              <button
+                                onClick={() => handleEdit(item)}
+                                className="inline-flex items-center px-2 py-1 text-xs font-medium text-blue-700 bg-blue-100 rounded-md hover:bg-blue-200 transition-colors duration-150"
+                                title="Chỉnh sửa"
+                              >
+                                <Edit className="w-3 h-3 mr-1" />
+                                Sửa
+                              </button>
+                              <button
+                                onClick={() => handleDelete(item.id)}
+                                className="inline-flex items-center px-2 py-1 text-xs font-medium text-red-700 bg-red-100 rounded-md hover:bg-red-200 transition-colors duration-150"
+                                title="Xóa"
+                              >
+                                <Trash2 className="w-3 h-3 mr-1" />
+                                Xóa
+                              </button>
+                            </div>
+                          </td>
+                        </>
+                      )
                     ) : activeMaterialTab === 'loaiphukienbep' ? (
                       <>
                         <td className="px-6 py-4 whitespace-nowrap">
