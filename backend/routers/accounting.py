@@ -767,8 +767,7 @@ async def update_quanly_chiphi(chiphi_id: int, chiphi_data: dict):
             'mo_ta': chiphi_data.get('mo_ta', ''),
             'hinhanh': chiphi_data.get('hinhanh', ''),
             'parent_id': parent_id,
-            'created_at': chiphi_data.get('created_at'),
-            'updated_at': 'now()'
+            'created_at': chiphi_data.get('created_at')
         }).eq('id', chiphi_id).execute()
         return result.data[0]
     except HTTPException:

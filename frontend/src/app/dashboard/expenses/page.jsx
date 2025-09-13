@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
-import { Plus, Edit, Trash2, TrendingDown, DollarSign, Receipt, CreditCard, FileText, Info, Calendar, BarChart3, History, Settings, RotateCcw, Save, RefreshCw, Download, Users, Wrench, Eye, EyeOff, X, Package } from 'lucide-react';
+import { Plus, Edit, Trash2, DollarSign, Receipt, CreditCard, FileText, Info, Calendar, BarChart3, History, Settings, RotateCcw, Save, RefreshCw, Download, Users, Wrench, Eye, EyeOff, X, Package, TrendingDown } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { uploadExpenseImage, deleteExpenseImage, testSupabaseStorage, testSupabaseConnection, testNetworkConnectivity, listAllBuckets, createExpenseFolder, testUploadWithPolicies } from '../../../lib/supabaseStorage';
 
@@ -13,7 +13,6 @@ function ExpensesLayout({ user, activeTab, onTabChange, selectedMonth, onMonthCh
   const tabs = [
     { id: 'overview', label: 'Tổng quan', icon: BarChart3 },
     { id: 'expenses', label: 'Chi phí', icon: Receipt },
-    { id: 'hierarchy', label: 'Cấu trúc cây', icon: TrendingDown },
     { id: 'categories', label: 'Loại chi phí', icon: Settings }
   ];
 
@@ -111,6 +110,172 @@ function ExpensesLayout({ user, activeTab, onTabChange, selectedMonth, onMonthCh
 function ExpensesOverviewTab({ expenses, expenseCategories, selectedMonth }) {
   const totalExpenses = expenses.reduce((sum, expense) => sum + (expense.giathanh || 0), 0);
   const expenseCount = expenses.length;
+
+  const [hierarchyData, setHierarchyData] = useState([]);
+  const [hierarchyLoading, setHierarchyLoading] = useState(false);
+  const [expandedNodes, setExpandedNodes] = useState(new Set());
+
+  // Load hierarchy data for tree view
+  useEffect(() => {
+    loadHierarchyData();
+  }, [selectedMonth]);
+
+  const loadHierarchyData = async () => {
+    setHierarchyLoading(true);
+    try {
+      const response = await fetch(`http://localhost:8001/api/v1/accounting/quanly_chiphi/hierarchy/?month=${selectedMonth}`);
+      if (response.ok) {
+        const data = await response.json();
+        setHierarchyData(data.hierarchy || []);
+        // Auto-expand root level
+        const rootIds = new Set(data.hierarchy?.map(item => item.id) || []);
+        setExpandedNodes(rootIds);
+      }
+    } catch (error) {
+      console.error('Error loading hierarchy:', error);
+    } finally {
+      setHierarchyLoading(false);
+    }
+  };
+
+  // Toggle expand/collapse for tree nodes
+  const toggleNode = (nodeId) => {
+    setExpandedNodes(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(nodeId)) {
+        newSet.delete(nodeId);
+      } else {
+        newSet.add(nodeId);
+      }
+      return newSet;
+    });
+  };
+
+  const renderExpenseNode = (expense, level = 0, parentAmount = null, parentName = null, totalRootAmount = null) => {
+    const hasChildren = expense.children && expense.children.length > 0;
+    const isExpanded = expandedNodes.has(expense.id);
+    const indent = level * 24;
+
+    // Tính tỉ lệ phần trăm so với chi phí cha
+    let percentage = null;
+    if (parentAmount && parentAmount > 0) {
+      percentage = ((expense.giathanh || 0) / parentAmount) * 100;
+    }
+
+    // Tính tỉ lệ phần trăm so với tổng chi phí gốc (để tổng là 100%)
+    let rootPercentage = null;
+    if (totalRootAmount && totalRootAmount > 0 && level === 0) {
+      rootPercentage = ((expense.giathanh || 0) / totalRootAmount) * 100;
+    }
+
+    // Tính tổng tỉ lệ của tất cả chi phí con
+    let totalChildrenAmount = 0;
+    let totalChildrenPercentage = null;
+    if (hasChildren) {
+      totalChildrenAmount = expense.children.reduce((sum, child) => sum + (child.giathanh || 0), 0);
+      if (expense.giathanh && expense.giathanh > 0) {
+        totalChildrenPercentage = (totalChildrenAmount / expense.giathanh) * 100;
+      }
+    }
+
+    return (
+      <div key={expense.id}>
+        <div 
+          className="flex items-center justify-between p-4 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors duration-200 mb-2"
+          style={{ marginLeft: `${indent}px` }}
+        >
+          <div className="flex items-center space-x-3 flex-1">
+            {hasChildren && (
+              <button
+                onClick={() => toggleNode(expense.id)}
+                className="w-6 h-6 flex items-center justify-center text-gray-500 hover:text-gray-700 transition-colors duration-200"
+              >
+                {isExpanded ? (
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
+                  </svg>
+                ) : (
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                  </svg>
+                )}
+              </button>
+            )}
+            {!hasChildren && <div className="w-6 h-6" />}
+            
+            <div className="p-2 bg-red-100 rounded-lg">
+              <Receipt className="w-4 h-4 text-red-600" />
+            </div>
+            
+            <div className="flex-1">
+              <h4 className="font-medium text-gray-900">{expense.loaichiphi?.tenchiphi || 'N/A'}</h4>
+              <div className="space-y-1">
+                <div className="flex items-center space-x-2">
+                  <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
+                    expense.loaichiphi?.loaichiphi === 'định phí' 
+                      ? 'bg-green-100 text-green-800' 
+                      : 'bg-purple-100 text-purple-800'
+                  }`}>
+                    {expense.loaichiphi?.loaichiphi || 'N/A'}
+                  </span>
+                  <span className="text-sm text-gray-600">
+                    {expense.created_at ? new Date(expense.created_at).toLocaleDateString('vi-VN') : 'N/A'}
+                  </span>
+                </div>
+                {expense.mo_ta && expense.mo_ta.trim() !== '' && (
+                  <p className="text-sm text-blue-700 bg-blue-50 px-3 py-2 rounded-md border-l-2 border-blue-300 max-w-md">
+                    📝 <span className="font-medium">Mô tả:</span> {expense.mo_ta.replace(/^(Nhóm chi phí|Khoản chi phí):\s*/, '')}
+                    <span className={`ml-2 px-2 py-1 text-xs rounded-full ${
+                      expense.mo_ta.startsWith('Nhóm chi phí') 
+                        ? 'bg-orange-100 text-orange-800' 
+                        : 'bg-green-100 text-green-800'
+                    }`}>
+                      {expense.mo_ta.startsWith('Nhóm chi phí') ? 'Nhóm chi phí' : 'Khoản chi phí'}
+                    </span>
+                  </p>
+                )}
+                {!expense.mo_ta || expense.mo_ta.trim() === '' ? (
+                  <p className="text-xs text-gray-400 italic bg-gray-50 px-3 py-1 rounded">
+                    📝 Không có mô tả
+                  </p>
+                ) : null}
+              </div>
+            </div>
+          </div>
+          
+          <div className="flex items-center space-x-4">
+            <div className="text-right">
+              <p className="font-bold text-red-600">{(expense.giathanh || 0).toLocaleString('vi-VN')} VND</p>
+              {rootPercentage !== null && (
+                <p className="text-sm text-green-600 font-medium">
+                  {rootPercentage.toFixed(1)}% của tổng chi phí
+                </p>
+              )}
+              {percentage !== null && parentName && level > 0 && (
+                <p className="text-sm text-blue-600 font-medium">
+                  {percentage.toFixed(1)}% của {parentName}
+                </p>
+              )}
+              {hasChildren && totalChildrenPercentage !== null && (
+                <p className="text-sm text-purple-600 font-medium">
+                  Tổng con: {totalChildrenPercentage.toFixed(1)}% ({totalChildrenAmount.toLocaleString('vi-VN')} VND)
+                </p>
+              )}
+              {expense.total_amount && expense.total_amount !== expense.giathanh && (
+                <p className="text-sm text-gray-600">Tổng: {expense.total_amount.toLocaleString('vi-VN')} VND</p>
+              )}
+            </div>
+          </div>
+        </div>
+        
+        {hasChildren && isExpanded && (
+          <div className="ml-4">
+            {expense.children.map(child => renderExpenseNode(child, level + 1, expense.giathanh || 0, expense.loaichiphi?.tenchiphi || expense.mo_ta || 'Chi phí cha', totalRootAmount))}
+          </div>
+        )}
+      </div>
+    );
+  };
 
   const exportToExcel = async (exportType = 'current') => {
     let exportData = [];
@@ -279,6 +444,39 @@ function ExpensesOverviewTab({ expenses, expenseCategories, selectedMonth }) {
         </div>
       </div>
 
+      {/* Expense Structure Tree View */}
+      <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
+        <div className="p-6 border-b border-gray-200">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900">Cấu trúc cây chi phí</h3>
+              <p className="text-sm text-gray-600 mt-1">Chi phí được hiển thị theo cấu trúc phân cấp</p>
+            </div>
+          </div>
+        </div>
+
+        {hierarchyLoading ? (
+          <div className="text-center py-12">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-600 mx-auto mb-4"></div>
+            <p className="text-gray-600">Đang tải cấu trúc cây...</p>
+          </div>
+        ) : hierarchyData.length === 0 ? (
+          <div className="text-center py-12">
+            <Receipt className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+            <p className="text-gray-500">Không có chi phí nào trong tháng này</p>
+          </div>
+        ) : (
+          <div className="p-6">
+            <div className="space-y-2">
+              {(() => {
+                const totalRootAmount = hierarchyData.reduce((sum, expense) => sum + (expense.giathanh || 0), 0);
+                return hierarchyData.map(expense => renderExpenseNode(expense, 0, null, null, totalRootAmount));
+              })()}
+            </div>
+          </div>
+        )}
+      </div>
+
       {/* Monthly Chart */}
       <div className="bg-white rounded-lg shadow-sm border p-6">
         <h3 className="text-lg font-semibold text-gray-900 mb-4">Biểu đồ chi phí theo tháng</h3>
@@ -292,6 +490,7 @@ function ExpensesOverviewTab({ expenses, expenseCategories, selectedMonth }) {
           </BarChart>
         </ResponsiveContainer>
       </div>
+
     </div>
   );
 }
@@ -325,11 +524,51 @@ function ExpensesManagementTab({ expenses, expenseCategories, selectedMonth, onE
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState('');
   const [selectedExpense, setSelectedExpense] = useState(null);
+  const [hierarchyData, setHierarchyData] = useState([]);
+  const [hierarchyLoading, setHierarchyLoading] = useState(false);
+  const [expandedNodes, setExpandedNodes] = useState(new Set());
+  const [filterType, setFilterType] = useState('all'); // 'all', 'dinh-phi', 'bien-phi'
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
+  const [amountMin, setAmountMin] = useState('');
+  const [amountMax, setAmountMax] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState('all');
 
-  // Load available parents when expenses change
+  // Load hierarchy data for tree view
   useEffect(() => {
-    setAvailableParents(expenses.filter(exp => !editingExpense || exp.id !== editingExpense.id));
-  }, [expenses, editingExpense]);
+    loadHierarchyData();
+  }, [selectedMonth, expenses]);
+
+  const loadHierarchyData = async () => {
+    setHierarchyLoading(true);
+    try {
+      const response = await fetch(`http://localhost:8001/api/v1/accounting/quanly_chiphi/hierarchy/?month=${selectedMonth}`);
+      if (response.ok) {
+        const data = await response.json();
+        setHierarchyData(data.hierarchy || []);
+        // Auto-expand root level
+        const rootIds = new Set(data.hierarchy?.map(item => item.id) || []);
+        setExpandedNodes(rootIds);
+      }
+    } catch (error) {
+      console.error('Error loading hierarchy:', error);
+    } finally {
+      setHierarchyLoading(false);
+    }
+  };
+
+  // Toggle expand/collapse for tree nodes
+  const toggleNode = (nodeId) => {
+    setExpandedNodes(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(nodeId)) {
+        newSet.delete(nodeId);
+      } else {
+        newSet.add(nodeId);
+      }
+      return newSet;
+    });
+  };
 
   // Load products
   useEffect(() => {
@@ -346,6 +585,170 @@ function ExpensesManagementTab({ expenses, expenseCategories, selectedMonth, onE
     } catch (error) {
       console.error('Error loading products:', error);
     }
+  };
+
+  // Auto-update description preview when parent_id changes
+  useEffect(() => {
+    const isParentExpense = !expenseForm.parent_id || expenseForm.parent_id === '';
+    const autoNote = isParentExpense ? 'Nhóm chi phí' : 'Khoản chi phí';
+    
+    // Update the description field to show preview
+    if (expenseForm.mo_ta && !expenseForm.mo_ta.startsWith(autoNote)) {
+      // If user has entered description, prepend the auto note
+      setExpenseForm(prev => ({
+        ...prev,
+        mo_ta: `${autoNote}: ${prev.mo_ta.replace(/^(Nhóm chi phí|Khoản chi phí):\s*/, '')}`
+      }));
+    } else if (!expenseForm.mo_ta) {
+      // If no description, just show the auto note
+      setExpenseForm(prev => ({
+        ...prev,
+        mo_ta: autoNote
+      }));
+    }
+  }, [expenseForm.parent_id]);
+
+  const renderExpenseNode = (expense, level = 0, parentAmount = null, parentName = null, totalRootAmount = null) => {
+    const hasChildren = expense.children && expense.children.length > 0;
+    const isExpanded = expandedNodes.has(expense.id);
+    const indent = level * 24;
+
+    // Tính tỉ lệ phần trăm so với chi phí cha
+    let percentage = null;
+    if (parentAmount && parentAmount > 0) {
+      percentage = ((expense.giathanh || 0) / parentAmount) * 100;
+    }
+
+    // Tính tỉ lệ phần trăm so với tổng chi phí gốc (để tổng là 100%)
+    let rootPercentage = null;
+    if (totalRootAmount && totalRootAmount > 0 && level === 0) {
+      rootPercentage = ((expense.giathanh || 0) / totalRootAmount) * 100;
+    }
+
+    // Tính tổng tỉ lệ của tất cả chi phí con
+    let totalChildrenAmount = 0;
+    let totalChildrenPercentage = null;
+    if (hasChildren) {
+      totalChildrenAmount = expense.children.reduce((sum, child) => sum + (child.giathanh || 0), 0);
+      if (expense.giathanh && expense.giathanh > 0) {
+        totalChildrenPercentage = (totalChildrenAmount / expense.giathanh) * 100;
+      }
+    }
+
+    return (
+      <div key={expense.id}>
+        <div 
+          className="flex items-center justify-between p-4 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors duration-200 mb-2"
+          style={{ marginLeft: `${indent}px` }}
+        >
+          <div className="flex items-center space-x-3 flex-1">
+            {hasChildren && (
+              <button
+                onClick={() => toggleNode(expense.id)}
+                className="w-6 h-6 flex items-center justify-center text-gray-500 hover:text-gray-700 transition-colors duration-200"
+              >
+                {isExpanded ? (
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
+                  </svg>
+                ) : (
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                  </svg>
+                )}
+              </button>
+            )}
+            {!hasChildren && <div className="w-6 h-6" />}
+            
+            <div className="p-2 bg-red-100 rounded-lg">
+              <Receipt className="w-4 h-4 text-red-600" />
+            </div>
+            
+            <div className="flex-1">
+              <h4 className="font-medium text-gray-900">{expense.loaichiphi?.tenchiphi || 'N/A'}</h4>
+              <div className="space-y-1">
+                <div className="flex items-center space-x-2">
+                  <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
+                    expense.loaichiphi?.loaichiphi === 'định phí' 
+                      ? 'bg-green-100 text-green-800' 
+                      : 'bg-purple-100 text-purple-800'
+                  }`}>
+                    {expense.loaichiphi?.loaichiphi || 'N/A'}
+                  </span>
+                  <span className="text-sm text-gray-600">
+                    {expense.created_at ? new Date(expense.created_at).toLocaleDateString('vi-VN') : 'N/A'}
+                  </span>
+                </div>
+                {expense.mo_ta && expense.mo_ta.trim() !== '' && (
+                  <p className="text-sm text-blue-700 bg-blue-50 px-3 py-2 rounded-md border-l-2 border-blue-300 max-w-md">
+                    📝 <span className="font-medium">Mô tả:</span> {expense.mo_ta.replace(/^(Nhóm chi phí|Khoản chi phí):\s*/, '')}
+                    <span className={`ml-2 px-2 py-1 text-xs rounded-full ${
+                      expense.mo_ta.startsWith('Nhóm chi phí') 
+                        ? 'bg-orange-100 text-orange-800' 
+                        : 'bg-green-100 text-green-800'
+                    }`}>
+                      {expense.mo_ta.startsWith('Nhóm chi phí') ? 'Nhóm chi phí' : 'Khoản chi phí'}
+                    </span>
+                  </p>
+                )}
+                {!expense.mo_ta || expense.mo_ta.trim() === '' ? (
+                  <p className="text-xs text-gray-400 italic bg-gray-50 px-3 py-1 rounded">
+                    📝 Không có mô tả
+                  </p>
+                ) : null}
+              </div>
+            </div>
+          </div>
+          
+          <div className="flex items-center space-x-4">
+            <div className="text-right">
+              <p className="font-bold text-red-600">{(expense.giathanh || 0).toLocaleString('vi-VN')} VND</p>
+              {rootPercentage !== null && (
+                <p className="text-sm text-green-600 font-medium">
+                  {rootPercentage.toFixed(1)}% của tổng chi phí
+                </p>
+              )}
+              {percentage !== null && parentName && level > 0 && (
+                <p className="text-sm text-blue-600 font-medium">
+                  {percentage.toFixed(1)}% của {parentName}
+                </p>
+              )}
+              {hasChildren && totalChildrenPercentage !== null && (
+                <p className="text-sm text-purple-600 font-medium">
+                  Tổng con: {totalChildrenPercentage.toFixed(1)}% ({totalChildrenAmount.toLocaleString('vi-VN')} VND)
+                </p>
+              )}
+              {expense.total_amount && expense.total_amount !== expense.giathanh && (
+                <p className="text-sm text-gray-600">Tổng: {expense.total_amount.toLocaleString('vi-VN')} VND</p>
+              )}
+            </div>
+            
+            <div className="flex items-center space-x-2">
+              <button
+                onClick={() => editExpense(expense)}
+                className="p-2 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-lg transition-all duration-200"
+                title="Chỉnh sửa"
+              >
+                <Edit className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => deleteExpense(expense.id)}
+                className="p-2 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-lg transition-all duration-200"
+                title="Xóa"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        </div>
+        
+        {hasChildren && isExpanded && (
+          <div className="ml-4">
+            {expense.children.map(child => renderExpenseNode(child, level + 1, expense.giathanh || 0, expense.loaichiphi?.tenchiphi || expense.mo_ta || 'Chi phí cha', totalRootAmount))}
+          </div>
+        )}
+      </div>
+    );
   };
   const exportToExcel = () => {
     // Prepare data for Excel export
@@ -415,8 +818,9 @@ function ExpensesManagementTab({ expenses, expenseCategories, selectedMonth, onE
       return;
     }
 
-    if (!expenseForm.giathanh || expenseForm.giathanh === '') {
-      setError('Vui lòng nhập số tiền');
+    // Chỉ bắt buộc nhập giá khi không chọn quan hệ cha con
+    if ((!expenseForm.parent_id || expenseForm.parent_id === '') && (!expenseForm.giathanh || expenseForm.giathanh === '')) {
+      setError('Vui lòng nhập số tiền (bắt buộc khi không chọn chi phí cha)');
       setLoading(false);
       return;
     }
@@ -459,10 +863,13 @@ function ExpensesManagementTab({ expenses, expenseCategories, selectedMonth, onE
         : 'http://localhost:8001/api/v1/accounting/quanly_chiphi/';
 
       // Prepare the data to send
+      const isParentExpense = !expenseForm.parent_id || expenseForm.parent_id === '';
+      const autoNote = isParentExpense ? 'Nhóm chi phí' : 'Khoản chi phí';
+      
       const dataToSend = {
         id_lcp: expenseForm.id_lcp ? parseInt(expenseForm.id_lcp) : null,
         giathanh: parseFloat(expenseForm.giathanh) || null,
-        mo_ta: expenseForm.mo_ta || null,
+        mo_ta: expenseForm.mo_ta ? `${autoNote}: ${expenseForm.mo_ta}` : autoNote,
         hinhanh: imageUrl || expenseForm.hinhanh || null,
         parent_id: expenseForm.parent_id ? parseInt(expenseForm.parent_id) : null,
         created_at: expenseForm.created_at ? new Date(expenseForm.created_at).toISOString() : new Date().toISOString()
@@ -499,9 +906,37 @@ function ExpensesManagementTab({ expenses, expenseCategories, selectedMonth, onE
           setSuccess(false);
         }, 2000);
       } else {
-        const errorData = await response.json();
-        console.error('API Error:', errorData); // Debug log
-        setError(errorData.detail || 'Có lỗi xảy ra khi lưu chi phí');
+        let errorMessage = 'Có lỗi xảy ra khi lưu chi phí';
+        try {
+          const errorData = await response.json();
+          console.log('Raw error data:', errorData); // Debug log
+          if (errorData && errorData.detail) {
+            errorMessage = errorData.detail;
+          } else if (errorData && Object.keys(errorData).length > 0) {
+            // If there are other error fields, try to extract meaningful error
+            const firstError = Object.values(errorData)[0];
+            if (Array.isArray(firstError)) {
+              errorMessage = firstError[0];
+            } else if (typeof firstError === 'string') {
+              errorMessage = firstError;
+            }
+          } else {
+            // Empty response or no meaningful error data
+            errorMessage = `Lỗi ${response.status}: ${response.statusText || 'Không thể lưu chi phí'}`;
+          }
+        } catch (parseError) {
+          console.log('JSON parse error:', parseError); // Debug log
+          // If JSON parsing fails, use status-based error
+          errorMessage = `Lỗi ${response.status}: ${response.statusText || 'Lỗi máy chủ'}`;
+        }
+        console.error('API Error details:', {
+          status: response.status,
+          statusText: response.statusText,
+          errorMessage: errorMessage,
+          responseType: typeof response,
+          responseKeys: response ? Object.keys(response) : 'no response'
+        });
+        setError(errorMessage);
       }
     } catch (error) {
       console.error('Error saving expense:', error);
@@ -540,8 +975,37 @@ function ExpensesManagementTab({ expenses, expenseCategories, selectedMonth, onE
         setShowProductExpenseForm(false);
         onExpenseUpdate();
       } else {
-        const errorData = await response.json();
-        setError(errorData.detail || 'Có lỗi xảy ra khi thêm biến phí sản phẩm');
+        let errorMessage = 'Có lỗi xảy ra khi thêm biến phí sản phẩm';
+        try {
+          const errorData = await response.json();
+          console.log('Raw error data (product expense):', errorData); // Debug log
+          if (errorData && errorData.detail) {
+            errorMessage = errorData.detail;
+          } else if (errorData && Object.keys(errorData).length > 0) {
+            // If there are other error fields, try to extract meaningful error
+            const firstError = Object.values(errorData)[0];
+            if (Array.isArray(firstError)) {
+              errorMessage = firstError[0];
+            } else if (typeof firstError === 'string') {
+              errorMessage = firstError;
+            }
+          } else {
+            // Empty response or no meaningful error data
+            errorMessage = `Lỗi ${response.status}: ${response.statusText || 'Không thể thêm biến phí sản phẩm'}`;
+          }
+        } catch (parseError) {
+          console.log('JSON parse error (product expense):', parseError); // Debug log
+          // If JSON parsing fails, use status-based error
+          errorMessage = `Lỗi ${response.status}: ${response.statusText || 'Lỗi máy chủ'}`;
+        }
+        console.error('API Error details (product expense):', {
+          status: response.status,
+          statusText: response.statusText,
+          errorMessage: errorMessage,
+          responseType: typeof response,
+          responseKeys: response ? Object.keys(response) : 'no response'
+        });
+        setError(errorMessage);
       }
     } catch (error) {
       setError('Có lỗi xảy ra khi kết nối đến server');
@@ -551,24 +1015,17 @@ function ExpensesManagementTab({ expenses, expenseCategories, selectedMonth, onE
   };
 
   const editExpense = (expense) => {
-    // Tìm category tương ứng để áp dụng auto-fill logic
-    const selectedCategory = expenseCategories.find(cat => cat.id.toString() === expense.id_lcp);
-    
-    let autoFillGiathanh = expense.giathanh ? expense.giathanh.toString() : '';
-    // Nếu là định phí và category có giá thành, thì dùng giá thành của category
-    if (selectedCategory && selectedCategory.loaichiphi === 'định phí' && selectedCategory.giathanh) {
-      autoFillGiathanh = selectedCategory.giathanh.toString();
-    }
-    
     setEditingExpense(expense);
     setExpenseForm({
-      id_lcp: expense.id_lcp || '',
-      giathanh: autoFillGiathanh,
-      mo_ta: expense.mo_ta || '',
+      id_lcp: expense.id_lcp?.toString() || '',
+      giathanh: expense.giathanh ? expense.giathanh.toString() : '',
+      mo_ta: expense.mo_ta ? expense.mo_ta.replace(/^(Nhóm chi phí|Khoản chi phí):\s*/, '') : '',
       hinhanh: expense.hinhanh || '',
-      parent_id: expense.parent_id ? expense.parent_id.toString() : '',
+      parent_id: expense.parent_id?.toString() || '',
       created_at: expense.created_at ? new Date(expense.created_at).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]
     });
+    setSelectedFile(null);
+    setPreviewUrl(expense.hinhanh || '');
     setError('');
     setSuccess(false);
     setShowExpenseForm(true);
@@ -742,7 +1199,7 @@ function ExpensesManagementTab({ expenses, expenseCategories, selectedMonth, onE
                     <span className="text-xs text-green-600">�</span>
                   </span>
                   Số tiền (VND)
-                  <span className="text-red-500 ml-1">*</span>
+                  {(!expenseForm.parent_id || expenseForm.parent_id === '') && <span className="text-red-500 ml-1">*</span>}
                 </label>
                 <div className="relative">
                   <input
@@ -758,7 +1215,7 @@ function ExpensesManagementTab({ expenses, expenseCategories, selectedMonth, onE
                     }}
                     className="w-full pl-5 pr-12 py-4 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all duration-200 bg-white text-gray-900 placeholder-gray-500 text-lg"
                     placeholder="0"
-                    required
+                    required={!expenseForm.parent_id || expenseForm.parent_id === ''}
                   />
                   <div className="absolute right-4 top-4 text-gray-400">
                     <DollarSign className="w-6 h-6" />
@@ -768,7 +1225,10 @@ function ExpensesManagementTab({ expenses, expenseCategories, selectedMonth, onE
                   <span className="w-4 h-4 bg-gray-100 rounded-full flex items-center justify-center mr-2">
                     <span className="text-xs">💡</span>
                   </span>
-                  Nhập số tiền chính xác (ví dụ: 1.000.000)
+                  {(!expenseForm.parent_id || expenseForm.parent_id === '') 
+                    ? 'Nhập số tiền chính xác (bắt buộc khi không chọn chi phí cha). Tổng chi phí con sẽ bằng chi phí cha.' 
+                    : 'Có thể để trống nếu kế thừa từ chi phí cha (ví dụ: 1.000.000). Chi phí này là khoản chi phí con.'
+                  }
                 </p>
               </div>
 
@@ -833,7 +1293,12 @@ function ExpensesManagementTab({ expenses, expenseCategories, selectedMonth, onE
                   <span className="w-4 h-4 bg-gray-100 rounded-full flex items-center justify-center mr-2">
                     <span className="text-xs">💡</span>
                   </span>
-                  Chọn chi phí cha để tạo cấu trúc phân cấp
+                  Chọn chi phí cha để tạo cấu trúc phân cấp. 
+                  {(!expenseForm.parent_id || expenseForm.parent_id === '') && (
+                    <span className="text-orange-600 font-medium ml-1">
+                      Lưu ý: Tổng chi phí con phải bằng chi phí cha.
+                    </span>
+                  )}
                 </p>
               </div>
 
@@ -1176,76 +1641,188 @@ function ExpensesManagementTab({ expenses, expenseCategories, selectedMonth, onE
         </div>
       )}
 
-      {/* Expenses Table */}
+      {/* Filters Section */}
+      <div className="bg-white rounded-lg shadow-sm border p-6">
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">Bộ lọc chi phí</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Từ ngày</label>
+            <input
+              type="date"
+              value={dateFrom}
+              onChange={(e) => setDateFrom(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Đến ngày</label>
+            <input
+              type="date"
+              value={dateTo}
+              onChange={(e) => setDateTo(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Số tiền từ (VND)</label>
+            <input
+              type="text"
+              value={amountMin}
+              onChange={(e) => {
+                const value = e.target.value.replace(/[.,\s]/g, '');
+                if (!isNaN(value) && value !== '') {
+                  setAmountMin(parseFloat(value));
+                } else if (value === '') {
+                  setAmountMin('');
+                }
+              }}
+              placeholder="0"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Số tiền đến (VND)</label>
+            <input
+              type="text"
+              value={amountMax}
+              onChange={(e) => {
+                const value = e.target.value.replace(/[.,\s]/g, '');
+                if (!isNaN(value) && value !== '') {
+                  setAmountMax(parseFloat(value));
+                } else if (value === '') {
+                  setAmountMax('');
+                }
+              }}
+              placeholder="Không giới hạn"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Loại chi phí</label>
+            <select
+              value={categoryFilter}
+              onChange={(e) => setCategoryFilter(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+            >
+              <option value="all">Tất cả</option>
+              {expenseCategories.map(cat => (
+                <option key={cat.id} value={cat.id.toString()}>{cat.tenchiphi}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+        <div className="mt-4 flex items-center space-x-4">
+          <button
+            onClick={() => {
+              setDateFrom('');
+              setDateTo('');
+              setAmountMin('');
+              setAmountMax('');
+              setCategoryFilter('all');
+              setFilterType('all');
+            }}
+            className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700"
+          >
+            Xóa bộ lọc
+          </button>
+        </div>
+      </div>
+
+      {/* Expenses Tree View */}
       <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
-        {expenses.length === 0 ? (
+        <div className="p-6 border-b border-gray-200">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900">Cấu trúc cây chi phí</h3>
+              <p className="text-sm text-gray-600 mt-1">Chi phí được hiển thị theo cấu trúc phân cấp</p>
+            </div>
+            <div className="flex items-center space-x-3">
+              {/* Filter Buttons with Counts */}
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={() => setFilterType('all')}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                    filterType === 'all'
+                      ? 'bg-red-600 text-white shadow-md'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  Tất cả chi phí ({hierarchyData.length})
+                </button>
+                <button
+                  onClick={() => setFilterType('dinh-phi')}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                    filterType === 'dinh-phi'
+                      ? 'bg-red-600 text-white shadow-md'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  Chỉ định phí ({hierarchyData.filter(expense => expense.loaichiphi?.loaichiphi === 'định phí').length})
+                </button>
+                <button
+                  onClick={() => setFilterType('bien-phi')}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                    filterType === 'bien-phi'
+                      ? 'bg-red-600 text-white shadow-md'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  Chỉ biến phí ({hierarchyData.filter(expense => expense.loaichiphi?.loaichiphi === 'biến phí').length})
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {hierarchyLoading ? (
+          <div className="text-center py-12">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-600 mx-auto mb-4"></div>
+            <p className="text-gray-600">Đang tải cấu trúc cây...</p>
+          </div>
+        ) : hierarchyData.length === 0 ? (
           <div className="text-center py-12">
             <Receipt className="w-12 h-12 text-gray-400 mx-auto mb-4" />
             <p className="text-gray-500">Không có chi phí nào trong tháng này</p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Loại chi phí</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Mô tả</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Số tiền</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ngày</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Thao tác</th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {expenses.map(expense => (
-                  <tr key={expense.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className="inline-flex px-2 py-1 text-xs font-medium bg-red-100 text-red-800 rounded-full">
-                        {expense.loaichiphi?.tenchiphi || 'N/A'}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center">
-                        <Receipt className="w-4 h-4 text-gray-400 mr-2" />
-                        <div>
-                          <div className="text-sm font-medium text-gray-900">{expense.mo_ta || 'Không có mô tả'}</div>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-red-600">
-                      {(expense.giathanh || 0).toLocaleString('vi-VN')} VND
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {expense.created_at ? new Date(expense.created_at).toLocaleDateString('vi-VN') : 'N/A'}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      <div className="flex items-center space-x-2">
-                        <button
-                          onClick={() => editExpense(expense)}
-                          className="text-blue-600 hover:text-blue-900 p-1"
-                          title="Chỉnh sửa"
-                        >
-                          <Edit className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => deleteExpense(expense.id)}
-                          className="text-red-600 hover:text-red-900 p-1"
-                          title="Xóa"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => setSelectedExpense(expense)}
-                          className="text-green-600 hover:text-green-900 p-1"
-                          title="Xem chi tiết"
-                        >
-                          <Eye className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="p-6">
+            <div className="space-y-2">
+              {(() => {
+                const filteredData = hierarchyData.filter(expense => {
+                  // Filter by type (dinh-phi/bien-phi)
+                  if (filterType !== 'all') {
+                    const expenseType = expense.loaichiphi?.loaichiphi;
+                    if (filterType === 'dinh-phi' && expenseType !== 'định phí') return false;
+                    if (filterType === 'bien-phi' && expenseType !== 'biến phí') return false;
+                  }
+
+                  // Filter by category
+                  if (categoryFilter !== 'all' && expense.id_lcp?.toString() !== categoryFilter) return false;
+
+                  // Filter by date
+                  if (dateFrom) {
+                    const expenseDate = new Date(expense.created_at);
+                    const fromDate = new Date(dateFrom);
+                    if (expenseDate < fromDate) return false;
+                  }
+                  if (dateTo) {
+                    const expenseDate = new Date(expense.created_at);
+                    const toDate = new Date(dateTo);
+                    toDate.setHours(23, 59, 59, 999); // End of day
+                    if (expenseDate > toDate) return false;
+                  }
+
+                  // Filter by amount
+                  const amount = expense.giathanh || 0;
+                  if (amountMin !== '' && amount < parseFloat(amountMin)) return false;
+                  if (amountMax !== '' && amount > parseFloat(amountMax)) return false;
+
+                  return true;
+                });
+                const totalRootAmount = filteredData.reduce((sum, expense) => sum + (expense.giathanh || 0), 0);
+                return filteredData.map(expense => renderExpenseNode(expense, 0, null, null, totalRootAmount));
+              })()}
+            </div>
           </div>
         )}
       </div>
@@ -1291,13 +1868,15 @@ function ExpensesManagementTab({ expenses, expenseCategories, selectedMonth, onE
                       </div>
                       <div className="flex justify-between items-center">
                         <span className="text-gray-600">Loại:</span>
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                          selectedExpense.loaichiphi?.loaichiphi === 'định phí' 
-                            ? 'bg-blue-100 text-blue-800' 
-                            : 'bg-green-100 text-green-800'
-                        }`}>
-                          {selectedExpense.loaichiphi?.loaichiphi || 'N/A'}
-                        </span>
+                        <div className="flex items-center space-x-2">
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                            selectedExpense.mo_ta && selectedExpense.mo_ta.startsWith('Nhóm chi phí') 
+                              ? 'bg-orange-100 text-orange-800' 
+                              : 'bg-green-100 text-green-800'
+                          }`}>
+                            {selectedExpense.mo_ta && selectedExpense.mo_ta.startsWith('Nhóm chi phí') ? 'Nhóm chi phí' : 'Khoản chi phí'}
+                          </span>
+                        </div>
                       </div>
                       <div className="flex justify-between items-center">
                         <span className="text-gray-600">Số tiền:</span>
@@ -1314,7 +1893,7 @@ function ExpensesManagementTab({ expenses, expenseCategories, selectedMonth, onE
                       <div className="flex justify-between items-start">
                         <span className="text-gray-600">Mô tả:</span>
                         <span className="font-medium text-gray-900 text-right max-w-xs">
-                          {selectedExpense.mo_ta || 'Không có mô tả'}
+                          {selectedExpense.mo_ta ? selectedExpense.mo_ta.replace(/^(Nhóm chi phí|Khoản chi phí):\s*/, '') : 'Không có mô tả'}
                         </span>
                       </div>
                     </div>
@@ -1435,269 +2014,169 @@ function ExpensesManagementTab({ expenses, expenseCategories, selectedMonth, onE
   );
 }
 
-function ExpensesHierarchyTab({ expenses, expenseCategories, selectedMonth, onExpenseUpdate }) {
-  const [hierarchyData, setHierarchyData] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [expandedNodes, setExpandedNodes] = useState(new Set());
-  const [filterType, setFilterType] = useState('all'); // 'all', 'dinh-phi', 'bien-phi'
+<style jsx>{`
+  .expense-node {
+    position: relative;
+  }
 
-  useEffect(() => {
-    loadHierarchyData();
-  }, [selectedMonth]);
+  .expense-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem;
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 0.5rem;
+    margin-bottom: 0.5rem;
+    transition: all 0.2s;
+  }
 
-  const loadHierarchyData = async () => {
-    setLoading(true);
-    try {
-      const response = await fetch(`http://localhost:8001/api/v1/accounting/quanly_chiphi/hierarchy/?month=${selectedMonth}`);
-      if (response.ok) {
-        const data = await response.json();
-        setHierarchyData(data.hierarchy || []);
-        // Auto-expand root level
-        const rootIds = new Set(data.hierarchy?.map(item => item.id) || []);
-        setExpandedNodes(rootIds);
-      }
-    } catch (error) {
-      console.error('Error loading hierarchy:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  .expense-row:hover {
+    background: #f9fafb;
+    border-color: #d1d5db;
+  }
 
-  const toggleNode = (nodeId) => {
-    const newExpanded = new Set(expandedNodes);
-    if (newExpanded.has(nodeId)) {
-      newExpanded.delete(nodeId);
-    } else {
-      newExpanded.add(nodeId);
-    }
-    setExpandedNodes(newExpanded);
-  };
+  .expense-info {
+    display: flex;
+    align-items: center;
+    flex: 1;
+  }
 
-  // Lọc dữ liệu theo loại chi phí (chỉ áp dụng cho bậc 1)
-  const getFilteredData = () => {
-    if (filterType === 'all') {
-      return hierarchyData;
-    }
-    
-    return hierarchyData.filter(expense => {
-      const expenseType = expense.loaichiphi?.loaichiphi;
-      if (filterType === 'dinh-phi') {
-        return expenseType === 'định phí';
-      } else if (filterType === 'bien-phi') {
-        return expenseType === 'biến phí';
-      }
-      return true;
-    });
-  };
+  .expand-btn {
+    width: 2rem;
+    height: 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: none;
+    border: none;
+    color: #6b7280;
+    cursor: pointer;
+    margin-right: 0.5rem;
+    transition: color 0.2s;
+  }
 
-  const renderExpenseNode = (expense, level = 0, parentAmount = null, parentName = null) => {
-    const hasChildren = expense.children && expense.children.length > 0;
-    const isExpanded = expandedNodes.has(expense.id);
-    const indent = level * 24;
+  .expand-btn:hover {
+    color: #374151;
+  }
 
-    // Tính tỉ lệ phần trăm so với chi phí cha
-    let percentage = null;
-    if (parentAmount && parentAmount > 0) {
-      percentage = ((expense.giathanh || 0) / parentAmount) * 100;
-    }
+  .expand-spacer {
+    width: 2rem;
+    margin-right: 0.5rem;
+    color: #9ca3af;
+    font-size: 1.2rem;
+  }
 
-    // Tính tổng tỉ lệ của tất cả chi phí con
-    let totalChildrenAmount = 0;
-    let totalChildrenPercentage = null;
-    if (hasChildren) {
-      totalChildrenAmount = expense.children.reduce((sum, child) => sum + (child.giathanh || 0), 0);
-      if (expense.giathanh && expense.giathanh > 0) {
-        totalChildrenPercentage = (totalChildrenAmount / expense.giathanh) * 100;
-      }
-    }
+  .expense-details {
+    flex: 1;
+  }
 
-    return (
-      <div key={expense.id}>
-        <div 
-          className="flex items-center justify-between p-4 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors duration-200 mb-2"
-          style={{ marginLeft: `${indent}px` }}
-        >
-          <div className="flex items-center space-x-3 flex-1">
-            {hasChildren && (
-              <button
-                onClick={() => toggleNode(expense.id)}
-                className="w-6 h-6 flex items-center justify-center text-gray-500 hover:text-gray-700 transition-colors duration-200"
-              >
-                {isExpanded ? (
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
-                  </svg>
-                ) : (
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                  </svg>
-                )}
-              </button>
-            )}
-            {!hasChildren && <div className="w-6 h-6" />}
-            
-            <div className="p-2 bg-red-100 rounded-lg">
-              <Receipt className="w-4 h-4 text-red-600" />
-            </div>
-            
-            <div className="flex-1">
-              <h4 className="font-medium text-gray-900">{expense.loaichiphi?.tenchiphi || 'N/A'}</h4>
-              <p className="text-sm text-gray-600">
-                {expense.mo_ta || 'Không có mô tả'} • {expense.created_at ? new Date(expense.created_at).toLocaleDateString('vi-VN') : 'N/A'}
-              </p>
-            </div>
-          </div>
-          
-          <div className="flex items-center space-x-4">
-            <div className="text-right">
-              <p className="font-bold text-red-600">{(expense.giathanh || 0).toLocaleString('vi-VN')} VND</p>
-              {percentage !== null && parentName && (
-                <p className="text-sm text-blue-600 font-medium">
-                  {percentage.toFixed(1)}% của {parentName}
-                </p>
-              )}
-              {hasChildren && totalChildrenPercentage !== null && (
-                <p className="text-sm text-green-600 font-medium">
-                  Tổng con: {totalChildrenPercentage.toFixed(1)}% ({totalChildrenAmount.toLocaleString('vi-VN')} VND)
-                </p>
-              )}
-              {expense.total_amount && expense.total_amount !== expense.giathanh && (
-                <p className="text-sm text-gray-600">Tổng: {expense.total_amount.toLocaleString('vi-VN')} VND</p>
-              )}
-            </div>
-            
-            <div className="flex items-center space-x-2">
-              <button
-                onClick={() => {/* Edit functionality */}}
-                className="p-2 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-lg transition-all duration-200"
-                title="Chỉnh sửa"
-              >
-                <Edit className="w-4 h-4" />
-              </button>
-              <button
-                onClick={() => {/* Delete functionality */}}
-                className="p-2 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-lg transition-all duration-200"
-                title="Xóa"
-              >
-                <Trash2 className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
-        </div>
-        
-        {hasChildren && isExpanded && (
-          <div className="ml-4">
-            {expense.children.map(child => renderExpenseNode(child, level + 1, expense.giathanh || 0, expense.loaichiphi?.tenchiphi || expense.mo_ta || 'Chi phí cha'))}
-          </div>
-        )}
-      </div>
-    );
-  };
+  .expense-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.25rem;
+  }
 
-  return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl p-6 border border-blue-100">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <h2 className="text-2xl font-bold text-gray-900 flex items-center">
-              <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center mr-3">
-                <TrendingDown className="w-5 h-5 text-blue-600" />
-              </div>
-              Cấu trúc cây chi phí
-            </h2>
-            <p className="text-gray-600 mt-1">Xem chi phí theo cấu trúc phân cấp tháng {selectedMonth}</p>
-          </div>
-          <div className="flex items-center space-x-3">
-            <button
-              onClick={loadHierarchyData}
-              disabled={loading}
-              className="bg-blue-600 text-white px-6 py-3 rounded-xl hover:bg-blue-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 flex items-center space-x-2"
-            >
-              <RefreshCw className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
-              <span>Làm mới</span>
-            </button>
-          </div>
-        </div>
+  .expense-description {
+    font-weight: 600;
+    color: #111827;
+    font-size: 0.95rem;
+  }
 
-        {/* Filter Buttons */}
-        <div className="mt-6 flex flex-wrap items-center gap-3">
-          <span className="text-sm font-medium text-gray-700 mr-2">Lọc theo loại:</span>
-          <button
-            onClick={() => setFilterType('all')}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
-              filterType === 'all'
-                ? 'bg-blue-600 text-white shadow-md'
-                : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
-            }`}
-          >
-            Tất cả ({hierarchyData.length})
-          </button>
-          <button
-            onClick={() => setFilterType('dinh-phi')}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
-              filterType === 'dinh-phi'
-                ? 'bg-green-600 text-white shadow-md'
-                : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
-            }`}
-          >
-            Định phí ({hierarchyData.filter(exp => exp.loaichiphi?.loaichiphi === 'định phí').length})
-          </button>
-          <button
-            onClick={() => setFilterType('bien-phi')}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
-              filterType === 'bien-phi'
-                ? 'bg-purple-600 text-white shadow-md'
-                : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
-            }`}
-          >
-            Biến phí ({hierarchyData.filter(exp => exp.loaichiphi?.loaichiphi === 'biến phí').length})
-          </button>
-        </div>
-      </div>
+  .expense-badge {
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.375rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+    text-transform: uppercase;
+  }
 
-      {/* Hierarchy Display */}
-      <div className="bg-white rounded-lg shadow-sm border p-6">
-        {loading ? (
-          <div className="text-center py-12">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-            <p className="text-gray-600">Đang tải cấu trúc cây...</p>
-          </div>
-        ) : hierarchyData.length === 0 ? (
-          <div className="text-center py-12">
-            <TrendingDown className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-            <p className="text-gray-500">Không có chi phí nào trong tháng này</p>
-          </div>
-        ) : (
-          <div className="space-y-2">
-            {getFilteredData().map(expense => renderExpenseNode(expense))}
-          </div>
-        )}
-      </div>
+  .parent-badge {
+    background: #fed7aa;
+    color: #9a3412;
+  }
 
-      {/* Legend */}
-      <div className="bg-gray-50 rounded-lg p-4">
-        <h4 className="font-medium text-gray-900 mb-3">Chú thích:</h4>
-        <div className="flex flex-wrap gap-4 text-sm">
-          <div className="flex items-center space-x-2">
-            <div className="w-4 h-4 bg-red-100 rounded"></div>
-            <span>Chi phí gốc</span>
-          </div>
-          <div className="flex items-center space-x-2">
-            <div className="w-4 h-4 bg-blue-100 rounded"></div>
-            <span>Chi phí con</span>
-          </div>
-          <div className="flex items-center space-x-2">
-            <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
-            <span>Mở rộng/Thu gọn</span>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
+  .child-badge {
+    background: #bbf7d0;
+    color: #166534;
+  }
+
+  .expense-meta {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    font-size: 0.875rem;
+    color: #6b7280;
+  }
+
+  .expense-category {
+    color: #374151;
+    font-weight: 500;
+  }
+
+  .expense-amount {
+    color: #dc2626;
+    font-weight: 600;
+  }
+
+  .expense-children-count {
+    color: #059669;
+    font-weight: 500;
+  }
+
+  .expense-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .expense-children {
+    margin-left: 2rem;
+    padding-left: 1rem;
+    border-left: 2px solid #e5e7eb;
+  }
+
+  .btn {
+    padding: 0.5rem;
+    border: none;
+    border-radius: 0.375rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .btn-sm {
+    padding: 0.25rem;
+    width: 2rem;
+    height: 2rem;
+  }
+
+  .btn-outline-primary {
+    background: white;
+    border: 1px solid #3b82f6;
+    color: #3b82f6;
+  }
+
+  .btn-outline-primary:hover {
+    background: #3b82f6;
+    color: white;
+  }
+
+  .btn-outline-danger {
+    background: white;
+    border: 1px solid #dc2626;
+    color: #dc2626;
+  }
+
+  .btn-outline-danger:hover {
+    background: #dc2626;
+    color: white;
+  }
+`}</style>
+
 function ExpenseCategoriesTab({ expenseCategories, onCategoryUpdate }) {
   const [showCategoryForm, setShowCategoryForm] = useState(false);
   const [editingCategory, setEditingCategory] = useState(null);
@@ -1746,8 +2225,37 @@ function ExpenseCategoriesTab({ expenseCategories, onCategoryUpdate }) {
           setSuccess(false);
         }, 2000);
       } else {
-        const errorData = await response.json();
-        setError(errorData.detail || 'Có lỗi xảy ra khi lưu loại chi phí');
+        let errorMessage = 'Có lỗi xảy ra khi lưu loại chi phí';
+        try {
+          const errorData = await response.json();
+          console.log('Raw error data (category):', errorData); // Debug log
+          if (errorData && errorData.detail) {
+            errorMessage = errorData.detail;
+          } else if (errorData && Object.keys(errorData).length > 0) {
+            // If there are other error fields, try to extract meaningful error
+            const firstError = Object.values(errorData)[0];
+            if (Array.isArray(firstError)) {
+              errorMessage = firstError[0];
+            } else if (typeof firstError === 'string') {
+              errorMessage = firstError;
+            }
+          } else {
+            // Empty response or no meaningful error data
+            errorMessage = `Lỗi ${response.status}: ${response.statusText || 'Không thể lưu loại chi phí'}`;
+          }
+        } catch (parseError) {
+          console.log('JSON parse error (category):', parseError); // Debug log
+          // If JSON parsing fails, use status-based error
+          errorMessage = `Lỗi ${response.status}: ${response.statusText || 'Lỗi máy chủ'}`;
+        }
+        console.error('API Error details (category):', {
+          status: response.status,
+          statusText: response.statusText,
+          errorMessage: errorMessage,
+          responseType: typeof response,
+          responseKeys: response ? Object.keys(response) : 'no response'
+        });
+        setError(errorMessage);
       }
     } catch (error) {
       console.error('Error saving category:', error);
@@ -2206,14 +2714,6 @@ export default function ExpensesPage() {
       )}
       {activeTab === 'expenses' && (
         <ExpensesManagementTab
-          expenses={expenses}
-          expenseCategories={expenseCategories}
-          selectedMonth={selectedMonth}
-          onExpenseUpdate={loadExpenses}
-        />
-      )}
-      {activeTab === 'hierarchy' && (
-        <ExpensesHierarchyTab
           expenses={expenses}
           expenseCategories={expenseCategories}
           selectedMonth={selectedMonth}
