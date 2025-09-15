@@ -108,7 +108,10 @@ function ExpensesLayout({ user, activeTab, onTabChange, selectedMonth, onMonthCh
 }
 
 function ExpensesOverviewTab({ expenses, expenseCategories, selectedMonth }) {
-  const totalExpenses = expenses.reduce((sum, expense) => sum + (expense.giathanh || 0), 0);
+  // Tổng chi phí = tổng của tất cả chi phí cha (không có parent_id)
+  const totalExpenses = expenses
+    .filter(expense => !expense.parent_id) // Chỉ lấy chi phí cha
+    .reduce((sum, expense) => sum + (expense.giathanh || 0), 0);
   const expenseCount = expenses.length;
 
   const [hierarchyData, setHierarchyData] = useState([]);
@@ -156,16 +159,16 @@ function ExpensesOverviewTab({ expenses, expenseCategories, selectedMonth }) {
     const isExpanded = expandedNodes.has(expense.id);
     const indent = level * 24;
 
-    // Tính tỉ lệ phần trăm so với chi phí cha
-    let percentage = null;
-    if (parentAmount && parentAmount > 0) {
-      percentage = ((expense.giathanh || 0) / parentAmount) * 100;
+    // Tính tỉ lệ phần trăm so với tổng chi phí gốc (để hiển thị tỷ lệ tích lũy từ root)
+    let rootPercentage = null;
+    if (totalRootAmount && totalRootAmount > 0) {
+      rootPercentage = ((expense.giathanh || 0) / totalRootAmount) * 100;
     }
 
-    // Tính tỉ lệ phần trăm so với tổng chi phí gốc (để tổng là 100%)
-    let rootPercentage = null;
-    if (totalRootAmount && totalRootAmount > 0 && level === 0) {
-      rootPercentage = ((expense.giathanh || 0) / totalRootAmount) * 100;
+    // Tính tỉ lệ phần trăm so với chi phí cha (để tham khảo)
+    let parentPercentage = null;
+    if (parentAmount && parentAmount > 0) {
+      parentPercentage = ((expense.giathanh || 0) / parentAmount) * 100;
     }
 
     // Tính tổng tỉ lệ của tất cả chi phí con
@@ -223,12 +226,12 @@ function ExpensesOverviewTab({ expenses, expenseCategories, selectedMonth }) {
                   </span>
                 </div>
                 {expense.mo_ta && expense.mo_ta.trim() !== '' && (
-                  <p className="text-sm text-blue-700 bg-blue-50 px-3 py-2 rounded-md border-l-2 border-blue-300 max-w-md">
-                    📝 <span className="font-medium">Mô tả:</span> {expense.mo_ta.replace(/^(Nhóm chi phí|Khoản chi phí):\s*/, '')}
+                  <p className="text-sm text-blue-800 bg-blue-100 px-3 py-2 rounded-md border-l-2 border-blue-400 max-w-md font-medium">
+                    📝 <span className="font-semibold">Mô tả:</span> {expense.mo_ta.replace(/^(Nhóm chi phí|Khoản chi phí):\s*/, '')}
                     <span className={`ml-2 px-2 py-1 text-xs rounded-full ${
                       expense.mo_ta.startsWith('Nhóm chi phí') 
-                        ? 'bg-orange-100 text-orange-800' 
-                        : 'bg-green-100 text-green-800'
+                        ? 'bg-orange-200 text-orange-900' 
+                        : 'bg-green-200 text-green-900'
                     }`}>
                       {expense.mo_ta.startsWith('Nhóm chi phí') ? 'Nhóm chi phí' : 'Khoản chi phí'}
                     </span>
@@ -251,9 +254,9 @@ function ExpensesOverviewTab({ expenses, expenseCategories, selectedMonth }) {
                   {rootPercentage.toFixed(1)}% của tổng chi phí
                 </p>
               )}
-              {percentage !== null && parentName && level > 0 && (
+              {parentPercentage !== null && parentName && level > 0 && (
                 <p className="text-sm text-blue-600 font-medium">
-                  {percentage.toFixed(1)}% của {parentName}
+                  {parentPercentage.toFixed(1)}% của {parentName}
                 </p>
               )}
               {hasChildren && totalChildrenPercentage !== null && (
@@ -423,7 +426,7 @@ function ExpensesOverviewTab({ expenses, expenseCategories, selectedMonth }) {
         <h3 className="text-lg font-semibold text-gray-900 mb-4">Chi phí theo loại</h3>
         <div className="space-y-4">
           {Object.entries(
-            expenses.reduce((acc, expense) => {
+            expenses.filter(expense => !expense.parent_id).reduce((acc, expense) => {
               const categoryName = expense.loaichiphi?.tenchiphi || 'Chưa phân loại';
               const expenseType = 'Chi phí'; // Simplified since loaichiphi is not available
               const key = `${categoryName} (${expenseType})`;
@@ -533,6 +536,8 @@ function ExpensesManagementTab({ expenses, expenseCategories, selectedMonth, onE
   const [amountMin, setAmountMin] = useState('');
   const [amountMax, setAmountMax] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
+  const [inlineEditingExpense, setInlineEditingExpense] = useState(null);
+  const [inlineAddingParent, setInlineAddingParent] = useState(null);
 
   // Load hierarchy data for tree view
   useEffect(() => {
@@ -608,21 +613,257 @@ function ExpensesManagementTab({ expenses, expenseCategories, selectedMonth, onE
     }
   }, [expenseForm.parent_id]);
 
+  // Inline Expense Form Component
+  const InlineExpenseForm = ({ expense, parentId, onSubmit, onCancel, expenseCategories, availableParents = [] }) => {
+    const [formData, setFormData] = useState({
+      id_lcp: expense?.id_lcp?.toString() || '',
+      giathanh: expense?.giathanh ? expense.giathanh.toString() : '',
+      mo_ta: expense?.mo_ta ? expense.mo_ta.replace(/^(Nhóm chi phí|Khoản chi phí):\s*/, '') : '',
+      parent_id: parentId ? parentId.toString() : (expense?.parent_id?.toString() || ''),
+      created_at: expense?.created_at ? new Date(expense.created_at).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]
+    });
+    const [loading, setLoading] = useState(false);
+
+    // Determine if this is a parent expense (no parent_id)
+    const isParentExpense = !formData.parent_id || formData.parent_id === '';
+
+    const handleSubmit = async (e) => {
+      e.preventDefault();
+      setLoading(true);
+      await onSubmit(formData);
+      setLoading(false);
+    };
+
+    return (
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Loại chi phí <span className="text-red-500">*</span>
+            </label>
+            <select
+              value={formData.id_lcp}
+              onChange={(e) => {
+                const selectedCategoryId = e.target.value;
+                const selectedCategory = expenseCategories.find(cat => cat.id.toString() === selectedCategoryId);
+                
+                let newGiathanh = formData.giathanh;
+                if (selectedCategory && selectedCategory.loaichiphi === 'định phí' && selectedCategory.giathanh) {
+                  newGiathanh = selectedCategory.giathanh.toString();
+                } else if (selectedCategory && selectedCategory.loaichiphi === 'biến phí') {
+                  newGiathanh = '';
+                }
+                
+                setFormData({...formData, id_lcp: selectedCategoryId, giathanh: newGiathanh});
+              }}
+              className="w-full pl-5 pr-12 py-4 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all duration-200 bg-white text-gray-900 text-lg"
+              required
+            >
+              <option value="">Chọn loại chi phí...</option>
+              {expenseCategories.map(cat => (
+                <option key={cat.id} value={cat.id.toString()}>
+                  {cat.tenchiphi}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Số tiền (VND) {isParentExpense && <span className="text-blue-600">(tự động tính)</span>}
+              {!isParentExpense && <span className="text-gray-500">(có thể để trống)</span>}
+            </label>
+            <input
+              type="text"
+              value={formData.giathanh ? Number(formData.giathanh).toLocaleString('vi-VN') : ''}
+              onChange={(e) => {
+                if (!isParentExpense) {
+                  const value = e.target.value.replace(/[.,\s]/g, '');
+                  if (!isNaN(value) && value !== '') {
+                    setFormData({...formData, giathanh: parseFloat(value)});
+                  } else if (value === '') {
+                    setFormData({...formData, giathanh: ''});
+                  }
+                }
+              }}
+              className={`w-full pl-5 pr-12 py-4 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all duration-200 bg-white text-gray-900 text-lg ${
+                isParentExpense ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : ''
+              }`}
+              placeholder={isParentExpense ? "Tự động tính từ chi phí con" : "Có thể để trống"}
+              disabled={isParentExpense}
+            />
+            {isParentExpense && (
+              <p className="text-xs text-blue-600 mt-1">
+                Số tiền cha được tính tự động bằng tổng chi phí con
+              </p>
+            )}
+            {!isParentExpense && (
+              <p className="text-xs text-gray-500 mt-1">
+                Có thể để trống nếu chưa xác định số tiền
+              </p>
+            )}
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Ngày chi phí <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="date"
+              value={formData.created_at}
+              onChange={(e) => setFormData({...formData, created_at: e.target.value})}
+              className="w-full pl-5 pr-12 py-4 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all duration-200 bg-white text-gray-900 text-lg"
+              required
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Mô tả
+            </label>
+            <input
+              type="text"
+              value={formData.mo_ta}
+              onChange={(e) => setFormData({...formData, mo_ta: e.target.value})}
+              className="w-full pl-5 pr-12 py-4 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all duration-200 bg-white text-gray-900 text-lg"
+              placeholder="Nhập mô tả..."
+            />
+          </div>
+
+          {/* Parent Expense Selection - only show when adding new expense (not editing) */}
+          {!expense && availableParents.length > 0 && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Chi phí cha
+                <span className="text-gray-500 text-sm font-normal ml-2">(không bắt buộc)</span>
+              </label>
+              <select
+                value={formData.parent_id}
+                onChange={(e) => setFormData({...formData, parent_id: e.target.value})}
+                className="w-full pl-5 pr-12 py-4 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all duration-200 bg-white text-gray-900 text-lg"
+              >
+                <option value="">Không có chi phí cha (chi phí gốc)</option>
+                {availableParents.map(parent => (
+                  <option key={parent.id} value={parent.id.toString()}>
+                    {parent.mo_ta || 'Không có mô tả'} - {parent.loaichiphi?.tenchiphi || 'N/A'} - {(parent.giathanh || 0).toLocaleString('vi-VN')} VND
+                  </option>
+                ))}
+              </select>
+              <p className="text-xs text-gray-500 mt-1">
+                Chọn chi phí cha để tạo cấu trúc phân cấp
+              </p>
+            </div>
+          )}
+        </div>
+
+        <div className="flex justify-end space-x-3 pt-4">
+          <button
+            type="button"
+            onClick={onCancel}
+            className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors duration-200"
+          >
+            Hủy
+          </button>
+          <button
+            type="submit"
+            disabled={loading}
+            className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
+          >
+            {loading ? 'Đang xử lý...' : (expense ? 'Cập nhật' : 'Thêm')}
+          </button>
+        </div>
+      </form>
+    );
+  };
+
+  // Handle inline expense submission
+  const handleInlineExpenseSubmit = async (formData, isEditing) => {
+    try {
+      const method = isEditing ? 'PUT' : 'POST';
+      const url = isEditing
+        ? `http://localhost:8001/api/v1/accounting/quanly_chiphi/${inlineEditingExpense}`
+        : 'http://localhost:8001/api/v1/accounting/quanly_chiphi/';
+
+      // Prepare the data to send
+      const isParentExpense = !formData.parent_id || formData.parent_id === '';
+      const autoNote = isParentExpense ? 'Nhóm chi phí' : 'Khoản chi phí';
+      
+      const dataToSend = {
+        id_lcp: formData.id_lcp ? parseInt(formData.id_lcp) : null,
+        giathanh: isParentExpense ? null : (parseFloat(formData.giathanh) || null), // Parent expenses don't send amount, it will be calculated
+        mo_ta: formData.mo_ta ? `${autoNote}: ${formData.mo_ta}` : autoNote,
+        parent_id: formData.parent_id ? parseInt(formData.parent_id) : null,
+        created_at: formData.created_at ? new Date(formData.created_at).toISOString() : new Date().toISOString()
+      };
+
+      const response = await fetch(url, {
+        method,
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(dataToSend)
+      });
+
+      if (response.ok) {
+        onExpenseUpdate();
+        // Reset inline states
+        setInlineEditingExpense(null);
+        setInlineAddingParent(null);
+      } else {
+        let errorMessage = 'Có lỗi xảy ra khi lưu chi phí';
+        try {
+          const errorData = await response.json();
+          if (errorData && errorData.detail) {
+            errorMessage = errorData.detail;
+          }
+        } catch (parseError) {
+          errorMessage = `Lỗi ${response.status}: ${response.statusText || 'Lỗi máy chủ'}`;
+        }
+        alert(errorMessage);
+      }
+    } catch (error) {
+      console.error('Error saving expense:', error);
+      alert('Có lỗi xảy ra khi lưu chi phí. Vui lòng thử lại.');
+    }
+  };
+
+  const deleteExpense = async (expenseId) => {
+    if (!confirm('Bạn có chắc chắn muốn xóa chi phí này?')) return;
+
+    try {
+      const response = await fetch(`http://localhost:8001/api/v1/accounting/quanly_chiphi/${expenseId}`, {
+        method: 'DELETE'
+      });
+
+      if (response.ok) {
+        alert('Xóa chi phí thành công!');
+        onExpenseUpdate();
+      } else {
+        alert('Có lỗi xảy ra khi xóa chi phí');
+      }
+    } catch (error) {
+      console.error('Error deleting expense:', error);
+      alert('Có lỗi xảy ra khi xóa chi phí');
+    }
+  };
+
   const renderExpenseNode = (expense, level = 0, parentAmount = null, parentName = null, totalRootAmount = null) => {
     const hasChildren = expense.children && expense.children.length > 0;
     const isExpanded = expandedNodes.has(expense.id);
     const indent = level * 24;
+    const isInlineEditing = inlineEditingExpense === expense.id;
+    const isInlineAdding = inlineAddingParent === expense.id;
 
-    // Tính tỉ lệ phần trăm so với chi phí cha
-    let percentage = null;
-    if (parentAmount && parentAmount > 0) {
-      percentage = ((expense.giathanh || 0) / parentAmount) * 100;
+    // Tính tỉ lệ phần trăm so với tổng chi phí gốc (để hiển thị tỷ lệ tích lũy từ root)
+    let rootPercentage = null;
+    if (totalRootAmount && totalRootAmount > 0) {
+      rootPercentage = ((expense.giathanh || 0) / totalRootAmount) * 100;
     }
 
-    // Tính tỉ lệ phần trăm so với tổng chi phí gốc (để tổng là 100%)
-    let rootPercentage = null;
-    if (totalRootAmount && totalRootAmount > 0 && level === 0) {
-      rootPercentage = ((expense.giathanh || 0) / totalRootAmount) * 100;
+    // Tính tỉ lệ phần trăm so với chi phí cha (để tham khảo)
+    let parentPercentage = null;
+    if (parentAmount && parentAmount > 0) {
+      parentPercentage = ((expense.giathanh || 0) / parentAmount) * 100;
     }
 
     // Tính tổng tỉ lệ của tất cả chi phí con
@@ -680,12 +921,12 @@ function ExpensesManagementTab({ expenses, expenseCategories, selectedMonth, onE
                   </span>
                 </div>
                 {expense.mo_ta && expense.mo_ta.trim() !== '' && (
-                  <p className="text-sm text-blue-700 bg-blue-50 px-3 py-2 rounded-md border-l-2 border-blue-300 max-w-md">
-                    📝 <span className="font-medium">Mô tả:</span> {expense.mo_ta.replace(/^(Nhóm chi phí|Khoản chi phí):\s*/, '')}
+                  <p className="text-sm text-blue-800 bg-blue-100 px-3 py-2 rounded-md border-l-2 border-blue-400 max-w-md font-medium">
+                    📝 <span className="font-semibold">Mô tả:</span> {expense.mo_ta.replace(/^(Nhóm chi phí|Khoản chi phí):\s*/, '')}
                     <span className={`ml-2 px-2 py-1 text-xs rounded-full ${
                       expense.mo_ta.startsWith('Nhóm chi phí') 
-                        ? 'bg-orange-100 text-orange-800' 
-                        : 'bg-green-100 text-green-800'
+                        ? 'bg-orange-200 text-orange-900' 
+                        : 'bg-green-200 text-green-900'
                     }`}>
                       {expense.mo_ta.startsWith('Nhóm chi phí') ? 'Nhóm chi phí' : 'Khoản chi phí'}
                     </span>
@@ -708,9 +949,9 @@ function ExpensesManagementTab({ expenses, expenseCategories, selectedMonth, onE
                   {rootPercentage.toFixed(1)}% của tổng chi phí
                 </p>
               )}
-              {percentage !== null && parentName && level > 0 && (
+              {parentPercentage !== null && parentName && level > 0 && (
                 <p className="text-sm text-blue-600 font-medium">
-                  {percentage.toFixed(1)}% của {parentName}
+                  {parentPercentage.toFixed(1)}% của {parentName}
                 </p>
               )}
               {hasChildren && totalChildrenPercentage !== null && (
@@ -725,15 +966,22 @@ function ExpensesManagementTab({ expenses, expenseCategories, selectedMonth, onE
             
             <div className="flex items-center space-x-2">
               <button
-                onClick={() => editExpense(expense)}
-                className="p-2 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-lg transition-all duration-200"
+                onClick={() => setInlineAddingParent(expense.id)}
+                className="p-2 text-green-600 hover:text-green-800 hover:bg-green-50 rounded-lg transition-all duration-200"
+                title="Thêm chi phí con"
+              >
+                <Plus className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => setInlineEditingExpense(expense.id)}
+                className="p-2 text-blue-600 hover:text-blue-800 hover:bg-blue-200 rounded-lg transition-all duration-200"
                 title="Chỉnh sửa"
               >
                 <Edit className="w-4 h-4" />
               </button>
               <button
                 onClick={() => deleteExpense(expense.id)}
-                className="p-2 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-lg transition-all duration-200"
+                className="p-2 text-red-600 hover:text-red-800 hover:bg-red-100 rounded-lg transition-all duration-200"
                 title="Xóa"
               >
                 <Trash2 className="w-4 h-4" />
@@ -741,6 +989,58 @@ function ExpensesManagementTab({ expenses, expenseCategories, selectedMonth, onE
             </div>
           </div>
         </div>
+
+        {/* Inline Add Form */}
+        {isInlineAdding && (
+          <div className="mb-4 p-6 bg-gradient-to-r from-red-100 to-pink-100 border-2 border-red-200 rounded-2xl shadow-md" style={{ marginLeft: `${indent + 24}px` }}>
+            <div className="flex items-center justify-between mb-4">
+              <h4 className="text-lg font-semibold text-gray-900">Thêm chi phí con</h4>
+              <button
+                onClick={() => setInlineAddingParent(null)}
+                className="p-2 text-gray-600 hover:text-gray-800 rounded-lg hover:bg-gray-200 transition-colors duration-200"
+                title="Hủy"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <InlineExpenseForm
+              parentId={expense.id}
+              onSubmit={async (formData) => {
+                await handleInlineExpenseSubmit(formData, false);
+                setInlineAddingParent(null);
+              }}
+              onCancel={() => setInlineAddingParent(null)}
+              expenseCategories={expenseCategories}
+              availableParents={availableParents}
+            />
+          </div>
+        )}
+
+        {/* Inline Edit Form */}
+        {isInlineEditing && (
+          <div className="mb-4 p-6 bg-gradient-to-r from-red-100 to-pink-100 border-2 border-red-200 rounded-2xl shadow-md" style={{ marginLeft: `${indent}px` }}>
+            <div className="flex items-center justify-between mb-4">
+              <h4 className="text-lg font-semibold text-gray-900">Chỉnh sửa chi phí</h4>
+              <button
+                onClick={() => setInlineEditingExpense(null)}
+                className="p-2 text-gray-600 hover:text-gray-800 rounded-lg hover:bg-gray-200 transition-colors duration-200"
+                title="Hủy"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <InlineExpenseForm
+              expense={expense}
+              onSubmit={async (formData) => {
+                await handleInlineExpenseSubmit(formData, true);
+                setInlineEditingExpense(null);
+              }}
+              onCancel={() => setInlineEditingExpense(null)}
+              expenseCategories={expenseCategories}
+              availableParents={availableParents}
+            />
+          </div>
+        )}
         
         {hasChildren && isExpanded && (
           <div className="ml-4">
@@ -818,12 +1118,14 @@ function ExpensesManagementTab({ expenses, expenseCategories, selectedMonth, onE
       return;
     }
 
-    // Chỉ bắt buộc nhập giá khi không chọn quan hệ cha con
-    if ((!expenseForm.parent_id || expenseForm.parent_id === '') && (!expenseForm.giathanh || expenseForm.giathanh === '')) {
-      setError('Vui lòng nhập số tiền (bắt buộc khi không chọn chi phí cha)');
+    // Chỉ bắt buộc nhập giá khi là chi phí con (có parent_id)
+    if ((expenseForm.parent_id && expenseForm.parent_id !== '') && (!expenseForm.giathanh || expenseForm.giathanh === '')) {
+      setError('Vui lòng nhập số tiền (bắt buộc cho chi phí con)');
       setLoading(false);
       return;
     }
+
+    // Cho phép parent expenses có thể để null cho giathanh
 
     if (!expenseForm.created_at || expenseForm.created_at === '') {
       setError('Vui lòng chọn ngày chi phí');
@@ -868,7 +1170,7 @@ function ExpensesManagementTab({ expenses, expenseCategories, selectedMonth, onE
       
       const dataToSend = {
         id_lcp: expenseForm.id_lcp ? parseInt(expenseForm.id_lcp) : null,
-        giathanh: parseFloat(expenseForm.giathanh) || null,
+        giathanh: isParentExpense ? (parseFloat(expenseForm.giathanh) || null) : (parseFloat(expenseForm.giathanh) || null), // Parent expenses can have null amount
         mo_ta: expenseForm.mo_ta ? `${autoNote}: ${expenseForm.mo_ta}` : autoNote,
         hinhanh: imageUrl || expenseForm.hinhanh || null,
         parent_id: expenseForm.parent_id ? parseInt(expenseForm.parent_id) : null,
@@ -1018,7 +1320,7 @@ function ExpensesManagementTab({ expenses, expenseCategories, selectedMonth, onE
     setEditingExpense(expense);
     setExpenseForm({
       id_lcp: expense.id_lcp?.toString() || '',
-      giathanh: expense.giathanh ? expense.giathanh.toString() : '',
+      giathanh: expense.giathanh ? expense.giathanh.toString() : '', // Parent expenses may not have amount set
       mo_ta: expense.mo_ta ? expense.mo_ta.replace(/^(Nhóm chi phí|Khoản chi phí):\s*/, '') : '',
       hinhanh: expense.hinhanh || '',
       parent_id: expense.parent_id?.toString() || '',
@@ -1093,7 +1395,7 @@ function ExpensesManagementTab({ expenses, expenseCategories, selectedMonth, onE
 
       {/* Expense Form Modal */}
       {showExpenseForm && (
-        <div className="bg-gradient-to-r from-red-50 to-pink-50 rounded-2xl p-8 border border-red-100 mb-8">
+        <div className="bg-gradient-to-r from-red-100 to-pink-100 rounded-2xl p-8 border-2 border-red-200 mb-8">
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center space-x-3">
               <div className="w-12 h-12 bg-red-100 rounded-xl flex items-center justify-center">
@@ -1196,26 +1498,40 @@ function ExpensesManagementTab({ expenses, expenseCategories, selectedMonth, onE
               <div>
                 <label className="block text-sm font-semibold text-gray-800 mb-3 flex items-center">
                   <span className="w-6 h-6 bg-green-100 rounded-lg flex items-center justify-center mr-3">
-                    <span className="text-xs text-green-600">�</span>
+                    <span className="text-xs text-green-600">💰</span>
                   </span>
                   Số tiền (VND)
-                  {(!expenseForm.parent_id || expenseForm.parent_id === '') && <span className="text-red-500 ml-1">*</span>}
+                  {(!expenseForm.parent_id || expenseForm.parent_id === '') && <span className="text-blue-600 ml-2">(có thể để trống)</span>}
+                  {(expenseForm.parent_id && expenseForm.parent_id !== '') && <span className="text-red-500 ml-1">*</span>}
                 </label>
                 <div className="relative">
                   <input
                     type="text"
                     value={expenseForm.giathanh ? Number(expenseForm.giathanh).toLocaleString('vi-VN') : ''}
                     onChange={(e) => {
-                      const value = e.target.value.replace(/[.,\s]/g, '');
-                      if (!isNaN(value) && value !== '') {
-                        setExpenseForm({...expenseForm, giathanh: parseFloat(value)});
-                      } else if (value === '') {
-                        setExpenseForm({...expenseForm, giathanh: ''});
+                      if (expenseForm.parent_id && expenseForm.parent_id !== '') {
+                        const value = e.target.value.replace(/[.,\s]/g, '');
+                        if (!isNaN(value) && value !== '') {
+                          setExpenseForm({...expenseForm, giathanh: parseFloat(value)});
+                        } else if (value === '') {
+                          setExpenseForm({...expenseForm, giathanh: ''});
+                        }
+                      } else {
+                        // Allow editing for parent expenses
+                        const value = e.target.value.replace(/[.,\s]/g, '');
+                        if (!isNaN(value) && value !== '') {
+                          setExpenseForm({...expenseForm, giathanh: parseFloat(value)});
+                        } else if (value === '') {
+                          setExpenseForm({...expenseForm, giathanh: ''});
+                        }
                       }
                     }}
-                    className="w-full pl-5 pr-12 py-4 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all duration-200 bg-white text-gray-900 placeholder-gray-500 text-lg"
-                    placeholder="0"
-                    required={!expenseForm.parent_id || expenseForm.parent_id === ''}
+                    className={`w-full pl-5 pr-12 py-4 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all duration-200 bg-white text-gray-900 placeholder-gray-500 text-lg ${
+                      false ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : ''
+                    }`}
+                    placeholder={(!expenseForm.parent_id || expenseForm.parent_id === '') ? "Có thể để trống hoặc nhập số tiền cụ thể" : "0"}
+                    required={expenseForm.parent_id && expenseForm.parent_id !== ''}
+                    disabled={false}
                   />
                   <div className="absolute right-4 top-4 text-gray-400">
                     <DollarSign className="w-6 h-6" />
@@ -1226,8 +1542,8 @@ function ExpensesManagementTab({ expenses, expenseCategories, selectedMonth, onE
                     <span className="text-xs">💡</span>
                   </span>
                   {(!expenseForm.parent_id || expenseForm.parent_id === '') 
-                    ? 'Nhập số tiền chính xác (bắt buộc khi không chọn chi phí cha). Tổng chi phí con sẽ bằng chi phí cha.' 
-                    : 'Có thể để trống nếu kế thừa từ chi phí cha (ví dụ: 1.000.000). Chi phí này là khoản chi phí con.'
+                    ? 'Chi phí cha có thể để trống (sẽ được tính từ tổng chi phí con) hoặc nhập số tiền cụ thể.' 
+                    : 'Nhập số tiền chính xác cho chi phí con này.'
                   }
                 </p>
               </div>
@@ -1425,7 +1741,7 @@ function ExpensesManagementTab({ expenses, expenseCategories, selectedMonth, onE
 
       {/* Product Expense Form Modal */}
       {showProductExpenseForm && (
-        <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-2xl p-8 border border-purple-100 mb-8">
+        <div className="bg-gradient-to-r from-purple-100 to-pink-100 rounded-2xl p-8 border-2 border-purple-200 mb-8">
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center space-x-3">
               <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center">
@@ -1901,7 +2217,7 @@ function ExpensesManagementTab({ expenses, expenseCategories, selectedMonth, onE
 
                   {/* Category Price Info */}
                   {selectedExpense.loaichiphi?.loaichiphi === 'định phí' && selectedExpense.loaichiphi?.giathanh && (
-                    <div className="bg-blue-50 rounded-xl p-6 border border-blue-200">
+                    <div className="bg-blue-100 rounded-xl p-6 border border-blue-300">
                       <h4 className="text-lg font-semibold text-blue-900 mb-4 flex items-center">
                         <DollarSign className="w-5 h-5 mr-2" />
                         Thông tin giá thành
@@ -2334,7 +2650,7 @@ function ExpenseCategoriesTab({ expenseCategories, onCategoryUpdate }) {
 
       {/* Add Category Form - Inline */}
       {showCategoryForm && (
-        <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-2xl p-8 border border-green-100 mb-8">
+        <div className="bg-gradient-to-r from-green-100 to-emerald-100 rounded-2xl p-8 border-2 border-green-200 mb-8">
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center space-x-3">
               <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
@@ -2551,14 +2867,14 @@ function ExpenseCategoriesTab({ expenseCategories, onCategoryUpdate }) {
               <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
                 <button
                   onClick={() => editCategory(category)}
-                  className="p-2 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-lg transition-all duration-200"
+                  className="p-2 text-blue-600 hover:text-blue-800 hover:bg-blue-200 rounded-lg transition-all duration-200"
                   title="Chỉnh sửa"
                 >
                   <Edit className="w-4 h-4" />
                 </button>
                 <button
                   onClick={() => deleteCategory(category.id)}
-                  className="p-2 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-lg transition-all duration-200"
+                  className="p-2 text-red-600 hover:text-red-800 hover:bg-red-100 rounded-lg transition-all duration-200"
                   title="Xóa"
                 >
                   <Trash2 className="w-4 h-4" />

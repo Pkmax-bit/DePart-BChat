@@ -5,6 +5,26 @@ from datetime import datetime
 
 router = APIRouter(prefix="/accounting")
 
+def update_parent_giathanh(parent_id: int):
+    """Update the giathanh of a parent expense based on its direct children"""
+    try:
+        # Get all direct children
+        children_result = supabase.table('quanly_chiphi').select('giathanh').eq('parent_id', parent_id).execute()
+        total_children = sum(child['giathanh'] or 0 for child in children_result.data)
+
+        # Update parent giathanh
+        supabase.table('quanly_chiphi').update({
+            'giathanh': total_children
+        }).eq('id', parent_id).execute()
+
+        # Recursively update grandparent if exists
+        parent_result = supabase.table('quanly_chiphi').select('parent_id').eq('id', parent_id).execute()
+        if parent_result.data and parent_result.data[0].get('parent_id'):
+            update_parent_giathanh(parent_result.data[0]['parent_id'])
+
+    except Exception as e:
+        print(f"Error updating parent giathanh: {e}")
+
 @router.get("/loainhom/")
 async def get_loainhom():
     """Lấy danh sách loại nhôm"""
@@ -679,6 +699,11 @@ async def get_quanly_chiphi_hierarchy(month: str = None):
 
         # Calculate totals for each level
         def calculate_totals(expense):
+            # For parent expenses, giathanh should be sum of direct children
+            if expense['children']:
+                total_direct_children = sum(child['giathanh'] or 0 for child in expense['children'])
+                expense['giathanh'] = total_direct_children
+            # total_amount is the sum of all descendants (for display purposes)
             total = expense['giathanh'] or 0
             for child in expense['children']:
                 total += calculate_totals(child)
@@ -717,15 +742,26 @@ async def create_quanly_chiphi(chiphi_data: dict):
                 else:
                     current_id = None
 
+        # For parent expenses, giathanh can be null and will be calculated later
+        # For child expenses, giathanh is required
+        giathanh = chiphi_data.get('giathanh')
+        if parent_id and (giathanh is None or giathanh == ''):
+            raise HTTPException(status_code=400, detail="Child expenses must have a giathanh value")
+
         # Try to insert with basic columns that might exist
         result = supabase.table('quanly_chiphi').insert({
             'id_lcp': chiphi_data['id_lcp'],
-            'giathanh': chiphi_data['giathanh'],
+            'giathanh': giathanh,
             'mo_ta': chiphi_data.get('mo_ta', ''),
             'hinhanh': chiphi_data.get('hinhanh', ''),
             'parent_id': parent_id,
             'created_at': chiphi_data.get('created_at')
         }).execute()
+
+        # Update parent giathanh if this is a child expense
+        if parent_id:
+            update_parent_giathanh(parent_id)
+
         return result.data[0]
     except HTTPException:
         raise
@@ -738,6 +774,10 @@ async def create_quanly_chiphi(chiphi_data: dict):
 async def update_quanly_chiphi(chiphi_id: int, chiphi_data: dict):
     """Cập nhật chi phí"""
     try:
+        # Get current expense to check if parent changed
+        current_expense = supabase.table('quanly_chiphi').select('parent_id').eq('id', chiphi_id).execute()
+        old_parent_id = current_expense.data[0]['parent_id'] if current_expense.data else None
+
         # Validate parent_id to prevent circular references
         parent_id = chiphi_data.get('parent_id')
         if parent_id:
@@ -767,8 +807,16 @@ async def update_quanly_chiphi(chiphi_id: int, chiphi_data: dict):
             'mo_ta': chiphi_data.get('mo_ta', ''),
             'hinhanh': chiphi_data.get('hinhanh', ''),
             'parent_id': parent_id,
-            'created_at': chiphi_data.get('created_at')
+            'created_at': chiphi_data.get('created_at'),
+            'updated_at': 'now()'
         }).eq('id', chiphi_id).execute()
+
+        # Update parent giathanh if parent changed or giathanh changed
+        if parent_id:
+            update_parent_giathanh(parent_id)
+        if old_parent_id and old_parent_id != parent_id:
+            update_parent_giathanh(old_parent_id)
+
         return result.data[0]
     except HTTPException:
         raise
@@ -779,6 +827,10 @@ async def update_quanly_chiphi(chiphi_id: int, chiphi_data: dict):
 async def delete_quanly_chiphi(chiphi_id: int):
     """Xóa chi phí và tất cả chi phí con"""
     try:
+        # Get parent_id before deletion
+        expense_result = supabase.table('quanly_chiphi').select('parent_id').eq('id', chiphi_id).execute()
+        parent_id = expense_result.data[0]['parent_id'] if expense_result.data else None
+
         # Function to recursively delete expense and its children
         def delete_expense_recursive(expense_id):
             # Find all children
@@ -791,6 +843,10 @@ async def delete_quanly_chiphi(chiphi_id: int):
 
         # Start recursive deletion
         delete_expense_recursive(chiphi_id)
+
+        # Update parent giathanh after deletion
+        if parent_id:
+            update_parent_giathanh(parent_id)
         
         return {"message": "Chi phí và tất cả chi phí con đã được xóa thành công"}
     except Exception as e:
@@ -829,14 +885,18 @@ async def get_chiphi_tong_quan(month: str = None):
                 except Exception as e:
                     print(f"Error fetching loaichiphi data: {e}")
 
-        # Tính tổng chi phí
-        total_expenses = sum(item['giathanh'] for item in result.data)
+        # Tính tổng chi phí (chỉ chi phí cha)
+        total_expenses = sum(item['giathanh'] for item in result.data if not item.get('parent_id'))
 
         # Nhóm theo loại chi phí
         expense_by_category = {}
         expense_by_type = {'cố định': 0, 'biến phí': 0}
 
         for item in result.data:
+            # Skip child expenses for category/type calculations
+            if item.get('parent_id'):
+                continue
+
             # Get loaichiphi data from map
             loaichiphi_data = None
             if item.get('id_lcp') and item['id_lcp'] in loaichiphi_map:
@@ -890,7 +950,7 @@ async def get_profit_report(month: str = None):
             expense_query = expense_query.gte('created_at', start_date).lt('created_at', end_date)
 
         expense_result = expense_query.execute()
-        total_expenses = sum(expense['giathanh'] or 0 for expense in expense_result.data)
+        total_expenses = sum(expense['giathanh'] or 0 for expense in expense_result.data if not expense.get('parent_id'))
 
         # Tính lợi nhuận
         total_profit = total_revenue - total_expenses
@@ -912,6 +972,10 @@ async def get_profit_report(month: str = None):
                     loaichiphi_map = {item['id']: item for item in loaichiphi_result.data}
 
                     for expense in expense_result.data:
+                        # Skip child expenses for category/type calculations
+                        if expense.get('parent_id'):
+                            continue
+
                         loaichiphi_data = loaichiphi_map.get(expense.get('id_lcp'))
                         if loaichiphi_data:
                             category_name = loaichiphi_data.get('tenchiphi', 'Chưa phân loại')
@@ -1038,7 +1102,7 @@ async def generate_profit_report(month: str):
 
         # Lấy dữ liệu chi phí
         expense_result = supabase.table('quanly_chiphi').select('*').gte('created_at', start_date).lt('created_at', end_date).execute()
-        total_expenses = sum(expense['giathanh'] or 0 for expense in expense_result.data)
+        total_expenses = sum(expense['giathanh'] or 0 for expense in expense_result.data if not expense.get('parent_id'))
 
         # Lấy số lượng sản phẩm
         product_result = supabase.table('sanpham').select('id', count='exact').execute()
@@ -1056,7 +1120,7 @@ async def generate_profit_report(month: str):
             'total_profit': total_profit,
             'profit_margin': profit_margin,
             'invoice_count': len(revenue_result.data),
-            'expense_count': len(expense_result.data),
+            'expense_count': len([e for e in expense_result.data if not e.get('parent_id')]),  # Only count parent expenses
             'product_count': product_count,
             'updated_at': 'now()'
         }).execute()
@@ -1084,7 +1148,7 @@ async def sync_profit_report(month: str):
 
         # Lấy dữ liệu chi phí
         expense_result = supabase.table('quanly_chiphi').select('*').gte('created_at', start_date).lt('created_at', end_date).execute()
-        total_expenses = sum(expense['giathanh'] or 0 for expense in expense_result.data)
+        total_expenses = sum(expense['giathanh'] or 0 for expense in expense_result.data if not expense.get('parent_id'))
 
         # Lấy số lượng sản phẩm
         product_result = supabase.table('sanpham').select('id', count='exact').execute()
@@ -1104,7 +1168,7 @@ async def sync_profit_report(month: str):
                 'total_profit': total_profit,
                 'profit_margin': profit_margin,
                 'invoice_count': len(revenue_result.data),
-                'expense_count': len(expense_result.data),
+                'expense_count': len([e for e in expense_result.data if not e.get('parent_id')]),  # Only count parent expenses
                 'product_count': product_count,
                 'updated_at': 'now()'
             }).eq('report_month', month).execute()
@@ -1117,7 +1181,7 @@ async def sync_profit_report(month: str):
                 'total_profit': total_profit,
                 'profit_margin': profit_margin,
                 'invoice_count': len(revenue_result.data),
-                'expense_count': len(expense_result.data),
+                'expense_count': len([e for e in expense_result.data if not e.get('parent_id')]),  # Only count parent expenses
                 'product_count': product_count,
                 'updated_at': 'now()'
             }).execute()
