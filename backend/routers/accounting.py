@@ -6,16 +6,52 @@ from datetime import datetime
 router = APIRouter(prefix="/accounting")
 
 def update_parent_giathanh(parent_id: int):
-    """Update the giathanh of a parent expense based on its direct children"""
+    """Update the giathanh of a parent expense based on its direct children IN THE SAME MONTH"""
     try:
+        # Get parent expense info to determine the month
+        parent_result = supabase.table('quanly_chiphi').select('created_at').eq('id', parent_id).execute()
+        if not parent_result.data:
+            print(f"Parent expense {parent_id} not found")
+            return
+
+        parent_data = parent_result.data[0]
+        parent_created_at = parent_data.get('created_at')
+
+        if not parent_created_at:
+            print(f"Parent expense {parent_id} has no creation date")
+            return
+
+        # Extract month from parent creation date
+        if isinstance(parent_created_at, str):
+            parent_month = parent_created_at[:7]  # YYYY-MM
+        else:
+            parent_month = parent_created_at.strftime('%Y-%m')
+
         # Get all direct children
-        children_result = supabase.table('quanly_chiphi').select('giathanh').eq('parent_id', parent_id).execute()
-        total_children = sum(child['giathanh'] or 0 for child in children_result.data)
+        children_result = supabase.table('quanly_chiphi').select('giathanh, created_at').eq('parent_id', parent_id).execute()
+
+        # Filter children from the same month
+        same_month_children = []
+        for child in children_result.data:
+            child_created_at = child.get('created_at')
+            if child_created_at:
+                if isinstance(child_created_at, str):
+                    child_month = child_created_at[:7]  # YYYY-MM
+                else:
+                    child_month = child_created_at.strftime('%Y-%m')
+
+                if child_month == parent_month:
+                    same_month_children.append(child)
+
+        # Calculate total from same-month children
+        total_children = sum(child['giathanh'] or 0 for child in same_month_children)
 
         # Update parent giathanh
         supabase.table('quanly_chiphi').update({
             'giathanh': total_children
         }).eq('id', parent_id).execute()
+
+        print(f"Updated parent expense {parent_id} (month {parent_month}): {total_children}")
 
         # Recursively update grandparent if exists
         parent_result = supabase.table('quanly_chiphi').select('parent_id').eq('id', parent_id).execute()
@@ -699,9 +735,17 @@ async def get_quanly_chiphi_hierarchy(month: str = None):
 
         # Calculate totals for each level
         def calculate_totals(expense):
-            # For parent expenses, giathanh should be sum of direct children
+            # For parent expenses, giathanh should be sum of direct children IN THE SAME MONTH
             if expense['children']:
-                total_direct_children = sum(child['giathanh'] or 0 for child in expense['children'])
+                # Filter children from the same month as parent
+                parent_month = expense.get('created_at', '')[:7] if expense.get('created_at') else ''
+                same_month_children = []
+                for child in expense['children']:
+                    child_month = child.get('created_at', '')[:7] if child.get('created_at') else ''
+                    if child_month == parent_month:
+                        same_month_children.append(child)
+
+                total_direct_children = sum(child['giathanh'] or 0 for child in same_month_children)
                 expense['giathanh'] = total_direct_children
             # total_amount is the sum of all descendants (for display purposes)
             total = expense['giathanh'] or 0
@@ -1257,3 +1301,70 @@ async def export_profit_excel(month: str = None):
     except Exception as e:
         print(f"Exception in export_profit_excel: {e}")
         raise HTTPException(status_code=500, detail=f"Loi xuat Excel: {str(e)}")
+
+@router.post("/quanly_chiphi/update_totals/")
+async def update_expense_totals():
+    """Cập nhật lại tỷ lệ tổng chi phí cho tất cả chi phí cha"""
+    try:
+        import subprocess
+        import os
+
+        # Đường dẫn đến script (ở thư mục backend, không phải routers)
+        script_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "update_expense_totals.py")
+
+        # Chạy script
+        result = subprocess.run(
+            ["python", script_path],
+            capture_output=True,
+            text=True,
+            timeout=60,
+            cwd=os.path.dirname(script_path)
+        )
+
+        if result.returncode == 0:
+            return {
+                "success": True,
+                "message": "Da cap nhat thanh cong ty le tong chi phi",
+                "output": result.stdout
+            }
+        else:
+            return {
+                "success": False,
+                "message": f"Loi khi cap nhat: {result.stderr}",
+                "output": result.stdout
+            }
+
+    except subprocess.TimeoutExpired:
+        raise HTTPException(status_code=500, detail="Qua thoi gian cho cap nhat")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Loi cap nhat ty le tong chi phi: {str(e)}")
+
+@router.get("/quanly_chiphi/verify_totals/")
+async def verify_expense_totals():
+    """Kiểm tra tính chính xác của các tổng chi phí"""
+    try:
+        import subprocess
+        import os
+
+        # Đường dẫn đến script (ở thư mục backend, không phải routers)
+        script_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "update_expense_totals.py")
+
+        # Chạy script với --verify
+        result = subprocess.run(
+            ["python", script_path, "--verify"],
+            capture_output=True,
+            text=True,
+            timeout=30,
+            cwd=os.path.dirname(script_path)
+        )
+
+        return {
+            "success": result.returncode == 0,
+            "output": result.stdout,
+            "errors": result.stderr if result.returncode != 0 else None
+        }
+
+    except subprocess.TimeoutExpired:
+        raise HTTPException(status_code=500, detail="Quá thời gian chờ kiểm tra")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Lỗi kiểm tra tỷ lệ tổng chi phí: {str(e)}")
