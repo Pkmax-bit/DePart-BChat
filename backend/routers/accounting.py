@@ -806,6 +806,35 @@ async def create_quanly_chiphi(chiphi_data: dict):
         if parent_id:
             update_parent_giathanh(parent_id)
 
+        # Update ratios for the month
+        try:
+            import subprocess
+            import os
+            script_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "update_expense_ratios.py")
+
+            # Get the month from created_at
+            expense_month = None
+            if chiphi_data.get('created_at'):
+                from datetime import datetime
+                if isinstance(chiphi_data['created_at'], str):
+                    expense_month = chiphi_data['created_at'][:7]
+                else:
+                    expense_month = chiphi_data['created_at'].strftime('%Y-%m')
+            else:
+                expense_month = datetime.now().strftime('%Y-%m')
+
+            result = subprocess.run(
+                ["python", script_path, "--month", expense_month],
+                capture_output=True,
+                text=True,
+                timeout=30,
+                cwd=os.path.dirname(script_path)
+            )
+            if result.returncode != 0:
+                print(f"Warning: Failed to update ratios: {result.stderr}")
+        except Exception as e:
+            print(f"Warning: Error updating ratios: {e}")
+
         return result.data[0]
     except HTTPException:
         raise
@@ -861,6 +890,39 @@ async def update_quanly_chiphi(chiphi_id: int, chiphi_data: dict):
         if old_parent_id and old_parent_id != parent_id:
             update_parent_giathanh(old_parent_id)
 
+        # Update ratios for the affected months
+        try:
+            import subprocess
+            import os
+            script_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "update_expense_ratios.py")
+
+            # Get months that might be affected
+            months_to_update = set()
+
+            # Current expense month
+            current_result = supabase.table('quanly_chiphi').select('created_at').eq('id', chiphi_id).execute()
+            if current_result.data:
+                created_at = current_result.data[0].get('created_at')
+                if created_at:
+                    if isinstance(created_at, str):
+                        months_to_update.add(created_at[:7])
+                    else:
+                        months_to_update.add(created_at.strftime('%Y-%m'))
+
+            # Update ratios for affected months
+            for month in months_to_update:
+                subprocess_result = subprocess.run(
+                    ["python", script_path, "--month", month],
+                    capture_output=True,
+                    text=True,
+                    timeout=30,
+                    cwd=os.path.dirname(script_path)
+                )
+                if subprocess_result.returncode != 0:
+                    print(f"Warning: Failed to update ratios for month {month}: {subprocess_result.stderr}")
+        except Exception as e:
+            print(f"Warning: Error updating ratios: {e}")
+
         return result.data[0]
     except HTTPException:
         raise
@@ -891,6 +953,33 @@ async def delete_quanly_chiphi(chiphi_id: int):
         # Update parent giathanh after deletion
         if parent_id:
             update_parent_giathanh(parent_id)
+
+        # Update ratios for the affected month
+        try:
+            import subprocess
+            import os
+            script_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "update_expense_ratios.py")
+
+            # Get the month of the deleted expense
+            if expense_result.data:
+                created_at = expense_result.data[0].get('created_at')
+                if created_at:
+                    if isinstance(created_at, str):
+                        expense_month = created_at[:7]
+                    else:
+                        expense_month = created_at.strftime('%Y-%m')
+
+                    result = subprocess.run(
+                        ["python", script_path, "--month", expense_month],
+                        capture_output=True,
+                        text=True,
+                        timeout=30,
+                        cwd=os.path.dirname(script_path)
+                    )
+                    if result.returncode != 0:
+                        print(f"Warning: Failed to update ratios for month {expense_month}: {result.stderr}")
+        except Exception as e:
+            print(f"Warning: Error updating ratios: {e}")
         
         return {"message": "Chi phí và tất cả chi phí con đã được xóa thành công"}
     except Exception as e:
@@ -1302,19 +1391,23 @@ async def export_profit_excel(month: str = None):
         print(f"Exception in export_profit_excel: {e}")
         raise HTTPException(status_code=500, detail=f"Loi xuat Excel: {str(e)}")
 
-@router.post("/quanly_chiphi/update_totals/")
-async def update_expense_totals():
-    """Cập nhật lại tỷ lệ tổng chi phí cho tất cả chi phí cha"""
+@router.post("/quanly_chiphi/update_ratios/")
+async def update_expense_ratios(month: str = None):
+    """Cập nhật tỷ lệ phần trăm cho tất cả chi phí trong tháng được chỉ định"""
     try:
         import subprocess
         import os
 
-        # Đường dẫn đến script (ở thư mục backend, không phải routers)
-        script_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "update_expense_totals.py")
+        # Đường dẫn đến script
+        script_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "update_expense_ratios.py")
 
         # Chạy script
+        cmd = ["python", script_path]
+        if month:
+            cmd.extend(["--month", month])
+
         result = subprocess.run(
-            ["python", script_path],
+            cmd,
             capture_output=True,
             text=True,
             timeout=60,
@@ -1324,20 +1417,20 @@ async def update_expense_totals():
         if result.returncode == 0:
             return {
                 "success": True,
-                "message": "Da cap nhat thanh cong ty le tong chi phi",
+                "message": "Đã cập nhật tỷ lệ chi phí thành công",
                 "output": result.stdout
             }
         else:
             return {
                 "success": False,
-                "message": f"Loi khi cap nhat: {result.stderr}",
+                "message": f"Lỗi khi cập nhật tỷ lệ: {result.stderr}",
                 "output": result.stdout
             }
 
     except subprocess.TimeoutExpired:
-        raise HTTPException(status_code=500, detail="Qua thoi gian cho cap nhat")
+        raise HTTPException(status_code=500, detail="Quá thời gian chờ cập nhật tỷ lệ")
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Loi cap nhat ty le tong chi phi: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Lỗi cập nhật tỷ lệ chi phí: {str(e)}")
 
 @router.get("/quanly_chiphi/verify_totals/")
 async def verify_expense_totals():

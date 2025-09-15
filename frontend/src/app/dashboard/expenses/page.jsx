@@ -161,7 +161,9 @@ function ExpensesOverviewTab({ expenses, expenseCategories, selectedMonth }) {
 
     // Tính tỉ lệ phần trăm so với tổng chi phí gốc (để hiển thị tỷ lệ tích lũy từ root)
     let rootPercentage = null;
-    if (totalRootAmount && totalRootAmount > 0) {
+    if (expense.ti_le !== null && expense.ti_le !== undefined) {
+      rootPercentage = expense.ti_le;
+    } else if (totalRootAmount && totalRootAmount > 0) {
       rootPercentage = ((expense.giathanh || 0) / totalRootAmount) * 100;
     }
 
@@ -353,7 +355,7 @@ function ExpensesOverviewTab({ expenses, expenseCategories, selectedMonth }) {
             onClick={async () => {
               if (confirm('Bạn có muốn cập nhật lại tỷ lệ tổng chi phí cho tất cả chi phí cha không?')) {
                 try {
-                  const response = await fetch('http://localhost:8001/api/v1/accounting/quanly_chiphi/update_totals/', {
+                  const response = await fetch('http://localhost:8001/api/v1/accounting/quanly_chiphi/update_ratios/', {
                     method: 'POST'
                   });
                   const result = await response.json();
@@ -873,6 +875,15 @@ function ExpensesManagementTab({ expenses, expenseCategories, selectedMonth, onE
         // Reset inline states
         setInlineEditingExpense(null);
         setInlineAddingParent(null);
+        
+        // Cập nhật tỷ lệ tổng chi phí sau khi thêm/chỉnh sửa inline
+        try {
+          await fetch('http://localhost:8001/api/v1/accounting/quanly_chiphi/update_ratios/', {
+            method: 'POST'
+          });
+        } catch (updateError) {
+          console.error('Error updating totals:', updateError);
+        }
       } else {
         let errorMessage = 'Có lỗi xảy ra khi lưu chi phí';
         try {
@@ -920,7 +931,9 @@ function ExpensesManagementTab({ expenses, expenseCategories, selectedMonth, onE
 
     // Tính tỉ lệ phần trăm so với tổng chi phí gốc (để hiển thị tỷ lệ tích lũy từ root)
     let rootPercentage = null;
-    if (totalRootAmount && totalRootAmount > 0) {
+    if (expense.ti_le !== null && expense.ti_le !== undefined) {
+      rootPercentage = expense.ti_le;
+    } else if (totalRootAmount && totalRootAmount > 0) {
       rootPercentage = ((expense.giathanh || 0) / totalRootAmount) * 100;
     }
 
@@ -1117,25 +1130,72 @@ function ExpensesManagementTab({ expenses, expenseCategories, selectedMonth, onE
     );
   };
   const exportToExcel = () => {
-    // Prepare data for Excel export
-    const exportData = expenses.map(expense => ({
-      'Ngày': expense.created_at ? new Date(expense.created_at).toLocaleDateString('vi-VN') : '',
-      'Loại chi phí': expense.loaichiphi?.tenchiphi || 'N/A',
-      'Mô tả': expense.mo_ta || '',
-      'Số tiền (VND)': expense.giathanh || 0,
-      'Loại': expense.loaichiphi?.loaichiphi || 'N/A'
-    }));
+    // Helper function to flatten hierarchy with hierarchical numbering
+    const flattenHierarchy = (expenses, prefix = '', parentAmount = null, totalRootAmount = null) => {
+      const result = [];
+      let counter = 1;
+
+      expenses.forEach(expense => {
+        // Create hierarchical number
+        const hierarchicalNumber = prefix ? `${prefix}.${counter}` : counter.toString();
+
+        // Calculate percentages - use backend-stored ti_le if available, otherwise calculate
+        let rootPercentage = null;
+        let parentPercentage = null;
+
+        if (expense.ti_le !== null && expense.ti_le !== undefined) {
+          // Use backend-stored ratio
+          rootPercentage = expense.ti_le;
+        } else if (totalRootAmount && totalRootAmount > 0) {
+          // Fallback to frontend calculation
+          rootPercentage = ((expense.giathanh || 0) / totalRootAmount) * 100;
+        }
+
+        if (parentAmount && parentAmount > 0) {
+          parentPercentage = ((expense.giathanh || 0) / parentAmount) * 100;
+        }
+
+        // Add current expense
+        result.push({
+          'STT': hierarchicalNumber,
+          'Ngày': expense.created_at ? new Date(expense.created_at).toLocaleDateString('vi-VN') : '',
+          'Loại chi phí': expense.loaichiphi?.tenchiphi || 'N/A',
+          'Mô tả': expense.mo_ta ? expense.mo_ta.replace(/^(Nhóm chi phí|Khoản chi phí):\s*/, '') : '',
+          'Số tiền (VND)': expense.giathanh || 0,
+          'Tỉ lệ (%)': rootPercentage !== null ? `${rootPercentage.toFixed(1)}%` : 'N/A',
+          'Loại': expense.loaichiphi?.loaichiphi || 'N/A',
+          'Cấp độ': prefix ? prefix.split('.').length + 1 : 1
+        });
+
+        // Process children recursively
+        if (expense.children && expense.children.length > 0) {
+          const childResults = flattenHierarchy(expense.children, hierarchicalNumber, expense.giathanh || 0, totalRootAmount);
+          result.push(...childResults);
+        }
+
+        counter++;
+      });
+
+      return result;
+    };
+
+    // Prepare data for Excel export with hierarchical structure
+    const totalRootAmount = hierarchyData.reduce((sum, expense) => sum + (expense.giathanh || 0), 0);
+    const exportData = flattenHierarchy(hierarchyData, '', null, totalRootAmount);
 
     // Create worksheet
     const ws = XLSX.utils.json_to_sheet(exportData);
 
     // Set column widths
     const colWidths = [
+      { wch: 8 },  // STT
       { wch: 12 }, // Ngày
       { wch: 20 }, // Loại chi phí
       { wch: 30 }, // Mô tả
       { wch: 15 }, // Số tiền
-      { wch: 12 }  // Loại
+      { wch: 12 }, // Tỉ lệ
+      { wch: 12 }, // Loại
+      { wch: 8 }   // Cấp độ
     ];
     ws['!cols'] = colWidths;
 
@@ -1337,6 +1397,16 @@ function ExpensesManagementTab({ expenses, expenseCategories, selectedMonth, onE
         setSelectedFile(null);
         setPreviewUrl('');
         setEditingExpense(null);
+        
+        // Cập nhật tỷ lệ tổng chi phí sau khi thêm/chỉnh sửa
+        try {
+          await fetch('http://localhost:8001/api/v1/accounting/quanly_chiphi/update_ratios/', {
+            method: 'POST'
+          });
+        } catch (updateError) {
+          console.error('Error updating ratios:', updateError);
+        }
+        
         onExpenseUpdate();
 
         // Đóng modal sau 2 giây
@@ -1483,7 +1553,7 @@ function ExpensesManagementTab({ expenses, expenseCategories, selectedMonth, onE
             onClick={async () => {
               if (confirm('Bạn có muốn cập nhật lại tỷ lệ tổng chi phí cho tất cả chi phí cha không?')) {
                 try {
-                  const response = await fetch('http://localhost:8001/api/v1/accounting/quanly_chiphi/update_totals/', {
+                  const response = await fetch('http://localhost:8001/api/v1/accounting/quanly_chiphi/update_ratios/', {
                     method: 'POST'
                   });
                   const result = await response.json();
