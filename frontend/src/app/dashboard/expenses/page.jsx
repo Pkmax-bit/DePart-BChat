@@ -266,9 +266,6 @@ function ExpensesOverviewTab({ expenses, expenseCategories, selectedMonth }) {
                   Tổng con: {totalChildrenPercentage.toFixed(1)}% ({totalChildrenAmount.toLocaleString('vi-VN')} VND)
                 </p>
               )}
-              {expense.total_amount && expense.total_amount !== expense.giathanh && (
-                <p className="text-sm text-gray-600">Tổng: {expense.total_amount.toLocaleString('vi-VN')} VND</p>
-              )}
             </div>
           </div>
         </div>
@@ -282,20 +279,104 @@ function ExpensesOverviewTab({ expenses, expenseCategories, selectedMonth }) {
     );
   };
 
-  const exportToExcel = async (exportType = 'current') => {
+  const exportToExcel = async (exportType = 'hierarchy') => {
     let exportData = [];
     let fileName = '';
 
     if (exportType === 'current') {
-      // Export current month data
-      exportData = expenses.map(expense => ({
-        'Ngày': expense.created_at ? new Date(expense.created_at).toLocaleDateString('vi-VN') : '',
-        'Loại chi phí': expense.loaichiphi?.tenchiphi || 'N/A',
-        'Mô tả': expense.mo_ta || '',
-        'Số tiền (VND)': expense.giathanh || 0,
-        'Loại': expense.loaichiphi?.loaichiphi || 'N/A'
-      }));
-      fileName = `chi_phi_${selectedMonth}.xlsx`;
+      // Export current month hierarchy data from database
+      try {
+        const response = await fetch(`http://localhost:8001/api/v1/accounting/quanly_chiphi/hierarchy/?month=${selectedMonth}`);
+        if (response.ok) {
+          const data = await response.json();
+          const hierarchyData = data.hierarchy || [];
+
+          // Helper function to flatten hierarchy with hierarchical numbering
+          const flattenHierarchy = (expenses, prefix = '', parentAmount = null, totalRootAmount = null) => {
+            const result = [];
+            let counter = 1;
+
+            expenses.forEach(expense => {
+              // Create hierarchical number
+              const hierarchicalNumber = prefix ? `${prefix}.${counter}` : counter.toString();
+
+              // Calculate percentages - use backend-stored ti_le if available, otherwise calculate
+              let rootPercentage = null;
+              let parentPercentage = null;
+
+              if (expense.ti_le !== null && expense.ti_le !== undefined) {
+                // Use backend-stored ratio
+                rootPercentage = expense.ti_le;
+              } else if (totalRootAmount && totalRootAmount > 0) {
+                // Fallback to frontend calculation
+                rootPercentage = ((expense.giathanh || 0) / totalRootAmount) * 100;
+              }
+
+              if (parentAmount && parentAmount > 0) {
+                parentPercentage = ((expense.giathanh || 0) / parentAmount) * 100;
+              }
+
+              // Add current expense
+              result.push({
+                'STT': hierarchicalNumber,
+                'Tên chi phí': expense.loaichiphi?.tenchiphi || 'N/A',
+                'Loại chi phí': expense.loaichiphi?.loaichiphi || 'N/A',
+                'Số tiền': expense.giathanh || 0,
+                'Tỉ lệ': rootPercentage !== null ? `${rootPercentage.toFixed(1)}%` : 'N/A',
+                'Cấp bậc': hierarchicalNumber,
+                'Ngày': expense.created_at ? new Date(expense.created_at).toLocaleDateString('vi-VN') : ''
+              });
+
+              // Process children recursively
+              if (expense.children && expense.children.length > 0) {
+                const childResults = flattenHierarchy(expense.children, hierarchicalNumber, expense.giathanh || 0, totalRootAmount);
+                result.push(...childResults);
+              }
+
+              counter++;
+            });
+
+            return result;
+          };
+
+          // Prepare data for Excel export with hierarchical structure
+          const totalRootAmount = hierarchyData.reduce((sum, expense) => sum + (expense.giathanh || 0), 0);
+          const exportDataTemp = flattenHierarchy(hierarchyData, '', null, totalRootAmount);
+
+          // Calculate totals for root level expenses (STT 1, 2, 3, 4, 5, ...)
+          const rootExpenses = hierarchyData;
+          const totalAmount = rootExpenses.reduce((sum, expense) => sum + (expense.giathanh || 0), 0);
+          const totalPercentage = rootExpenses.reduce((sum, expense) => {
+            if (expense.ti_le !== null && expense.ti_le !== undefined) {
+              return sum + expense.ti_le;
+            } else if (totalRootAmount && totalRootAmount > 0) {
+              return sum + ((expense.giathanh || 0) / totalRootAmount) * 100;
+            }
+            return sum;
+          }, 0);
+
+          // Add total row
+          exportDataTemp.push({
+            'STT': 'TỔNG',
+            'Tên chi phí': '',
+            'Loại chi phí': '',
+            'Số tiền': totalAmount,
+            'Tỉ lệ': `${totalPercentage.toFixed(1)}%`,
+            'Cấp bậc': '',
+            'Ngày': ''
+          });
+
+          exportData = exportDataTemp;
+          fileName = `chi_phi_thang_${selectedMonth}.xlsx`;
+        } else {
+          alert('Không thể tải dữ liệu chi phí từ database');
+          return;
+        }
+      } catch (error) {
+        console.error('Error loading hierarchy data:', error);
+        alert('Có lỗi xảy ra khi tải dữ liệu từ database');
+        return;
+      }
     } else if (exportType === 'all') {
       // Export all expenses data
       try {
@@ -319,6 +400,84 @@ function ExpensesOverviewTab({ expenses, expenseCategories, selectedMonth }) {
         alert('Có lỗi xảy ra khi tải dữ liệu');
         return;
       }
+    } else if (exportType === 'hierarchy') {
+      // Export hierarchical tree structure
+      const flattenHierarchy = (expenses, prefix = '', parentAmount = null, totalRootAmount = null) => {
+        const result = [];
+        let counter = 1;
+
+        expenses.forEach(expense => {
+          // Create hierarchical number
+          const hierarchicalNumber = prefix ? `${prefix}.${counter}` : counter.toString();
+
+          // Calculate percentages - use backend-stored ti_le if available, otherwise calculate
+          let rootPercentage = null;
+          let parentPercentage = null;
+
+          if (expense.ti_le !== null && expense.ti_le !== undefined) {
+            // Use backend-stored ratio
+            rootPercentage = expense.ti_le;
+          } else if (totalRootAmount && totalRootAmount > 0) {
+            // Fallback to frontend calculation
+            rootPercentage = ((expense.giathanh || 0) / totalRootAmount) * 100;
+          }
+
+          if (parentAmount && parentAmount > 0) {
+            parentPercentage = ((expense.giathanh || 0) / parentAmount) * 100;
+          }
+
+          // Add current expense
+          result.push({
+            'STT': hierarchicalNumber,
+            'Tên chi phí': expense.loaichiphi?.tenchiphi || 'N/A',
+            'Loại chi phí': expense.loaichiphi?.loaichiphi || 'N/A',
+            'Số tiền': expense.giathanh || 0,
+            'Tỉ lệ': rootPercentage !== null ? `${rootPercentage.toFixed(1)}%` : 'N/A',
+            'Cấp bậc': hierarchicalNumber,
+            'Ngày': expense.created_at ? new Date(expense.created_at).toLocaleDateString('vi-VN') : ''
+          });
+
+          // Process children recursively
+          if (expense.children && expense.children.length > 0) {
+            const childResults = flattenHierarchy(expense.children, hierarchicalNumber, expense.giathanh || 0, totalRootAmount);
+            result.push(...childResults);
+          }
+
+          counter++;
+        });
+
+        return result;
+      };
+
+      // Prepare data for Excel export with hierarchical structure
+      const totalRootAmount = hierarchyData.reduce((sum, expense) => sum + (expense.giathanh || 0), 0);
+      const exportDataTemp = flattenHierarchy(hierarchyData, '', null, totalRootAmount);
+
+      // Calculate totals for root level expenses (STT 1, 2, 3, 4, 5, ...)
+      const rootExpenses = hierarchyData;
+      const totalAmount = rootExpenses.reduce((sum, expense) => sum + (expense.giathanh || 0), 0);
+      const totalPercentage = rootExpenses.reduce((sum, expense) => {
+        if (expense.ti_le !== null && expense.ti_le !== undefined) {
+          return sum + expense.ti_le;
+        } else if (totalRootAmount && totalRootAmount > 0) {
+          return sum + ((expense.giathanh || 0) / totalRootAmount) * 100;
+        }
+        return sum;
+      }, 0);
+
+      // Add total row
+      exportDataTemp.push({
+        'STT': 'TỔNG',
+        'Tên chi phí': '',
+        'Loại chi phí': '',
+        'Số tiền': totalAmount,
+        'Tỉ lệ': `${totalPercentage.toFixed(1)}%`,
+        'Cấp bậc': '',
+        'Ngày': ''
+      });
+
+      exportData = exportDataTemp;
+      fileName = `chi_phi_cau_truc_cay_${selectedMonth}.xlsx`;
     }
 
     // Create worksheet
@@ -326,11 +485,13 @@ function ExpensesOverviewTab({ expenses, expenseCategories, selectedMonth }) {
 
     // Set column widths
     const colWidths = [
-      { wch: 12 }, // Ngày
-      { wch: 20 }, // Loại chi phí
-      { wch: 30 }, // Mô tả
+      { wch: 8 },  // STT
+      { wch: 20 }, // Tên chi phí
+      { wch: 12 }, // Loại chi phí
       { wch: 15 }, // Số tiền
-      { wch: 12 }  // Loại
+      { wch: 12 }, // Tỉ lệ
+      { wch: 8 },  // Cấp bậc
+      { wch: 12 }  // Ngày
     ];
     ws['!cols'] = colWidths;
 
@@ -352,33 +513,6 @@ function ExpensesOverviewTab({ expenses, expenseCategories, selectedMonth }) {
         </div>
         <div className="flex items-center space-x-3">
           <button
-            onClick={async () => {
-              if (confirm('Bạn có muốn cập nhật lại tỷ lệ tổng chi phí cho tất cả chi phí cha không?')) {
-                try {
-                  const response = await fetch('http://localhost:8001/api/v1/accounting/quanly_chiphi/update_ratios/', {
-                    method: 'POST'
-                  });
-                  const result = await response.json();
-                  if (result.success) {
-                    alert('Đã cập nhật thành công tỷ lệ tổng chi phí!');
-                    onExpenseUpdate(); // Refresh data
-                  } else {
-                    alert('Có lỗi khi cập nhật: ' + result.error);
-                  }
-                } catch (error) {
-                  alert('Có lỗi khi cập nhật tỷ lệ tổng chi phí');
-                }
-              }
-            }}
-            className="bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-700 flex items-center space-x-2"
-            title="Cập nhật tỷ lệ tổng chi phí"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-            </svg>
-            <span>Cập nhật tỷ lệ</span>
-          </button>
-          <button
             onClick={() => exportToExcel('current')}
             disabled={expenses.length === 0}
             className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
@@ -395,6 +529,7 @@ function ExpensesOverviewTab({ expenses, expenseCategories, selectedMonth }) {
             <Download className="w-4 h-4" />
             <span>Xuất tất cả</span>
           </button>
+          
         </div>
       </div>
       {/* Stats Cards */}
@@ -427,12 +562,6 @@ function ExpensesOverviewTab({ expenses, expenseCategories, selectedMonth }) {
           <div className="flex items-center">
             <div className="p-3 bg-green-100 rounded-lg">
               <DollarSign className="w-6 h-6 text-green-600" />
-            </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">Trung bình/khoản</p>
-              <p className="text-2xl font-bold text-gray-900">
-                {expenseCount > 0 ? (totalExpenses / expenseCount).toLocaleString('vi-VN') : 0} VND
-              </p>
             </div>
           </div>
         </div>
@@ -1571,42 +1700,6 @@ function ExpensesManagementTab({ expenses, expenseCategories, selectedMonth, onE
         </div>
         <div className="flex items-center space-x-3">
           <button
-            onClick={async () => {
-              if (confirm('Bạn có muốn cập nhật lại tỷ lệ tổng chi phí cho tất cả chi phí cha không?')) {
-                try {
-                  const response = await fetch('http://localhost:8001/api/v1/accounting/quanly_chiphi/update_ratios/', {
-                    method: 'POST'
-                  });
-                  const result = await response.json();
-                  if (result.success) {
-                    alert('Đã cập nhật thành công tỷ lệ tổng chi phí!');
-                    onExpenseUpdate(); // Refresh data
-                  } else {
-                    alert('Có lỗi khi cập nhật: ' + result.error);
-                  }
-                } catch (error) {
-                  alert('Có lỗi khi cập nhật tỷ lệ tổng chi phí');
-                }
-              }
-            }}
-            className="bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-700 flex items-center space-x-2"
-            title="Cập nhật tỷ lệ tổng chi phí"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-            </svg>
-            <span>Cập nhật tỷ lệ</span>
-          </button>
-          <button
-            onClick={exportToExcel}
-            disabled={expenses.length === 0}
-            className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
-            title="Xuất dữ liệu chi phí ra file Excel"
-          >
-            <Download className="w-4 h-4" />
-            <span>Xuất Excel</span>
-          </button>
-          <button
             onClick={() => {
               setShowProductExpenseForm(true);
               setProductExpenseForm({
@@ -1621,7 +1714,7 @@ function ExpensesManagementTab({ expenses, expenseCategories, selectedMonth, onE
             className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 flex items-center space-x-2"
           >
             <Package className="w-4 h-4" />
-            <span>Thêm biến phí sản phẩm</span>
+            <span className="text-purple-200">Thêm biến phí sản phẩm</span>
           </button>
           <button
             onClick={() => {
@@ -2214,7 +2307,7 @@ function ExpensesManagementTab({ expenses, expenseCategories, selectedMonth, onE
                 <Package className="w-6 h-6 text-purple-600" />
               </div>
               <div>
-                <h3 className="text-2xl font-bold text-gray-900">Thêm biến phí sản phẩm</h3>
+                <h3 className="text-2xl font-bold text-purple-700">Thêm biến phí sản phẩm</h3>
                 <p className="text-purple-700 mt-1">Thêm chi phí biến phí cho sản phẩm cụ thể</p>
               </div>
             </div>
@@ -2235,7 +2328,7 @@ function ExpensesManagementTab({ expenses, expenseCategories, selectedMonth, onE
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
               </div>
-              <p className="text-sm font-medium">Thêm biến phí sản phẩm thành công!</p>
+              <p className="text-sm font-medium text-purple-800">Thêm biến phí sản phẩm thành công!</p>
             </div>
           )}
 
@@ -2397,26 +2490,6 @@ function ExpensesManagementTab({ expenses, expenseCategories, selectedMonth, onE
                   <X className="w-5 h-5 mr-2" />
                   Hủy
                 </div>
-              </button>
-              <button
-                type="submit"
-                disabled={loading}
-                className="flex-1 bg-gradient-to-r from-purple-500 to-pink-600 text-white py-4 px-6 rounded-xl hover:from-purple-600 hover:to-pink-700 focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 text-lg"
-              >
-                {loading ? (
-                  <div className="flex items-center justify-center">
-                    <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    Đang xử lý...
-                  </div>
-                ) : (
-                  <div className="flex items-center justify-center">
-                    <Package className="w-5 h-5 mr-2" />
-                    Thêm biến phí sản phẩm
-                  </div>
-                )}
               </button>
             </div>
           </form>
