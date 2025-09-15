@@ -61,11 +61,10 @@ def update_expense_ratios(month=None):
         for month_key, month_expenses in expenses_by_month.items():
             print(f"Processing month {month_key}...")
 
-            # Calculate total expenses for the month (only parent expenses, not children)
+            # Calculate total expenses for the month (ALL expenses, not just parents)
             total_month_expenses = sum(
                 expense['giathanh'] or 0
                 for expense in month_expenses
-                if not expense.get('parent_id')  # Only count parent expenses
             )
 
             if total_month_expenses == 0:
@@ -85,41 +84,36 @@ def update_expense_ratios(month=None):
                 else:
                     parent_expenses[expense['id']] = expense
 
-            # Update ratio for each parent expense
+            # Update ratio for each expense (relative to root parent)
+            def update_all_ratios_recursive(expense_id, root_total, indent_level=1):
+                nonlocal updated_count
+                expense = next((e for e in month_expenses if e['id'] == expense_id), None)
+                if expense:
+                    expense_amount = expense['giathanh'] or 0
+                    ratio = (expense_amount / root_total) * 100 if root_total > 0 else 0
+
+                    # Round to 2 decimal places
+                    ratio_rounded = round(ratio, 2)
+
+                    # Update ratio in database
+                    supabase.table('quanly_chiphi').update({
+                        'ti_le': ratio_rounded
+                    }).eq('id', expense['id']).execute()
+
+                    indent = "    " * indent_level
+                    parent_info = "of root total" if indent_level == 1 else "of root total"
+                    print(f"{indent}Expense ID {expense['id']}: {expense_amount} -> {ratio_rounded}% {parent_info}")
+                    updated_count += 1
+
+                    # Recursively update all children with same root total
+                    child_expenses = expenses_by_parent.get(expense_id, [])
+                    for child_expense in child_expenses:
+                        update_all_ratios_recursive(child_expense['id'], root_total, indent_level + 1)
+
+            # Update ratios for all root expenses and their children
             for parent_id, parent_expense in parent_expenses.items():
-                expense_amount = parent_expense['giathanh'] or 0
-                ratio = (expense_amount / total_month_expenses) * 100 if total_month_expenses > 0 else 0
-
-                # Round to 2 decimal places
-                ratio_rounded = round(ratio, 2)
-
-                # Update ratio in database
-                supabase.table('quanly_chiphi').update({
-                    'ti_le': ratio_rounded
-                }).eq('id', parent_expense['id']).execute()
-
-                print(f"    Parent Expense ID {parent_expense['id']}: {expense_amount} -> {ratio_rounded}% of total")
-                updated_count += 1
-
-                # Update ratios for child expenses of this parent
-                child_expenses = expenses_by_parent.get(parent_id, [])
-                if child_expenses:
-                    parent_total = expense_amount
-                    if parent_total > 0:
-                        for child_expense in child_expenses:
-                            child_amount = child_expense['giathanh'] or 0
-                            child_ratio = (child_amount / parent_total) * 100
-
-                            # Round to 2 decimal places
-                            child_ratio_rounded = round(child_ratio, 2)
-
-                            # Update child ratio in database
-                            supabase.table('quanly_chiphi').update({
-                                'ti_le': child_ratio_rounded
-                            }).eq('id', child_expense['id']).execute()
-
-                            print(f"      Child Expense ID {child_expense['id']}: {child_amount} -> {child_ratio_rounded}% of parent")
-                            updated_count += 1
+                root_total = parent_expense['giathanh'] or 0
+                update_all_ratios_recursive(parent_id, root_total)
 
         print(f"Completed! Updated ratios for {updated_count} expenses.")
         return {"success": True, "updated_count": updated_count}
@@ -127,6 +121,16 @@ def update_expense_ratios(month=None):
     except Exception as e:
         print(f"Error updating ratios: {e}")
         return {"success": False, "error": str(e)}
+
+def get_root_total(expense, all_expenses):
+    """Get the total amount of the root parent for an expense"""
+    current = expense
+    while current.get('parent_id'):
+        parent = next((e for e in all_expenses if e['id'] == current['parent_id']), None)
+        if not parent:
+            break
+        current = parent
+    return current['giathanh'] or 0
 
 def verify_expense_ratios(month=None):
     """Verify the accuracy of expense ratios"""
@@ -170,11 +174,10 @@ def verify_expense_ratios(month=None):
         issues_found = 0
 
         for month_key, month_expenses in expenses_by_month.items():
-            # Calculate total parent expenses
+            # Calculate total expenses for the month (ALL expenses)
             total_month_expenses = sum(
                 expense['giathanh'] or 0
                 for expense in month_expenses
-                if not expense.get('parent_id')
             )
 
             if total_month_expenses == 0:
@@ -191,42 +194,17 @@ def verify_expense_ratios(month=None):
                 else:
                     parent_expenses[expense['id']] = expense
 
-            # Check parent expense ratios sum to 100%
-            total_parent_ratio = sum(
-                expense.get('ti_le') or 0
-                for expense in parent_expenses.values()
-            )
+            # Check that all expenses have correct ratios relative to their root parent
+            for expense in month_expenses:
+                # Find root parent for this expense
+                root_total = get_root_total(expense, month_expenses)
+                expense_amount = expense['giathanh'] or 0
+                expected_ratio = (expense_amount / root_total) * 100 if root_total > 0 else 0
+                actual_ratio = expense.get('ti_le') or 0
 
-            if abs(total_parent_ratio - 100.0) > 0.01:
-                print(f"ISSUE: Month {month_key} - Parent expenses total ratio: {total_parent_ratio}%, should be 100%")
-                issues_found += 1
-
-                for expense in parent_expenses.values():
-                    expected_ratio = ((expense['giathanh'] or 0) / total_month_expenses) * 100
-                    actual_ratio = expense.get('ti_le') or 0
-                    if abs(actual_ratio - expected_ratio) > 0.01:
-                        print(f"    Parent Expense ID {expense['id']}: Expected {expected_ratio:.2f}%, Actual {actual_ratio}%")
-
-            # Check child expense ratios for each parent
-            for parent_id, parent_expense in parent_expenses.items():
-                child_expenses = expenses_by_parent.get(parent_id, [])
-                if child_expenses:
-                    parent_amount = parent_expense['giathanh'] or 0
-                    if parent_amount > 0:
-                        total_child_ratio = sum(
-                            child.get('ti_le') or 0
-                            for child in child_expenses
-                        )
-
-                        if abs(total_child_ratio - 100.0) > 0.01:
-                            print(f"ISSUE: Parent {parent_id} - Child expenses total ratio: {total_child_ratio}%, should be 100%")
-                            issues_found += 1
-
-                            for child in child_expenses:
-                                expected_ratio = ((child['giathanh'] or 0) / parent_amount) * 100
-                                actual_ratio = child.get('ti_le') or 0
-                                if abs(actual_ratio - expected_ratio) > 0.01:
-                                    print(f"      Child Expense ID {child['id']}: Expected {expected_ratio:.2f}%, Actual {actual_ratio}%")
+                if abs(actual_ratio - expected_ratio) > 0.01:
+                    print(f"ISSUE: Expense ID {expense['id']}: Expected {expected_ratio:.2f}%, Actual {actual_ratio}%")
+                    issues_found += 1
 
         if issues_found == 0:
             print("All expense ratios are accurate!")

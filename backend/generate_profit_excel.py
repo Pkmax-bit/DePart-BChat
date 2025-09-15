@@ -345,7 +345,7 @@ def create_expense_detail_sheet(sheet, data, header_font, header_fill, border):
     sheet['A2'].font = Font(bold=True, size=12)
 
     # Header
-    headers = ['STT', 'Ngay chi phi', 'Loai chi phi', 'Mo ta', 'So tien (VND)']
+    headers = ['STT', 'Ngay chi phi', 'Loai chi phi', 'Mo ta', 'So tien (VND)', 'Ty le (%)']
     for col, header in enumerate(headers, 1):
         cell = sheet.cell(row=4, column=col)
         cell.value = header
@@ -372,13 +372,15 @@ def create_expense_detail_sheet(sheet, data, header_font, header_fill, border):
 
         amount = expense.get('giathanh', 0)
         total_expenses += amount
+        ratio = expense.get('ti_le', 0)
 
         row_data = [
             idx,
             expense_date,
             category_name,
             expense.get('mo_ta', ''),
-            amount
+            amount,
+            f"{ratio:.2f}" if ratio else '0.00'
         ]
 
         for col_idx, value in enumerate(row_data, 1):
@@ -386,23 +388,23 @@ def create_expense_detail_sheet(sheet, data, header_font, header_fill, border):
             cell.value = value
             cell.border = border
 
-            if col_idx == 5:  # So tien
+            if col_idx in [5, 6]:  # So tien va ty le
                 cell.alignment = Alignment(horizontal='right')
-                if isinstance(value, (int, float)):
+                if col_idx == 5 and isinstance(value, (int, float)):  # So tien
                     cell.number_format = '#,##0'
 
         row_idx += 1
 
     # Tong ket
     total_row = row_idx + 1
-    sheet.cell(row=total_row, column=4).value = "TONG CHI PHI:"
-    sheet.cell(row=total_row, column=4).font = Font(bold=True)
-    sheet.cell(row=total_row, column=5).value = total_expenses
+    sheet.cell(row=total_row, column=5).value = "TONG CHI PHI:"
     sheet.cell(row=total_row, column=5).font = Font(bold=True)
-    sheet.cell(row=total_row, column=5).number_format = '#,##0'
+    sheet.cell(row=total_row, column=6).value = total_expenses
+    sheet.cell(row=total_row, column=6).font = Font(bold=True)
+    sheet.cell(row=total_row, column=6).number_format = '#,##0'
 
     # Dieu chinh do rong cot
-    column_widths = [8, 15, 25, 40, 20]
+    column_widths = [8, 15, 25, 40, 20, 15]
     for col, width in enumerate(column_widths, 1):
         sheet.column_dimensions[get_column_letter(col)].width = width
 
