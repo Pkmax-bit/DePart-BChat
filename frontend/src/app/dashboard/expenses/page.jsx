@@ -1158,13 +1158,12 @@ function ExpensesManagementTab({ expenses, expenseCategories, selectedMonth, onE
         // Add current expense
         result.push({
           'STT': hierarchicalNumber,
-          'Ngày': expense.created_at ? new Date(expense.created_at).toLocaleDateString('vi-VN') : '',
-          'Loại chi phí': expense.loaichiphi?.tenchiphi || 'N/A',
-          'Mô tả': expense.mo_ta ? expense.mo_ta.replace(/^(Nhóm chi phí|Khoản chi phí):\s*/, '') : '',
-          'Số tiền (VND)': expense.giathanh || 0,
-          'Tỉ lệ (%)': rootPercentage !== null ? `${rootPercentage.toFixed(1)}%` : 'N/A',
-          'Loại': expense.loaichiphi?.loaichiphi || 'N/A',
-          'Cấp độ': prefix ? prefix.split('.').length + 1 : 1
+          'Tên chi phí': expense.loaichiphi?.tenchiphi || 'N/A',
+          'Loại chi phí': expense.loaichiphi?.loaichiphi || 'N/A',
+          'Số tiền': expense.giathanh || 0,
+          'Tỉ lệ': rootPercentage !== null ? `${rootPercentage.toFixed(1)}%` : 'N/A',
+          'Cấp bậc': hierarchicalNumber,
+          'Ngày': expense.created_at ? new Date(expense.created_at).toLocaleDateString('vi-VN') : ''
         });
 
         // Process children recursively
@@ -1183,19 +1182,41 @@ function ExpensesManagementTab({ expenses, expenseCategories, selectedMonth, onE
     const totalRootAmount = hierarchyData.reduce((sum, expense) => sum + (expense.giathanh || 0), 0);
     const exportData = flattenHierarchy(hierarchyData, '', null, totalRootAmount);
 
+    // Calculate totals for root level expenses (STT 1, 2, 3, 4, 5, ...)
+    const rootExpenses = hierarchyData;
+    const totalAmount = rootExpenses.reduce((sum, expense) => sum + (expense.giathanh || 0), 0);
+    const totalPercentage = rootExpenses.reduce((sum, expense) => {
+      if (expense.ti_le !== null && expense.ti_le !== undefined) {
+        return sum + expense.ti_le;
+      } else if (totalRootAmount && totalRootAmount > 0) {
+        return sum + ((expense.giathanh || 0) / totalRootAmount) * 100;
+      }
+      return sum;
+    }, 0);
+
+    // Add total row
+    exportData.push({
+      'STT': 'TỔNG',
+      'Tên chi phí': '',
+      'Loại chi phí': '',
+      'Số tiền': totalAmount,
+      'Tỉ lệ': `${totalPercentage.toFixed(1)}%`,
+      'Cấp bậc': '',
+      'Ngày': ''
+    });
+
     // Create worksheet
     const ws = XLSX.utils.json_to_sheet(exportData);
 
     // Set column widths
     const colWidths = [
       { wch: 8 },  // STT
-      { wch: 12 }, // Ngày
-      { wch: 20 }, // Loại chi phí
-      { wch: 30 }, // Mô tả
+      { wch: 20 }, // Tên chi phí
+      { wch: 12 }, // Loại chi phí
       { wch: 15 }, // Số tiền
       { wch: 12 }, // Tỉ lệ
-      { wch: 12 }, // Loại
-      { wch: 8 }   // Cấp độ
+      { wch: 8 },  // Cấp bậc
+      { wch: 12 }  // Ngày
     ];
     ws['!cols'] = colWidths;
 
