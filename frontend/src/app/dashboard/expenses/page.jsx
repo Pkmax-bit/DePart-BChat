@@ -658,7 +658,6 @@ function ExpensesOverviewTab({ expenses, expenseCategories, selectedMonth }) {
 
 function ExpensesManagementTab({ expenses, expenseCategories, selectedMonth, onExpenseUpdate }) {
   const [showExpenseForm, setShowExpenseForm] = useState(false);
-  const [showProductExpenseForm, setShowProductExpenseForm] = useState(false);
   const [editingExpense, setEditingExpense] = useState(null);
   const [expenseForm, setExpenseForm] = useState({
     id_lcp: '',
@@ -668,13 +667,6 @@ function ExpensesManagementTab({ expenses, expenseCategories, selectedMonth, onE
     parent_id: '',
     created_at: new Date().toISOString().split('T')[0] // Default to today
   });
-  const [productExpenseForm, setProductExpenseForm] = useState({
-    product_id: '',
-    giathanh: '',
-    mo_ta: '',
-    created_at: new Date().toISOString().split('T')[0]
-  });
-  const [products, setProducts] = useState([]);
   const [availableParents, setAvailableParents] = useState([]);
   const [selectedFile, setSelectedFile] = useState(null);
   const [previewUrl, setPreviewUrl] = useState('');
@@ -735,23 +727,6 @@ function ExpensesManagementTab({ expenses, expenseCategories, selectedMonth, onE
       }
       return newSet;
     });
-  };
-
-  // Load products
-  useEffect(() => {
-    loadProducts();
-  }, []);
-
-  const loadProducts = async () => {
-    try {
-      const response = await fetch('http://localhost:8001/api/v1/accounting/sanpham/');
-      if (response.ok) {
-        const data = await response.json();
-        setProducts(data);
-      }
-    } catch (error) {
-      console.error('Error loading products:', error);
-    }
   };
 
   // Auto-update description preview when parent_id changes
@@ -1605,74 +1580,6 @@ function ExpensesManagementTab({ expenses, expenseCategories, selectedMonth, onE
     }
   };
 
-  const handleSubmitProductExpense = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    setError('');
-    setSuccess(false);
-
-    try {
-      const formData = new FormData();
-      formData.append('product_id', productExpenseForm.product_id);
-      formData.append('giathanh', productExpenseForm.giathanh);
-      formData.append('mo_ta', productExpenseForm.mo_ta);
-      formData.append('created_at', productExpenseForm.created_at);
-
-      const response = await fetch('http://localhost:8001/api/v1/accounting/bien-phi-san-pham/', {
-        method: 'POST',
-        body: formData,
-      });
-
-      if (response.ok) {
-        setSuccess(true);
-        setProductExpenseForm({
-          product_id: '',
-          giathanh: '',
-          mo_ta: '',
-          created_at: new Date().toISOString().split('T')[0]
-        });
-        setShowProductExpenseForm(false);
-        onExpenseUpdate();
-      } else {
-        let errorMessage = 'Có lỗi xảy ra khi thêm biến phí sản phẩm';
-        try {
-          const errorData = await response.json();
-          console.log('Raw error data (product expense):', errorData); // Debug log
-          if (errorData && errorData.detail) {
-            errorMessage = errorData.detail;
-          } else if (errorData && Object.keys(errorData).length > 0) {
-            // If there are other error fields, try to extract meaningful error
-            const firstError = Object.values(errorData)[0];
-            if (Array.isArray(firstError)) {
-              errorMessage = firstError[0];
-            } else if (typeof firstError === 'string') {
-              errorMessage = firstError;
-            }
-          } else {
-            // Empty response or no meaningful error data
-            errorMessage = `Lỗi ${response.status}: ${response.statusText || 'Không thể thêm biến phí sản phẩm'}`;
-          }
-        } catch (parseError) {
-          console.log('JSON parse error (product expense):', parseError); // Debug log
-          // If JSON parsing fails, use status-based error
-          errorMessage = `Lỗi ${response.status}: ${response.statusText || 'Lỗi máy chủ'}`;
-        }
-        console.error('API Error details (product expense):', {
-          status: response.status,
-          statusText: response.statusText,
-          errorMessage: errorMessage,
-          responseType: typeof response,
-          responseKeys: response ? Object.keys(response) : 'no response'
-        });
-        setError(errorMessage);
-      }
-    } catch (error) {
-      setError('Có lỗi xảy ra khi kết nối đến server');
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const editExpense = (expense) => {
     setEditingExpense(expense);
     setExpenseForm({
@@ -1699,23 +1606,6 @@ function ExpensesManagementTab({ expenses, expenseCategories, selectedMonth, onE
           <p className="text-gray-600 mt-1">Quản lý chi phí theo tháng</p>
         </div>
         <div className="flex items-center space-x-3">
-          <button
-            onClick={() => {
-              setShowProductExpenseForm(true);
-              setProductExpenseForm({
-                product_id: '',
-                giathanh: '',
-                mo_ta: '',
-                created_at: new Date().toISOString().split('T')[0]
-              });
-              setError('');
-              setSuccess(false);
-            }}
-            className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 flex items-center space-x-2"
-          >
-            <Package className="w-4 h-4" />
-            <span className="text-purple-200">Thêm biến phí sản phẩm</span>
-          </button>
           <button
             onClick={() => {
               setShowExpenseForm(true);
@@ -2298,203 +2188,7 @@ function ExpensesManagementTab({ expenses, expenseCategories, selectedMonth, onE
         </div>
       )}
 
-      {/* Product Expense Form Modal */}
-      {showProductExpenseForm && (
-        <div className="bg-gradient-to-r from-purple-100 to-pink-100 rounded-2xl p-8 border-2 border-purple-200 mb-8">
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center space-x-3">
-              <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center">
-                <Package className="w-6 h-6 text-purple-600" />
-              </div>
-              <div>
-                <h3 className="text-2xl font-bold text-purple-700">Thêm biến phí sản phẩm</h3>
-                <p className="text-purple-700 mt-1">Thêm chi phí biến phí cho sản phẩm cụ thể</p>
-              </div>
-            </div>
-            <button
-              onClick={() => setShowProductExpenseForm(false)}
-              className="w-10 h-10 bg-white hover:bg-gray-50 rounded-xl flex items-center justify-center transition-all duration-200 shadow-sm hover:shadow-md"
-              title="Đóng"
-            >
-              <X className="w-5 h-5 text-gray-500" />
-            </button>
-          </div>
-
-          {/* Success Message */}
-          {success && (
-            <div className="mb-6 bg-green-50 border border-green-200 text-green-800 px-6 py-4 rounded-xl flex items-center space-x-3">
-              <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center flex-shrink-0">
-                <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-              </div>
-              <p className="text-sm font-medium text-purple-800">Thêm biến phí sản phẩm thành công!</p>
-            </div>
-          )}
-
-          {/* Error Message */}
-          {error && (
-            <div className="mb-6 bg-red-50 border border-red-200 text-red-800 px-6 py-4 rounded-xl flex items-center space-x-3">
-              <div className="w-6 h-6 bg-red-500 rounded-full flex items-center justify-center flex-shrink-0">
-                <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </div>
-              <p className="text-sm font-medium">{error}</p>
-            </div>
-          )}
-
-          <form onSubmit={handleSubmitProductExpense} className="space-y-8">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-              {/* Product Selection Field */}
-              <div>
-                <label className="block text-sm font-semibold text-gray-800 mb-3 flex items-center">
-                  <span className="w-6 h-6 bg-blue-100 rounded-lg flex items-center justify-center mr-3">
-                    <span className="text-xs text-blue-600">📦</span>
-                  </span>
-                  Tên sản phẩm
-                  <span className="text-red-500 ml-1">*</span>
-                </label>
-                <div className="relative">
-                  <select
-                    value={productExpenseForm.product_id}
-                    onChange={(e) => setProductExpenseForm({...productExpenseForm, product_id: e.target.value})}
-                    className="w-full pl-5 pr-12 py-4 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 bg-white text-gray-900 text-lg"
-                    required
-                  >
-                    <option value="">Chọn sản phẩm...</option>
-                    {products.map(product => (
-                      <option key={product.id} value={product.id.toString()}>
-                        {product.ten_san_pham}
-                      </option>
-                    ))}
-                  </select>
-                  <div className="absolute right-4 top-4 text-gray-400">
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                    </svg>
-                  </div>
-                </div>
-                <p className="text-sm text-gray-600 mt-2 flex items-center">
-                  <span className="w-4 h-4 bg-gray-100 rounded-full flex items-center justify-center mr-2">
-                    <span className="text-xs">💡</span>
-                  </span>
-                  Chọn sản phẩm từ danh sách có sẵn
-                </p>
-              </div>
-
-              {/* Amount Field */}
-              <div>
-                <label className="block text-sm font-semibold text-gray-800 mb-3 flex items-center">
-                  <span className="w-6 h-6 bg-green-100 rounded-lg flex items-center justify-center mr-3">
-                    <span className="text-xs text-green-600">💰</span>
-                  </span>
-                  Số tiền (VND)
-                  <span className="text-red-500 ml-1">*</span>
-                </label>
-                <div className="relative">
-                  <input
-                    type="text"
-                    value={productExpenseForm.giathanh ? Number(productExpenseForm.giathanh).toLocaleString('vi-VN') : ''}
-                    onChange={(e) => {
-                      const value = e.target.value.replace(/[.,\s]/g, '');
-                      if (!isNaN(value) && value !== '') {
-                        setProductExpenseForm({...productExpenseForm, giathanh: parseFloat(value)});
-                      } else if (value === '') {
-                        setProductExpenseForm({...productExpenseForm, giathanh: ''});
-                      }
-                    }}
-                    className="w-full pl-5 pr-12 py-4 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 bg-white text-gray-900 placeholder-gray-500 text-lg"
-                    placeholder="0"
-                    required
-                  />
-                  <div className="absolute right-4 top-4 text-gray-400">
-                    <DollarSign className="w-6 h-6" />
-                  </div>
-                </div>
-                <p className="text-sm text-gray-600 mt-2 flex items-center">
-                  <span className="w-4 h-4 bg-gray-100 rounded-full flex items-center justify-center mr-2">
-                    <span className="text-xs">💡</span>
-                  </span>
-                  Nhập số tiền biến phí cho sản phẩm này
-                </p>
-              </div>
-
-              {/* Date Field */}
-              <div>
-                <label className="block text-sm font-semibold text-gray-800 mb-3 flex items-center">
-                  <span className="w-6 h-6 bg-orange-100 rounded-lg flex items-center justify-center mr-3">
-                    <span className="text-xs text-orange-600">📅</span>
-                  </span>
-                  Ngày chi phí
-                  <span className="text-red-500 ml-1">*</span>
-                </label>
-                <div className="relative">
-                  <input
-                    type="date"
-                    value={productExpenseForm.created_at}
-                    onChange={(e) => setProductExpenseForm({...productExpenseForm, created_at: e.target.value})}
-                    className="w-full pl-5 pr-12 py-4 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 bg-white text-gray-900 text-lg"
-                    required
-                  />
-                  <div className="absolute right-4 top-4 text-gray-400">
-                    <Calendar className="w-6 h-6" />
-                  </div>
-                </div>
-                <p className="text-sm text-gray-600 mt-2 flex items-center">
-                  <span className="w-4 h-4 bg-gray-100 rounded-full flex items-center justify-center mr-2">
-                    <span className="text-xs">💡</span>
-                  </span>
-                  Chọn ngày thực hiện chi phí biến phí
-                </p>
-              </div>
-
-              {/* Description Field */}
-              <div>
-                <label className="block text-sm font-semibold text-gray-800 mb-3 flex items-center">
-                  <span className="w-6 h-6 bg-gray-100 rounded-lg flex items-center justify-center mr-3">
-                    <span className="text-xs text-gray-600">📝</span>
-                  </span>
-                  Mô tả
-                  <span className="text-gray-500 text-sm font-normal ml-2">(không bắt buộc)</span>
-                </label>
-                <div className="relative">
-                  <textarea
-                    value={productExpenseForm.mo_ta}
-                    onChange={(e) => setProductExpenseForm({...productExpenseForm, mo_ta: e.target.value})}
-                    className="w-full pl-5 pr-12 py-4 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 bg-white text-gray-900 placeholder-gray-500 text-lg resize-none"
-                    placeholder="Nhập mô tả chi phí biến phí..."
-                    rows={3}
-                  />
-                  <div className="absolute right-4 top-4 text-gray-400">
-                    <FileText className="w-6 h-6" />
-                  </div>
-                </div>
-                <p className="text-sm text-gray-600 mt-2 flex items-center">
-                  <span className="w-4 h-4 bg-gray-100 rounded-full flex items-center justify-center mr-2">
-                    <span className="text-xs">💡</span>
-                  </span>
-                  Mô tả chi tiết về khoản chi phí biến phí này
-                </p>
-              </div>
-            </div>
-
-            {/* Action Buttons */}
-            <div className="flex flex-col sm:flex-row gap-4 pt-6 border-t border-gray-200">
-              <button
-                type="button"
-                onClick={() => setShowProductExpenseForm(false)}
-                className="flex-1 bg-gray-100 text-gray-700 py-4 px-6 rounded-xl hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500 transition-all duration-200 font-semibold hover:shadow-md text-lg"
-              >
-                <div className="flex items-center justify-center">
-                  <X className="w-5 h-5 mr-2" />
-                  Hủy
-                </div>
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
+      
 
       {/* Filters Section */}
       <div className="bg-white rounded-lg shadow-sm border p-6">
