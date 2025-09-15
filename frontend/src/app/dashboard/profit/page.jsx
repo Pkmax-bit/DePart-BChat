@@ -1,412 +1,820 @@
-'use client';
+'use client';'use client';
 
-import { useState, useEffect } from 'react';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell, Area, AreaChart } from 'recharts';
-import { TrendingUp, TrendingDown, DollarSign, FileText, Download, Calendar, BarChart3, PieChart as PieChartIcon, FileSpreadsheet, Printer, Eye, RefreshCw, Target, Award, AlertTriangle } from 'lucide-react';
-import * as XLSX from 'xlsx';
 
-const supabase = createClientComponentClient();
 
-export default function ProfitPage() {
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [syncing, setSyncing] = useState(false);
+import { useState, useEffect } from 'react';import { useState, useEffect } from 'react';
+
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+
+import * as XLSX from 'xlsx';import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell, Area, AreaChart } from 'recharts';
+
+import ProfitHeader from './components/ProfitHeader';import { TrendingUp, TrendingDown, DollarSign, FileText, Download, Calendar, BarChart3, PieChart as PieChartIcon, FileSpreadsheet, Printer, Eye, RefreshCw, Target, Award, AlertTriangle } from 'lucide-react';
+
+import ProfitControls from './components/ProfitControls';import * as XLSX from 'xlsx';
+
+import ProfitStatsCards from './components/ProfitStatsCards';
+
+import ProfitCharts from './components/ProfitCharts';const supabase = createClientComponentClient();
+
+import ProfitMetrics from './components/ProfitMetrics';
+
+import ProfitStatus from './components/ProfitStatus';export default function ProfitPage() {
+
+import ProfitTables from './components/ProfitTables';  const [user, setUser] = useState(null);
+
+import ProfitReportsTable from './components/ProfitReportsTable';  const [loading, setLoading] = useState(true);
+
+import ProfitSummary from './components/ProfitSummary';  const [syncing, setSyncing] = useState(false);
+
   const [selectedPeriod, setSelectedPeriod] = useState(new Date().toISOString().slice(0, 7));
-  const [allProfitData, setAllProfitData] = useState([]);
+
+const supabase = createClientComponentClient();  const [allProfitData, setAllProfitData] = useState([]);
+
   const [revenueData, setRevenueData] = useState([]);
-  const [expenseData, setExpenseData] = useState([]);
-  const [profitData, setProfitData] = useState([]);
-  const [summaryStats, setSummaryStats] = useState({
-    totalRevenue: 0,
-    totalExpenses: 0,
-    totalProfit: 0,
+
+export default function ProfitPage() {  const [expenseData, setExpenseData] = useState([]);
+
+  const [user, setUser] = useState(null);  const [profitData, setProfitData] = useState([]);
+
+  const [loading, setLoading] = useState(true);  const [summaryStats, setSummaryStats] = useState({
+
+  const [syncing, setSyncing] = useState(false);    totalRevenue: 0,
+
+  const [selectedPeriod, setSelectedPeriod] = useState(new Date().toISOString().slice(0, 7));    totalExpenses: 0,
+
+  const [allProfitData, setAllProfitData] = useState([]);    totalProfit: 0,
+
+  const [revenueData, setRevenueData] = useState([]);    profitMargin: 0,
+
+  const [expenseData, setExpenseData] = useState([]);    invoiceCount: 0,
+
+  const [profitData, setProfitData] = useState([]);    expenseCount: 0,
+
+  const [summaryStats, setSummaryStats] = useState({    productCount: 0,
+
+    totalRevenue: 0,    revenueGrowth: 0,
+
+    totalExpenses: 0,    expenseGrowth: 0
+
+    totalProfit: 0,  });
+
     profitMargin: 0,
-    invoiceCount: 0,
-    expenseCount: 0,
-    productCount: 0,
-    revenueGrowth: 0,
-    expenseGrowth: 0
-  });
 
-  useEffect(() => {
-    const getUser = async () => {
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        setUser(user);
-        setLoading(false);
+    invoiceCount: 0,  useEffect(() => {
 
-        // Always try to load data, regardless of authentication status
-        await loadData();
-      } catch (error) {
-        console.error('Auth error:', error);
-        setUser(null);
-        setLoading(false);
+    expenseCount: 0,    const getUser = async () => {
+
+    productCount: 0,      try {
+
+    revenueGrowth: 0,        const { data: { user } } = await supabase.auth.getUser();
+
+    expenseGrowth: 0        setUser(user);
+
+  });        setLoading(false);
+
+
+
+  useEffect(() => {        // Always try to load data, regardless of authentication status
+
+    const getUser = async () => {        await loadData();
+
+      try {      } catch (error) {
+
+        const { data: { user } } = await supabase.auth.getUser();        console.error('Auth error:', error);
+
+        setUser(user);        setUser(null);
+
+        setLoading(false);        setLoading(false);
+
         // Still try to load data even if auth fails
-        await loadData();
-      }
-    };
-    getUser();
-  }, [selectedPeriod]);
 
-  const loadData = async () => {
-    try {
+        // Always try to load data, regardless of authentication status        await loadData();
+
+        await loadData();      }
+
+      } catch (error) {    };
+
+        console.error('Auth error:', error);    getUser();
+
+        setUser(null);  }, [selectedPeriod]);
+
+        setLoading(false);
+
+        // Still try to load data even if auth fails  const loadData = async () => {
+
+        await loadData();    try {
+
+      }      // Load all profit reports from the new endpoint
+
+    };      const profitReportsResponse = await fetch('http://localhost:8001/api/v1/accounting/profits/', {
+
+    getUser();        method: 'GET',
+
+  }, [selectedPeriod]);        headers: {
+
+          'Content-Type': 'application/json'
+
+  const loadData = async () => {        }
+
+    try {      });
+
       // Load all profit reports from the new endpoint
-      const profitReportsResponse = await fetch('http://localhost:8001/api/v1/accounting/profits/', {
-        method: 'GET',
-        headers: {
+
+      const profitReportsResponse = await fetch('http://localhost:8001/api/v1/accounting/profits/', {      if (profitReportsResponse.ok) {
+
+        method: 'GET',        const profitReports = await profitReportsResponse.json();
+
+        headers: {        setAllProfitData(profitReports);
+
           'Content-Type': 'application/json'
-        }
-      });
 
-      if (profitReportsResponse.ok) {
-        const profitReports = await profitReportsResponse.json();
-        setAllProfitData(profitReports);
+        }        // Find data for selected period
 
-        // Find data for selected period
-        const selectedMonthData = profitReports.find(report => report.report_month === selectedPeriod);
+      });        const selectedMonthData = profitReports.find(report => report.report_month === selectedPeriod);
 
-        if (selectedMonthData) {
-          setProfitData([{
-            month: selectedPeriod,
+
+
+      if (profitReportsResponse.ok) {        if (selectedMonthData) {
+
+        const profitReports = await profitReportsResponse.json();          setProfitData([{
+
+        setAllProfitData(profitReports);            month: selectedPeriod,
+
             revenue: selectedMonthData.total_revenue,
-            expenses: selectedMonthData.total_expenses,
-            profit: selectedMonthData.total_profit,
+
+        // Find data for selected period            expenses: selectedMonthData.total_expenses,
+
+        const selectedMonthData = profitReports.find(report => report.report_month === selectedPeriod);            profit: selectedMonthData.total_profit,
+
             profitMargin: selectedMonthData.profit_margin
-          }]);
-          setSummaryStats({
-            totalRevenue: selectedMonthData.total_revenue,
-            totalExpenses: selectedMonthData.total_expenses,
-            totalProfit: selectedMonthData.total_profit,
-            profitMargin: selectedMonthData.profit_margin,
-            invoiceCount: selectedMonthData.invoice_count,
-            expenseCount: selectedMonthData.expense_count,
-            productCount: selectedMonthData.product_count,
-            revenueGrowth: 0,
-            expenseGrowth: 0
-          });
-        } else {
-          // If no data for selected month, load from detailed endpoint
-          await loadDetailedData();
-        }
-      } else {
-        // Fallback to detailed endpoint if profit reports endpoint fails
-        await loadDetailedData();
-      }
-    } catch (error) {
+
+        if (selectedMonthData) {          }]);
+
+          setProfitData([{          setSummaryStats({
+
+            month: selectedPeriod,            totalRevenue: selectedMonthData.total_revenue,
+
+            revenue: selectedMonthData.total_revenue,            totalExpenses: selectedMonthData.total_expenses,
+
+            expenses: selectedMonthData.total_expenses,            totalProfit: selectedMonthData.total_profit,
+
+            profit: selectedMonthData.total_profit,            profitMargin: selectedMonthData.profit_margin,
+
+            profitMargin: selectedMonthData.profit_margin            invoiceCount: selectedMonthData.invoice_count,
+
+          }]);            expenseCount: selectedMonthData.expense_count,
+
+          setSummaryStats({            productCount: selectedMonthData.product_count,
+
+            totalRevenue: selectedMonthData.total_revenue,            revenueGrowth: 0,
+
+            totalExpenses: selectedMonthData.total_expenses,            expenseGrowth: 0
+
+            totalProfit: selectedMonthData.total_profit,          });
+
+            profitMargin: selectedMonthData.profit_margin,        } else {
+
+            invoiceCount: selectedMonthData.invoice_count,          // If no data for selected month, load from detailed endpoint
+
+            expenseCount: selectedMonthData.expense_count,          await loadDetailedData();
+
+            productCount: selectedMonthData.product_count,        }
+
+            revenueGrowth: 0,      } else {
+
+            expenseGrowth: 0        // Fallback to detailed endpoint if profit reports endpoint fails
+
+          });        await loadDetailedData();
+
+        } else {      }
+
+          // If no data for selected month, load from detailed endpoint    } catch (error) {
+
+          await loadDetailedData();      console.error('Error loading data:', error);
+
+        }      setRevenueData([]);
+
+      } else {      setExpenseData([]);
+
+        // Fallback to detailed endpoint if profit reports endpoint fails      setProfitData([]);
+
+        await loadDetailedData();      setAllProfitData([]);
+
+      }    }
+
+    } catch (error) {  };
+
       console.error('Error loading data:', error);
-      setRevenueData([]);
-      setExpenseData([]);
-      setProfitData([]);
-      setAllProfitData([]);
-    }
-  };
 
-  const loadDetailedData = async () => {
-    try {
-      // Load profit report data from single endpoint
-      const profitResponse = await fetch(`http://localhost:8001/api/v1/accounting/profit/?month=${selectedPeriod}`, {
-        method: 'GET',
-        headers: {
+      setRevenueData([]);  const loadDetailedData = async () => {
+
+      setExpenseData([]);    try {
+
+      setProfitData([]);      // Load profit report data from single endpoint
+
+      setAllProfitData([]);      const profitResponse = await fetch(`http://localhost:8001/api/v1/accounting/profit/?month=${selectedPeriod}`, {
+
+    }        method: 'GET',
+
+  };        headers: {
+
           'Content-Type': 'application/json'
-        }
-      });
 
-      if (profitResponse.ok) {
-        const profitData = await profitResponse.json();
+  const loadDetailedData = async () => {        }
 
-        setRevenueData(profitData.details.revenue || []);
-        setExpenseData(profitData.details.expenses || []);
-        setProfitData([{
+    try {      });
+
+      // Load profit report data from single endpoint
+
+      const profitResponse = await fetch(`http://localhost:8001/api/v1/accounting/profit/?month=${selectedPeriod}`, {      if (profitResponse.ok) {
+
+        method: 'GET',        const profitData = await profitResponse.json();
+
+        headers: {
+
+          'Content-Type': 'application/json'        setRevenueData(profitData.details.revenue || []);
+
+        }        setExpenseData(profitData.details.expenses || []);
+
+      });        setProfitData([{
+
           month: selectedPeriod,
-          revenue: profitData.summary.total_revenue,
-          expenses: profitData.summary.total_expenses,
-          profit: profitData.summary.total_profit,
-          profitMargin: profitData.summary.profit_margin
-        }]);
-        setSummaryStats({
-          totalRevenue: profitData.summary.total_revenue,
-          totalExpenses: profitData.summary.total_expenses,
-          totalProfit: profitData.summary.total_profit,
-          profitMargin: profitData.summary.profit_margin,
-          invoiceCount: profitData.summary.revenue_count || 0,
-          expenseCount: profitData.summary.expense_count || 0,
-          productCount: 0, // This might not be available in detailed data
-          revenueGrowth: 0,
-          expenseGrowth: 0
-        });
-      } else {
-        console.error('Error loading profit data');
-        setRevenueData([]);
-        setExpenseData([]);
-        setProfitData([]);
-      }
-    } catch (error) {
-      console.error('Error loading detailed data:', error);
-      setRevenueData([]);
-      setExpenseData([]);
-      setProfitData([]);
-    }
-  };
 
-  const syncAllData = async () => {
-    try {
-      setSyncing(true);
+      if (profitResponse.ok) {          revenue: profitData.summary.total_revenue,
+
+        const profitData = await profitResponse.json();          expenses: profitData.summary.total_expenses,
+
+          profit: profitData.summary.total_profit,
+
+        setRevenueData(profitData.details.revenue || []);          profitMargin: profitData.summary.profit_margin
+
+        setExpenseData(profitData.details.expenses || []);        }]);
+
+        setProfitData([{        setSummaryStats({
+
+          month: selectedPeriod,          totalRevenue: profitData.summary.total_revenue,
+
+          revenue: profitData.summary.total_revenue,          totalExpenses: profitData.summary.total_expenses,
+
+          expenses: profitData.summary.total_expenses,          totalProfit: profitData.summary.total_profit,
+
+          profit: profitData.summary.total_profit,          profitMargin: profitData.summary.profit_margin,
+
+          profitMargin: profitData.summary.profit_margin          invoiceCount: profitData.summary.revenue_count || 0,
+
+        }]);          expenseCount: profitData.summary.expense_count || 0,
+
+        setSummaryStats({          productCount: 0, // This might not be available in detailed data
+
+          totalRevenue: profitData.summary.total_revenue,          revenueGrowth: 0,
+
+          totalExpenses: profitData.summary.total_expenses,          expenseGrowth: 0
+
+          totalProfit: profitData.summary.total_profit,        });
+
+          profitMargin: profitData.summary.profit_margin,      } else {
+
+          invoiceCount: profitData.summary.revenue_count || 0,        console.error('Error loading profit data');
+
+          expenseCount: profitData.summary.expense_count || 0,        setRevenueData([]);
+
+          productCount: 0, // This might not be available in detailed data        setExpenseData([]);
+
+          revenueGrowth: 0,        setProfitData([]);
+
+          expenseGrowth: 0      }
+
+        });    } catch (error) {
+
+      } else {      console.error('Error loading detailed data:', error);
+
+        console.error('Error loading profit data');      setRevenueData([]);
+
+        setRevenueData([]);      setExpenseData([]);
+
+        setExpenseData([]);      setProfitData([]);
+
+        setProfitData([]);    }
+
+      }  };
+
+    } catch (error) {
+
+      console.error('Error loading detailed data:', error);  const syncAllData = async () => {
+
+      setRevenueData([]);    try {
+
+      setExpenseData([]);      setSyncing(true);
+
+      setProfitData([]);
+
+    }      // Call sync all endpoint
+
+  };      const syncResponse = await fetch('http://localhost:8001/api/v1/accounting/profits/sync_all/', {
+
+        method: 'POST',
+
+  const syncAllData = async () => {        headers: {
+
+    try {          'Content-Type': 'application/json'
+
+      setSyncing(true);        }
+
+      });
 
       // Call sync all endpoint
-      const syncResponse = await fetch('http://localhost:8001/api/v1/accounting/profits/sync_all/', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        }
-      });
 
-      if (syncResponse.ok) {
-        const syncResult = await syncResponse.json();
-        console.log('Sync completed:', syncResult);
-        alert(`Đã đồng bộ ${syncResult.months_processed} tháng thành công!`);
-        // Reload data after sync
-        await loadData();
+      const syncResponse = await fetch('http://localhost:8001/api/v1/accounting/profits/sync_all/', {      if (syncResponse.ok) {
+
+        method: 'POST',        const syncResult = await syncResponse.json();
+
+        headers: {        console.log('Sync completed:', syncResult);
+
+          'Content-Type': 'application/json'        alert(`Đã đồng bộ ${syncResult.months_processed} tháng thành công!`);
+
+        }        // Reload data after sync
+
+      });        await loadData();
+
       } else {
-        console.error('Error syncing data');
-        alert('Lỗi khi đồng bộ dữ liệu');
-      }
+
+      if (syncResponse.ok) {        console.error('Error syncing data');
+
+        const syncResult = await syncResponse.json();        alert('Lỗi khi đồng bộ dữ liệu');
+
+        console.log('Sync completed:', syncResult);      }
+
+        alert(`Đã đồng bộ ${syncResult.months_processed} tháng thành công!`);    } catch (error) {
+
+        // Reload data after sync      console.error('Error syncing data:', error);
+
+        await loadData();      alert('Lỗi khi đồng bộ dữ liệu');
+
+      } else {    } finally {
+
+        console.error('Error syncing data');      setSyncing(false);
+
+        alert('Lỗi khi đồng bộ dữ liệu');    }
+
+      }  };
+
     } catch (error) {
-      console.error('Error syncing data:', error);
-      alert('Lỗi khi đồng bộ dữ liệu');
-    } finally {
+
+      console.error('Error syncing data:', error);  const exportToExcel = async () => {
+
+      alert('Lỗi khi đồng bộ dữ liệu');    try {
+
+    } finally {      console.log('Starting Excel export for month:', selectedPeriod);
+
       setSyncing(false);
-    }
-  };
 
-  const exportToExcel = async () => {
-    try {
-      console.log('Starting Excel export for month:', selectedPeriod);
+    }      // Show loading state
 
-      // Show loading state
-      const exportButton = document.querySelector('button[title="Xuất Excel"]');
+  };      const exportButton = document.querySelector('button[title="Xuất Excel"]');
+
       if (exportButton) {
-        exportButton.disabled = true;
-        exportButton.innerHTML = '<div class="flex items-center space-x-2"><div class="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div><span>Đang xuất...</span></div>';
-      }
+
+  const exportToExcel = async () => {        exportButton.disabled = true;
+
+    try {        exportButton.innerHTML = '<div class="flex items-center space-x-2"><div class="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div><span>Đang xuất...</span></div>';
+
+      console.log('Starting Excel export for month:', selectedPeriod);      }
+
+
+
+      // Show loading state      // Call backend Excel export endpoint
+
+      const exportButton = document.querySelector('button[title="Xuất Excel"]');      const response = await fetch(`http://localhost:8001/api/v1/accounting/export_profit_excel/?month=${selectedPeriod}`, {
+
+      if (exportButton) {        method: 'GET',
+
+        exportButton.disabled = true;        headers: {
+
+        exportButton.innerHTML = '<div class="flex items-center space-x-2"><div class="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div><span>Đang xuất...</span></div>';          'Content-Type': 'application/json'
+
+      }        }
+
+      });
 
       // Call backend Excel export endpoint
-      const response = await fetch(`http://localhost:8001/api/v1/accounting/export_profit_excel/?month=${selectedPeriod}`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json'
+
+      const response = await fetch(`http://localhost:8001/api/v1/accounting/export_profit_excel/?month=${selectedPeriod}`, {      if (response.ok) {
+
+        method: 'GET',        // Get filename from response headers
+
+        headers: {        const contentDisposition = response.headers.get('content-disposition');
+
+          'Content-Type': 'application/json'        let filename = `bao_cao_loi_nhuan_${selectedPeriod || 'all'}.xlsx`;
+
         }
-      });
 
-      if (response.ok) {
-        // Get filename from response headers
-        const contentDisposition = response.headers.get('content-disposition');
-        let filename = `bao_cao_loi_nhuan_${selectedPeriod || 'all'}.xlsx`;
+      });        if (contentDisposition) {
 
-        if (contentDisposition) {
           const filenameMatch = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
-          if (filenameMatch && filenameMatch[1]) {
-            filename = filenameMatch[1].replace(/['"]/g, '');
-          }
-        }
 
-        // Create blob and download
-        const blob = await response.blob();
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = filename;
+      if (response.ok) {          if (filenameMatch && filenameMatch[1]) {
+
+        // Get filename from response headers            filename = filenameMatch[1].replace(/['"]/g, '');
+
+        const contentDisposition = response.headers.get('content-disposition');          }
+
+        let filename = `bao_cao_loi_nhuan_${selectedPeriod || 'all'}.xlsx`;        }
+
+
+
+        if (contentDisposition) {        // Create blob and download
+
+          const filenameMatch = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);        const blob = await response.blob();
+
+          if (filenameMatch && filenameMatch[1]) {        const url = window.URL.createObjectURL(blob);
+
+            filename = filenameMatch[1].replace(/['"]/g, '');        const a = document.createElement('a');
+
+          }        a.href = url;
+
+        }        a.download = filename;
+
         document.body.appendChild(a);
-        a.click();
-        window.URL.revokeObjectURL(url);
-        document.body.removeChild(a);
 
-        alert(`Xuất Excel thành công! File: ${filename}`);
-      } else {
-        const errorData = await response.json();
-        console.error('Export error:', errorData);
-        alert(`Lỗi xuất Excel: ${errorData.detail || 'Có lỗi xảy ra'}`);
-      }
+        // Create blob and download        a.click();
+
+        const blob = await response.blob();        window.URL.revokeObjectURL(url);
+
+        const url = window.URL.createObjectURL(blob);        document.body.removeChild(a);
+
+        const a = document.createElement('a');
+
+        a.href = url;        alert(`Xuất Excel thành công! File: ${filename}`);
+
+        a.download = filename;      } else {
+
+        document.body.appendChild(a);        const errorData = await response.json();
+
+        a.click();        console.error('Export error:', errorData);
+
+        window.URL.revokeObjectURL(url);        alert(`Lỗi xuất Excel: ${errorData.detail || 'Có lỗi xảy ra'}`);
+
+        document.body.removeChild(a);      }
+
     } catch (error) {
-      console.error('Network error during export:', error);
-      alert('Lỗi kết nối khi xuất Excel. Vui lòng thử lại.');
-    } finally {
-      // Reset button state
+
+        alert(`Xuất Excel thành công! File: ${filename}`);      console.error('Network error during export:', error);
+
+      } else {      alert('Lỗi kết nối khi xuất Excel. Vui lòng thử lại.');
+
+        const errorData = await response.json();    } finally {
+
+        console.error('Export error:', errorData);      // Reset button state
+
+        alert(`Lỗi xuất Excel: ${errorData.detail || 'Có lỗi xảy ra'}`);      const exportButton = document.querySelector('button[title="Xuất Excel"]');
+
+      }      if (exportButton) {
+
+    } catch (error) {        exportButton.disabled = false;
+
+      console.error('Network error during export:', error);        exportButton.innerHTML = '<div class="flex items-center space-x-2"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg><span>Xuất Excel</span></div>';
+
+      alert('Lỗi kết nối khi xuất Excel. Vui lòng thử lại.');      }
+
+    } finally {    }
+
+      // Reset button state  };
+
       const exportButton = document.querySelector('button[title="Xuất Excel"]');
-      if (exportButton) {
-        exportButton.disabled = false;
-        exportButton.innerHTML = '<div class="flex items-center space-x-2"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg><span>Xuất Excel</span></div>';
-      }
-    }
-  };
 
-  const exportToPDF = () => {
-    const printWindow = window.open('', '_blank');
-    const htmlContent = `
-      <!DOCTYPE html>
-      <html>
-        <head>
+      if (exportButton) {  const exportToPDF = () => {
+
+        exportButton.disabled = false;    const printWindow = window.open('', '_blank');
+
+        exportButton.innerHTML = '<div class="flex items-center space-x-2"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg><span>Xuất Excel</span></div>';    const htmlContent = `
+
+      }      <!DOCTYPE html>
+
+    }      <html>
+
+  };        <head>
+
           <title>Báo cáo lợi nhuận tháng ${selectedPeriod}</title>
-          <style>
-            body { font-family: Arial, sans-serif; margin: 20px; }
-            .header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #333; padding-bottom: 20px; }
-            .stats { display: flex; justify-content: space-around; margin: 30px 0; }
-            .stat-box { text-align: center; padding: 20px; border: 1px solid #ddd; border-radius: 8px; }
-            .stat-value { font-size: 24px; font-weight: bold; }
-            .revenue { color: #10B981; }
-            .expense { color: #EF4444; }
-            .profit { color: #3B82F6; }
-            table { width: 100%; border-collapse: collapse; margin: 20px 0; }
-            th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-            th { background-color: #f5f5f5; }
-            .summary { margin-top: 30px; padding: 20px; background-color: #f9f9f9; border-radius: 8px; }
-            .footer { margin-top: 40px; text-align: center; font-size: 12px; color: #666; }
-          </style>
+
+  const exportToPDF = () => {          <style>
+
+    const printWindow = window.open('', '_blank');            body { font-family: Arial, sans-serif; margin: 20px; }
+
+    const htmlContent = `            .header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #333; padding-bottom: 20px; }
+
+      <!DOCTYPE html>            .stats { display: flex; justify-content: space-around; margin: 30px 0; }
+
+      <html>            .stat-box { text-align: center; padding: 20px; border: 1px solid #ddd; border-radius: 8px; }
+
+        <head>            .stat-value { font-size: 24px; font-weight: bold; }
+
+          <title>Báo cáo lợi nhuận tháng ${selectedPeriod}</title>            .revenue { color: #10B981; }
+
+          <style>            .expense { color: #EF4444; }
+
+            body { font-family: Arial, sans-serif; margin: 20px; }            .profit { color: #3B82F6; }
+
+            .header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #333; padding-bottom: 20px; }            table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+
+            .stats { display: flex; justify-content: space-around; margin: 30px 0; }            th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+
+            .stat-box { text-align: center; padding: 20px; border: 1px solid #ddd; border-radius: 8px; }            th { background-color: #f5f5f5; }
+
+            .stat-value { font-size: 24px; font-weight: bold; }            .summary { margin-top: 30px; padding: 20px; background-color: #f9f9f9; border-radius: 8px; }
+
+            .revenue { color: #10B981; }            .footer { margin-top: 40px; text-align: center; font-size: 12px; color: #666; }
+
+            .expense { color: #EF4444; }          </style>
+
+            .profit { color: #3B82F6; }        </head>
+
+            table { width: 100%; border-collapse: collapse; margin: 20px 0; }        <body>
+
+            th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }          <div class="header">
+
+            th { background-color: #f5f5f5; }            <h1>BÁO CÁO LỢI NHUẬN</h1>
+
+            .summary { margin-top: 30px; padding: 20px; background-color: #f9f9f9; border-radius: 8px; }            <h2>Tháng ${selectedPeriod}</h2>
+
+            .footer { margin-top: 40px; text-align: center; font-size: 12px; color: #666; }            <p>Ngày xuất: ${new Date().toLocaleDateString('vi-VN')}</p>
+
+          </style>          </div>
+
         </head>
-        <body>
-          <div class="header">
-            <h1>BÁO CÁO LỢI NHUẬN</h1>
-            <h2>Tháng ${selectedPeriod}</h2>
-            <p>Ngày xuất: ${new Date().toLocaleDateString('vi-VN')}</p>
-          </div>
 
-          <div class="stats">
-            <div class="stat-box">
-              <div class="stat-value revenue">${summaryStats.totalRevenue.toLocaleString('vi-VN')} VND</div>
-              <div>Tổng doanh thu</div>
-            </div>
-            <div class="stat-box">
+        <body>          <div class="stats">
+
+          <div class="header">            <div class="stat-box">
+
+            <h1>BÁO CÁO LỢI NHUẬN</h1>              <div class="stat-value revenue">${summaryStats.totalRevenue.toLocaleString('vi-VN')} VND</div>
+
+            <h2>Tháng ${selectedPeriod}</h2>              <div>Tổng doanh thu</div>
+
+            <p>Ngày xuất: ${new Date().toLocaleDateString('vi-VN')}</p>            </div>
+
+          </div>            <div class="stat-box">
+
               <div class="stat-value expense">${summaryStats.totalExpenses.toLocaleString('vi-VN')} VND</div>
+
+          <div class="stats">              <div>Tổng chi phí</div>
+
+            <div class="stat-box">            </div>
+
+              <div class="stat-value revenue">${summaryStats.totalRevenue.toLocaleString('vi-VN')} VND</div>            <div class="stat-box">
+
+              <div>Tổng doanh thu</div>              <div class="stat-value profit ${summaryStats.totalProfit >= 0 ? 'revenue' : 'expense'}">${summaryStats.totalProfit.toLocaleString('vi-VN')} VND</div>
+
+            </div>              <div>Lợi nhuận</div>
+
+            <div class="stat-box">            </div>
+
+              <div class="stat-value expense">${summaryStats.totalExpenses.toLocaleString('vi-VN')} VND</div>          </div>
+
               <div>Tổng chi phí</div>
-            </div>
-            <div class="stat-box">
-              <div class="stat-value profit ${summaryStats.totalProfit >= 0 ? 'revenue' : 'expense'}">${summaryStats.totalProfit.toLocaleString('vi-VN')} VND</div>
-              <div>Lợi nhuận</div>
-            </div>
-          </div>
 
-          <div class="summary">
-            <h3>Tóm tắt</h3>
-            <p><strong>Tỷ suất lợi nhuận:</strong> ${summaryStats.profitMargin.toFixed(2)}%</p>
-            <p><strong>Số hóa đơn:</strong> ${summaryStats.invoiceCount}</p>
-            <p><strong>Số chi phí:</strong> ${summaryStats.expenseCount}</p>
-            <p><strong>Số sản phẩm:</strong> ${summaryStats.productCount}</p>
+            </div>          <div class="summary">
+
+            <div class="stat-box">            <h3>Tóm tắt</h3>
+
+              <div class="stat-value profit ${summaryStats.totalProfit >= 0 ? 'revenue' : 'expense'}">${summaryStats.totalProfit.toLocaleString('vi-VN')} VND</div>            <p><strong>Tỷ suất lợi nhuận:</strong> ${summaryStats.profitMargin.toFixed(2)}%</p>
+
+              <div>Lợi nhuận</div>            <p><strong>Số hóa đơn:</strong> ${summaryStats.invoiceCount}</p>
+
+            </div>            <p><strong>Số chi phí:</strong> ${summaryStats.expenseCount}</p>
+
+          </div>            <p><strong>Số sản phẩm:</strong> ${summaryStats.productCount}</p>
+
             <p><strong>Lợi nhuận/Hóa đơn:</strong> ${summaryStats.invoiceCount > 0 ? (summaryStats.totalProfit / summaryStats.invoiceCount).toLocaleString('vi-VN') : 0} VND</p>
-            <p><strong>Trạng thái:</strong> ${summaryStats.totalProfit >= 0 ? 'LỢI NHUẬN' : 'LỖ'}</p>
-          </div>
 
-          <h3>Báo cáo lợi nhuận tất cả các tháng</h3>
-          <table>
-            <thead>
-              <tr>
-                <th>Tháng</th>
-                <th>Doanh thu</th>
+          <div class="summary">            <p><strong>Trạng thái:</strong> ${summaryStats.totalProfit >= 0 ? 'LỢI NHUẬN' : 'LỖ'}</p>
+
+            <h3>Tóm tắt</h3>          </div>
+
+            <p><strong>Tỷ suất lợi nhuận:</strong> ${summaryStats.profitMargin.toFixed(2)}%</p>
+
+            <p><strong>Số hóa đơn:</strong> ${summaryStats.invoiceCount}</p>          <h3>Báo cáo lợi nhuận tất cả các tháng</h3>
+
+            <p><strong>Số chi phí:</strong> ${summaryStats.expenseCount}</p>          <table>
+
+            <p><strong>Số sản phẩm:</strong> ${summaryStats.productCount}</p>            <thead>
+
+            <p><strong>Lợi nhuận/Hóa đơn:</strong> ${summaryStats.invoiceCount > 0 ? (summaryStats.totalProfit / summaryStats.invoiceCount).toLocaleString('vi-VN') : 0} VND</p>              <tr>
+
+            <p><strong>Trạng thái:</strong> ${summaryStats.totalProfit >= 0 ? 'LỢI NHUẬN' : 'LỖ'}</p>                <th>Tháng</th>
+
+          </div>                <th>Doanh thu</th>
+
                 <th>Chi phí</th>
-                <th>Lợi nhuận</th>
-                <th>Tỷ suất (%)</th>
-                <th>Hóa đơn</th>
-                <th>Chi phí</th>
-                <th>Sản phẩm</th>
-                <th>Trạng thái</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${allProfitData.slice().reverse().map(report => `
-                <tr>
-                  <td>${report.report_month}</td>
-                  <td>${report.total_revenue.toLocaleString('vi-VN')} VND</td>
-                  <td>${report.total_expenses.toLocaleString('vi-VN')} VND</td>
-                  <td>${report.total_profit.toLocaleString('vi-VN')} VND</td>
-                  <td>${report.profit_margin.toFixed(2)}%</td>
-                  <td>${report.invoice_count}</td>
+
+          <h3>Báo cáo lợi nhuận tất cả các tháng</h3>                <th>Lợi nhuận</th>
+
+          <table>                <th>Tỷ suất (%)</th>
+
+            <thead>                <th>Hóa đơn</th>
+
+              <tr>                <th>Chi phí</th>
+
+                <th>Tháng</th>                <th>Sản phẩm</th>
+
+                <th>Doanh thu</th>                <th>Trạng thái</th>
+
+                <th>Chi phí</th>              </tr>
+
+                <th>Lợi nhuận</th>            </thead>
+
+                <th>Tỷ suất (%)</th>            <tbody>
+
+                <th>Hóa đơn</th>              ${allProfitData.slice().reverse().map(report => `
+
+                <th>Chi phí</th>                <tr>
+
+                <th>Sản phẩm</th>                  <td>${report.report_month}</td>
+
+                <th>Trạng thái</th>                  <td>${report.total_revenue.toLocaleString('vi-VN')} VND</td>
+
+              </tr>                  <td>${report.total_expenses.toLocaleString('vi-VN')} VND</td>
+
+            </thead>                  <td>${report.total_profit.toLocaleString('vi-VN')} VND</td>
+
+            <tbody>                  <td>${report.profit_margin.toFixed(2)}%</td>
+
+              ${allProfitData.slice().reverse().map(report => \`                  <td>${report.invoice_count}</td>
+
+                <tr>                  <td>${report.expense_count}</td>
+
+                  <td>${report.report_month}</td>                  <td>${report.product_count}</td>
+
+                  <td>${report.total_revenue.toLocaleString('vi-VN')} VND</td>                  <td>${report.total_profit >= 0 ? 'Lợi nhuận' : 'Lỗ'}</td>
+
+                  <td>${report.total_expenses.toLocaleString('vi-VN')} VND</td>                </tr>
+
+                  <td>${report.total_profit.toLocaleString('vi-VN')} VND</td>              `).join('')}
+
+                  <td>${report.profit_margin.toFixed(2)}%</td>            </tbody>
+
+                  <td>${report.invoice_count}</td>          </table>
+
                   <td>${report.expense_count}</td>
-                  <td>${report.product_count}</td>
-                  <td>${report.total_profit >= 0 ? 'Lợi nhuận' : 'Lỗ'}</td>
-                </tr>
-              `).join('')}
-            </tbody>
-          </table>
 
-          <h3>Chi tiết chi phí</h3>
-          <table>
-            <thead>
-              <tr>
-                <th>STT</th>
-                <th>Loại chi phí</th>
+                  <td>${report.product_count}</td>          <h3>Chi tiết chi phí</h3>
+
+                  <td>${report.total_profit >= 0 ? 'Lợi nhuận' : 'Lỗ'}</td>          <table>
+
+                </tr>            <thead>
+
+              \`).join('')}              <tr>
+
+            </tbody>                <th>STT</th>
+
+          </table>                <th>Loại chi phí</th>
+
                 <th>Mô tả</th>
-                <th>Số tiền</th>
-                <th>Ngày</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${expenseData.map((exp, index) => `
-                <tr>
-                  <td>${index + 1}</td>
-                  <td>${exp.loaichiphi?.tenchiphi || 'N/A'}</td>
+
+          <h3>Chi tiết chi phí</h3>                <th>Số tiền</th>
+
+          <table>                <th>Ngày</th>
+
+            <thead>              </tr>
+
+              <tr>            </thead>
+
+                <th>STT</th>            <tbody>
+
+                <th>Loại chi phí</th>              ${expenseData.map((exp, index) => `
+
+                <th>Mô tả</th>                <tr>
+
+                <th>Số tiền</th>                  <td>${index + 1}</td>
+
+                <th>Ngày</th>                  <td>${exp.loaichiphi?.tenchiphi || 'N/A'}</td>
+
+              </tr>                  <td>${exp.mo_ta || ''}</td>
+
+            </thead>                  <td>${(exp.giathanh || 0).toLocaleString('vi-VN')} VND</td>
+
+            <tbody>                  <td>${exp.created_at ? new Date(exp.created_at).toLocaleDateString('vi-VN') : ''}</td>
+
+              ${expenseData.map((exp, index) => \`                </tr>
+
+                <tr>              `).join('')}
+
+                  <td>${index + 1}</td>            </tbody>
+
+                  <td>${exp.loaichiphi?.tenchiphi || 'N/A'}</td>          </table>
+
                   <td>${exp.mo_ta || ''}</td>
-                  <td>${(exp.giathanh || 0).toLocaleString('vi-VN')} VND</td>
-                  <td>${exp.created_at ? new Date(exp.created_at).toLocaleDateString('vi-VN') : ''}</td>
-                </tr>
-              `).join('')}
-            </tbody>
-          </table>
 
-          <div class="footer">
-            <p>Báo cáo được tạo tự động bởi hệ thống quản lý</p>
-          </div>
-        </body>
+                  <td>${(exp.giathanh || 0).toLocaleString('vi-VN')} VND</td>          <div class="footer">
+
+                  <td>${exp.created_at ? new Date(exp.created_at).toLocaleDateString('vi-VN') : ''}</td>            <p>Báo cáo được tạo tự động bởi hệ thống quản lý</p>
+
+                </tr>          </div>
+
+              \`).join('')}        </body>
+
+            </tbody>      </html>
+
+          </table>    `;
+
+
+
+          <div class="footer">    printWindow.document.write(htmlContent);
+
+            <p>Báo cáo được tạo tự động bởi hệ thống quản lý</p>    printWindow.document.close();
+
+          </div>    printWindow.print();
+
+        </body>  };
+
       </html>
-    `;
 
-    printWindow.document.write(htmlContent);
-    printWindow.document.close();
-    printWindow.print();
-  };
+    `;  if (loading) {
 
-  if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-50">
+
+    printWindow.document.write(htmlContent);      <div className="flex items-center justify-center min-h-screen bg-gray-50">
+
+    printWindow.document.close();        <div className="flex items-center space-x-3">
+
+    printWindow.print();          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+
+  };          <p className="text-lg text-gray-700">Đang tải dữ liệu...</p>
+
+        </div>
+
+  if (loading) {      </div>
+
+    return (    );
+
+      <div className="flex items-center justify-center min-h-screen bg-gray-50">  }
+
         <div className="flex items-center space-x-3">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-          <p className="text-lg text-gray-700">Đang tải dữ liệu...</p>
-        </div>
-      </div>
-    );
-  }
 
-  return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-6">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>  return (
+
+          <p className="text-lg text-gray-700">Đang tải dữ liệu...</p>    <div className="min-h-screen bg-gray-50">
+
+        </div>      {/* Header */}
+
+      </div>      <div className="bg-white shadow-sm border-b">
+
+    );        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+
+  }          <div className="flex justify-between items-center py-6">
+
             <div>
-              <h1 className="text-3xl font-bold text-gray-900 flex items-center">
-                <Target className="w-8 h-8 mr-3 text-blue-600" />
-                Báo cáo lợi nhuận
-              </h1>
-              <p className="text-gray-600 mt-1">Phân tích doanh thu, chi phí và lợi nhuận</p>
-            </div>
-            <div className="flex items-center space-x-4">
-              <div className="text-right">
-                <p className="text-sm text-gray-600">Xin chào</p>
-                <p className="text-lg font-semibold text-gray-900">{user?.email}</p>
-              </div>
-              <div className="flex items-center space-x-2">
-                <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-                <span className="text-sm text-gray-600">Trực tuyến</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
 
-      {/* Controls */}
-      <div className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between py-4 space-y-4 lg:space-y-0">
-            <div className="flex items-center space-x-4">
-              <div>
+  return (              <h1 className="text-3xl font-bold text-gray-900 flex items-center">
+
+    <div className="min-h-screen bg-gray-50">                <Target className="w-8 h-8 mr-3 text-blue-600" />
+
+      <ProfitHeader user={user} />                Báo cáo lợi nhuận
+
+      <ProfitControls              </h1>
+
+        selectedPeriod={selectedPeriod}              <p className="text-gray-600 mt-1">Phân tích doanh thu, chi phí và lợi nhuận</p>
+
+        setSelectedPeriod={setSelectedPeriod}            </div>
+
+        loadData={loadData}            <div className="flex items-center space-x-4">
+
+        syncAllData={syncAllData}              <div className="text-right">
+
+        syncing={syncing}                <p className="text-sm text-gray-600">Xin chào</p>
+
+        exportToExcel={exportToExcel}                <p className="text-lg font-semibold text-gray-900">{user?.email}</p>
+
+        exportToPDF={exportToPDF}              </div>
+
+      />              <div className="flex items-center space-x-2">
+
+                <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+
+      {/* Content */}                <span className="text-sm text-gray-600">Trực tuyến</span>
+
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">              </div>
+
+        <ProfitStatsCards summaryStats={summaryStats} selectedPeriod={selectedPeriod} />            </div>
+
+        <ProfitCharts profitData={profitData} summaryStats={summaryStats} selectedPeriod={selectedPeriod} />          </div>
+
+        <ProfitMetrics summaryStats={summaryStats} selectedPeriod={selectedPeriod} allProfitData={allProfitData} />        </div>
+
+        <ProfitStatus summaryStats={summaryStats} selectedPeriod={selectedPeriod} />      </div>
+
+        <ProfitTables revenueData={revenueData} expenseData={expenseData} />
+
+        <ProfitReportsTable allProfitData={allProfitData} selectedPeriod={selectedPeriod} />      {/* Controls */}
+
+        <ProfitSummary summaryStats={summaryStats} selectedPeriod={selectedPeriod} />      <div className="bg-white shadow-sm border-b">
+
+      </div>        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+
+    </div>          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between py-4 space-y-4 lg:space-y-0">
+
+  );            <div className="flex items-center space-x-4">
+
+}              <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Chọn tháng</label>
                 <input
                   type="month"
