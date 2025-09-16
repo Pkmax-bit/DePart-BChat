@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
-import { Plus, Edit, Trash2, DollarSign, Receipt, CreditCard, FileText, Info, Calendar, BarChart3, History, Settings, RotateCcw, Save, RefreshCw, Download, Users, Wrench, Eye, EyeOff, X, Package, TrendingDown, Calculator, User, FileSpreadsheet, Clock, Search } from 'lucide-react';
+import { Plus, Edit, Trash2, DollarSign, Receipt, CreditCard, FileText, Info, Calendar, BarChart3, History, Settings, RotateCcw, Save, RefreshCw, Download, Users, Wrench, Eye, EyeOff, X, Package, TrendingDown, Calculator, User, FileSpreadsheet, Clock, Search, Phone, MapPin } from 'lucide-react';
 import * as XLSX from 'xlsx';
 
 const supabase = createClientComponentClient();
@@ -26,16 +26,16 @@ function SalaryLayout({ user, activeTab, onTabChange, selectedMonth, onMonthChan
           <div className="flex justify-between items-center py-6">
             <div>
               <h1 className="text-3xl font-bold text-gray-900">Quản lý Tính lương</h1>
-              <p className="text-gray-600 mt-1">Tính toán và quản lý lương nhân viên</p>
+              <p className="text-gray-900 mt-1">Tính toán và quản lý lương nhân viên</p>
             </div>
             <div className="flex items-center space-x-4">
               <div className="text-right">
-                <p className="text-sm text-gray-600">Xin chào</p>
+                <p className="text-sm text-gray-900">Xin chào</p>
                 <p className="text-lg font-semibold text-gray-900">{user?.email || user?.username || 'Người dùng'}</p>
               </div>
               <div className="flex items-center space-x-2">
                 <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-                <span className="text-sm text-gray-600">Trực tuyến</span>
+                <span className="text-sm text-gray-900">Trực tuyến</span>
               </div>
             </div>
           </div>
@@ -48,8 +48,8 @@ function SalaryLayout({ user, activeTab, onTabChange, selectedMonth, onMonthChan
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between py-4 space-y-4 sm:space-y-0">
             <div className="flex items-center space-x-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center">
-                  <Calendar className="w-4 h-4 mr-2 text-gray-500" />
+                <label className="block text-sm font-medium text-gray-900 mb-2 flex items-center">
+                  <Calendar className="w-4 h-4 mr-2 text-gray-900" />
                   Chọn tháng
                 </label>
                 <input
@@ -69,7 +69,7 @@ function SalaryLayout({ user, activeTab, onTabChange, selectedMonth, onMonthChan
                 </button>
               </div>
             </div>
-            <div className="text-sm text-gray-600">
+            <div className="text-sm text-gray-900">
               <span className="font-medium">Đang xem:</span> Tháng {selectedMonth}
             </div>
           </div>
@@ -89,7 +89,7 @@ function SalaryLayout({ user, activeTab, onTabChange, selectedMonth, onMonthChan
                   className={`flex items-center space-x-3 py-4 px-1 border-b-2 font-medium text-sm transition-colors duration-200 ${
                     activeTab === tab.id
                       ? 'border-purple-500 text-purple-600'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                      : 'border-transparent text-gray-900 hover:text-gray-700 hover:border-gray-300'
                   }`}
                 >
                   <Icon className="w-5 h-5" />
@@ -124,7 +124,7 @@ function SalaryOverviewTab({ salaryData, selectedMonth }) {
               <Calculator className="w-6 h-6 text-purple-600" />
             </div>
             <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">Tổng lương</p>
+              <p className="text-sm font-medium text-gray-900">Tổng lương</p>
               <p className="text-2xl font-bold text-purple-600">{totalSalary.toLocaleString('vi-VN')} VND</p>
             </div>
           </div>
@@ -136,7 +136,7 @@ function SalaryOverviewTab({ salaryData, selectedMonth }) {
               <Users className="w-6 h-6 text-green-600" />
             </div>
             <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">Số nhân viên</p>
+              <p className="text-sm font-medium text-gray-900">Số nhân viên</p>
               <p className="text-2xl font-bold text-gray-900">{employeeCount}</p>
             </div>
           </div>
@@ -148,7 +148,7 @@ function SalaryOverviewTab({ salaryData, selectedMonth }) {
               <DollarSign className="w-6 h-6 text-blue-600" />
             </div>
             <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">Lương trung bình</p>
+              <p className="text-sm font-medium text-gray-900">Lương trung bình</p>
               <p className="text-2xl font-bold text-gray-900">
                 {employeeCount > 0 ? (totalSalary / employeeCount).toLocaleString('vi-VN') : 0} VND
               </p>
@@ -162,7 +162,7 @@ function SalaryOverviewTab({ salaryData, selectedMonth }) {
               <BarChart3 className="w-6 h-6 text-orange-600" />
             </div>
             <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">Tháng</p>
+              <p className="text-sm font-medium text-gray-900">Tháng</p>
               <p className="text-2xl font-bold text-gray-900">{selectedMonth}</p>
             </div>
           </div>
@@ -178,7 +178,7 @@ function SalaryOverviewTab({ salaryData, selectedMonth }) {
         {salaryData.length === 0 ? (
           <div className="text-center py-12">
             <Calculator className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-            <p className="text-gray-500">Chưa có dữ liệu lương cho tháng này</p>
+            <p className="text-gray-900">Chưa có dữ liệu lương cho tháng này</p>
           </div>
         ) : (
           <div className="divide-y divide-gray-200">
@@ -191,12 +191,12 @@ function SalaryOverviewTab({ salaryData, selectedMonth }) {
                     </div>
                     <div>
                       <h4 className="font-medium text-gray-900">{salary.ma_nv}</h4>
-                      <p className="text-sm text-gray-600">Kỳ: {salary.ky_tinh_luong}</p>
+                      <p className="text-sm text-gray-900">Kỳ: {salary.ky_tinh_luong}</p>
                     </div>
                   </div>
                   <div className="text-right">
                     <p className="font-bold text-purple-600">{(salary.luong_thuc_nhan || 0).toLocaleString('vi-VN')} VND</p>
-                    <p className="text-sm text-gray-600">Thực nhận</p>
+                    <p className="text-sm text-gray-900">Thực nhận</p>
                   </div>
                 </div>
               </div>
@@ -308,7 +308,7 @@ function SalaryCalculationTab({ selectedMonth, onSalaryUpdate }) {
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Nhân viên</label>
+            <label className="block text-sm font-medium text-gray-900 mb-1">Nhân viên</label>
             <select
               value={selectedEmployee}
               onChange={(e) => setSelectedEmployee(e.target.value)}
@@ -324,7 +324,7 @@ function SalaryCalculationTab({ selectedMonth, onSalaryUpdate }) {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Tháng</label>
+            <label className="block text-sm font-medium text-gray-900 mb-1">Tháng</label>
             <input
               type="month"
               value={selectedMonth}
@@ -360,7 +360,7 @@ function SalaryCalculationTab({ selectedMonth, onSalaryUpdate }) {
         <div className="bg-white shadow rounded-lg overflow-hidden">
           <div className="px-6 py-4 bg-gray-50 border-b border-gray-200">
             <h2 className="text-lg font-medium text-gray-900">Phiếu lương</h2>
-            <p className="mt-1 text-sm text-gray-600">
+            <p className="mt-1 text-sm text-gray-900">
               {getEmployeeName(payslip.ma_nv)} - Kỳ {payslip.ky_tinh_luong}
             </p>
           </div>
@@ -372,15 +372,15 @@ function SalaryCalculationTab({ selectedMonth, onSalaryUpdate }) {
                 <h3 className="text-md font-medium text-gray-900 mb-3">Thông tin cơ bản</h3>
                 <dl className="space-y-2">
                   <div className="flex justify-between">
-                    <dt className="text-sm text-gray-600">Mã nhân viên:</dt>
+                    <dt className="text-sm text-gray-900">Mã nhân viên:</dt>
                     <dd className="text-sm font-medium text-gray-900">{payslip.ma_nv}</dd>
                   </div>
                   <div className="flex justify-between">
-                    <dt className="text-sm text-gray-600">Họ tên:</dt>
+                    <dt className="text-sm text-gray-900">Họ tên:</dt>
                     <dd className="text-sm font-medium text-gray-900">{getEmployeeName(payslip.ma_nv)}</dd>
                   </div>
                   <div className="flex justify-between">
-                    <dt className="text-sm text-gray-600">Kỳ tính lương:</dt>
+                    <dt className="text-sm text-gray-900">Kỳ tính lương:</dt>
                     <dd className="text-sm font-medium text-gray-900">{payslip.ky_tinh_luong}</dd>
                   </div>
                 </dl>
@@ -392,7 +392,7 @@ function SalaryCalculationTab({ selectedMonth, onSalaryUpdate }) {
                 <dl className="space-y-2">
                   {payslip.chi_tiet_thu_nhap && Object.entries(payslip.chi_tiet_thu_nhap).map(([key, value]) => (
                     <div key={key} className="flex justify-between">
-                      <dt className="text-sm text-gray-600">{key}:</dt>
+                      <dt className="text-sm text-gray-900">{key}:</dt>
                       <dd className="text-sm font-medium text-gray-900">{formatCurrency(value)}</dd>
                     </div>
                   ))}
@@ -409,7 +409,7 @@ function SalaryCalculationTab({ selectedMonth, onSalaryUpdate }) {
                 <dl className="space-y-2">
                   {payslip.chi_tiet_khau_tru && Object.entries(payslip.chi_tiet_khau_tru).map(([key, value]) => (
                     <div key={key} className="flex justify-between">
-                      <dt className="text-sm text-gray-600">{key}:</dt>
+                      <dt className="text-sm text-gray-900">{key}:</dt>
                       <dd className="text-sm font-medium text-red-600">-{formatCurrency(value)}</dd>
                     </div>
                   ))}
@@ -440,7 +440,7 @@ function SalaryCalculationTab({ selectedMonth, onSalaryUpdate }) {
           <div className="text-center">
             <Calculator className="mx-auto h-12 w-12 text-gray-400" />
             <h3 className="mt-2 text-sm font-medium text-gray-900">Chưa có phiếu lương</h3>
-            <p className="mt-1 text-sm text-gray-500">Chọn nhân viên và tính lương</p>
+            <p className="mt-1 text-sm text-gray-900">Chọn nhân viên và tính lương</p>
           </div>
         </div>
       )}
@@ -473,7 +473,7 @@ function SalaryReportsTab({ salaryData, selectedMonth }) {
       <div className="flex justify-between items-center">
         <div>
           <h2 className="text-2xl font-bold text-gray-900">Báo cáo lương tháng {selectedMonth}</h2>
-          <p className="text-gray-600 mt-1">Xuất báo cáo lương nhân viên</p>
+          <p className="text-gray-900 mt-1">Xuất báo cáo lương nhân viên</p>
         </div>
         <button
           onClick={exportToExcel}
@@ -491,19 +491,19 @@ function SalaryReportsTab({ salaryData, selectedMonth }) {
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-900 uppercase tracking-wider">
                   Nhân viên
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-900 uppercase tracking-wider">
                   Kỳ tính lương
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-900 uppercase tracking-wider">
                   Tổng thu nhập
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-900 uppercase tracking-wider">
                   Tổng khấu trừ
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-900 uppercase tracking-wider">
                   Lương thực nhận
                 </th>
               </tr>
@@ -514,7 +514,7 @@ function SalaryReportsTab({ salaryData, selectedMonth }) {
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                     {salary.ma_nv}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     {salary.ky_tinh_luong}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
@@ -535,7 +535,7 @@ function SalaryReportsTab({ salaryData, selectedMonth }) {
         {salaryData.length === 0 && (
           <div className="text-center py-12">
             <FileSpreadsheet className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-            <p className="text-gray-500">Chưa có dữ liệu lương để xuất báo cáo</p>
+            <p className="text-gray-900">Chưa có dữ liệu lương để xuất báo cáo</p>
           </div>
         )}
       </div>
@@ -678,7 +678,7 @@ function EmployeesTab() {
       <div className="flex justify-between items-center">
         <div>
           <h2 className="text-2xl font-bold text-gray-900">Quản lý nhân viên</h2>
-          <p className="text-gray-600 mt-1">Thêm, sửa, xóa thông tin nhân viên</p>
+          <p className="text-gray-900 mt-1">Thêm, sửa, xóa thông tin nhân viên</p>
         </div>
         <button
           onClick={() => {
@@ -717,25 +717,25 @@ function EmployeesTab() {
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-900 uppercase tracking-wider">
                   Mã NV
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-900 uppercase tracking-wider">
                   Họ tên
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-900 uppercase tracking-wider">
                   Chức vụ
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-900 uppercase tracking-wider">
                   Phòng ban
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-900 uppercase tracking-wider">
                   Lương hợp đồng
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-900 uppercase tracking-wider">
                   Email
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-900 uppercase tracking-wider">
                   Thao tác
                 </th>
               </tr>
@@ -749,16 +749,16 @@ function EmployeesTab() {
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     {employee.ho_ten}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     {employee.chuc_vu}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     {employee.phong_ban}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     {employee.luong_hop_dong?.toLocaleString('vi-VN')} VND
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     {employee.email}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
@@ -787,7 +787,7 @@ function EmployeesTab() {
           <div className="text-center py-12">
             <Users className="w-12 h-12 text-gray-400 mx-auto mb-4" />
             <h3 className="mt-2 text-sm font-medium text-gray-900">Không có nhân viên</h3>
-            <p className="mt-1 text-sm text-gray-500">
+            <p className="mt-1 text-sm text-gray-900">
               {searchTerm ? 'Không tìm thấy nhân viên phù hợp.' : 'Bắt đầu bằng cách thêm nhân viên đầu tiên.'}
             </p>
           </div>
@@ -796,142 +796,393 @@ function EmployeesTab() {
 
       {/* Add/Edit Modal */}
       {showAddModal && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-          <div className="relative top-20 mx-auto p-5 border w-11/12 max-w-2xl shadow-lg rounded-md bg-white">
-            <div className="mt-3">
-              <h3 className="text-lg font-medium text-gray-900 mb-4">
-                {editingEmployee ? 'Sửa nhân viên' : 'Thêm nhân viên mới'}
-              </h3>
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Mã nhân viên *</label>
-                    <input
-                      type="text"
-                      required
-                      value={formData.ma_nv}
-                      onChange={(e) => setFormData({...formData, ma_nv: e.target.value})}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                      disabled={!!editingEmployee}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Họ tên *</label>
-                    <input
-                      type="text"
-                      required
-                      value={formData.ho_ten}
-                      onChange={(e) => setFormData({...formData, ho_ten: e.target.value})}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Chức vụ</label>
-                    <input
-                      type="text"
-                      value={formData.chuc_vu}
-                      onChange={(e) => setFormData({...formData, chuc_vu: e.target.value})}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Phòng ban</label>
-                    <input
-                      type="text"
-                      value={formData.phong_ban}
-                      onChange={(e) => setFormData({...formData, phong_ban: e.target.value})}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Lương hợp đồng *</label>
-                    <input
-                      type="number"
-                      required
-                      value={formData.luong_hop_dong}
-                      onChange={(e) => setFormData({...formData, luong_hop_dong: e.target.value})}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Mức lương đóng BHXH *</label>
-                    <input
-                      type="number"
-                      required
-                      value={formData.muc_luong_dong_bhxh}
-                      onChange={(e) => setFormData({...formData, muc_luong_dong_bhxh: e.target.value})}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Số người phụ thuộc</label>
-                    <input
-                      type="number"
-                      min="0"
-                      value={formData.so_nguoi_phu_thuoc}
-                      onChange={(e) => setFormData({...formData, so_nguoi_phu_thuoc: e.target.value})}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Ngày vào làm</label>
-                    <input
-                      type="date"
-                      value={formData.ngay_vao_lam}
-                      onChange={(e) => setFormData({...formData, ngay_vao_lam: e.target.value})}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                    <input
-                      type="email"
-                      value={formData.email}
-                      onChange={(e) => setFormData({...formData, email: e.target.value})}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Điện thoại</label>
-                    <input
-                      type="tel"
-                      value={formData.dien_thoai}
-                      onChange={(e) => setFormData({...formData, dien_thoai: e.target.value})}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                    />
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Địa chỉ</label>
-                  <textarea
-                    value={formData.dia_chi}
-                    onChange={(e) => setFormData({...formData, dia_chi: e.target.value})}
-                    rows={3}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                  />
-                </div>
-                <div className="flex justify-end space-x-3 pt-4">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowAddModal(false);
-                      setEditingEmployee(null);
-                      resetForm();
-                    }}
-                    className="px-4 py-2 text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200"
-                  >
-                    Hủy
-                  </button>
-                  <button
-                    type="submit"
-                    className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
-                  >
-                    {editingEmployee ? 'Cập nhật' : 'Thêm'}
-                  </button>
-                </div>
-              </form>
+        <div className="bg-gradient-to-r from-purple-100 to-indigo-100 rounded-2xl p-8 border-2 border-purple-200 mb-8">
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center space-x-3">
+              <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center">
+                <Users className="w-6 h-6 text-purple-600" />
+              </div>
+              <div>
+                <h3 className="text-2xl font-bold text-gray-900">
+                  {editingEmployee ? 'Chỉnh sửa nhân viên' : 'Thêm nhân viên mới'}
+                </h3>
+                <p className="text-purple-700 mt-1">Thêm thông tin nhân viên vào hệ thống</p>
+              </div>
             </div>
+            <button
+              onClick={() => {
+                setShowAddModal(false);
+                setEditingEmployee(null);
+                resetForm();
+              }}
+              className="w-10 h-10 bg-white hover:bg-gray-50 rounded-xl flex items-center justify-center transition-all duration-200 shadow-sm hover:shadow-md"
+              title="Đóng"
+            >
+              <X className="w-5 h-5 text-gray-500" />
+            </button>
           </div>
+
+          <form onSubmit={handleSubmit} className="space-y-8">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              {/* Ma NV Field */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-800 mb-3 flex items-center">
+                  <span className="w-6 h-6 bg-blue-100 rounded-lg flex items-center justify-center mr-3">
+                    <span className="text-xs text-blue-600">🏷️</span>
+                  </span>
+                  Mã nhân viên
+                  <span className="text-red-500 ml-1">*</span>
+                </label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    required
+                    value={formData.ma_nv}
+                    onChange={(e) => setFormData({...formData, ma_nv: e.target.value})}
+                    className="w-full pl-5 pr-12 py-4 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 bg-white text-gray-900 placeholder-gray-500 text-lg"
+                    placeholder="Ví dụ: NV001"
+                    disabled={!!editingEmployee}
+                  />
+                  <div className="absolute right-4 top-4 text-gray-400">
+                    <Users className="w-6 h-6" />
+                  </div>
+                </div>
+                <p className="text-sm text-gray-600 mt-2 flex items-center">
+                  <span className="w-4 h-4 bg-gray-100 rounded-full flex items-center justify-center mr-2">
+                    <span className="text-xs">💡</span>
+                  </span>
+                  Mã nhân viên không thể thay đổi sau khi tạo
+                </p>
+              </div>
+
+              {/* Ho ten Field */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-800 mb-3 flex items-center">
+                  <span className="w-6 h-6 bg-green-100 rounded-lg flex items-center justify-center mr-3">
+                    <span className="text-xs text-green-600">👤</span>
+                  </span>
+                  Họ tên
+                  <span className="text-red-500 ml-1">*</span>
+                </label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    required
+                    value={formData.ho_ten}
+                    onChange={(e) => setFormData({...formData, ho_ten: e.target.value})}
+                    className="w-full pl-5 pr-12 py-4 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 bg-white text-gray-900 placeholder-gray-500 text-lg"
+                    placeholder="Nhập họ tên đầy đủ"
+                  />
+                  <div className="absolute right-4 top-4 text-gray-400">
+                    <User className="w-6 h-6" />
+                  </div>
+                </div>
+                <p className="text-sm text-gray-600 mt-2 flex items-center">
+                  <span className="w-4 h-4 bg-gray-100 rounded-full flex items-center justify-center mr-2">
+                    <span className="text-xs">💡</span>
+                  </span>
+                  Nhập họ tên đầy đủ của nhân viên
+                </p>
+              </div>
+
+              {/* Chuc vu Field */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-800 mb-3 flex items-center">
+                  <span className="w-6 h-6 bg-yellow-100 rounded-lg flex items-center justify-center mr-3">
+                    <span className="text-xs text-yellow-600">💼</span>
+                  </span>
+                  Chức vụ
+                </label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={formData.chuc_vu}
+                    onChange={(e) => setFormData({...formData, chuc_vu: e.target.value})}
+                    className="w-full pl-5 pr-12 py-4 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 bg-white text-gray-900 placeholder-gray-500 text-lg"
+                    placeholder="Ví dụ: Nhân viên kinh doanh"
+                  />
+                  <div className="absolute right-4 top-4 text-gray-400">
+                    <Wrench className="w-6 h-6" />
+                  </div>
+                </div>
+                <p className="text-sm text-gray-600 mt-2 flex items-center">
+                  <span className="w-4 h-4 bg-gray-100 rounded-full flex items-center justify-center mr-2">
+                    <span className="text-xs">💡</span>
+                  </span>
+                  Chức vụ hiện tại của nhân viên
+                </p>
+              </div>
+
+              {/* Phong ban Field */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-800 mb-3 flex items-center">
+                  <span className="w-6 h-6 bg-indigo-100 rounded-lg flex items-center justify-center mr-3">
+                    <span className="text-xs text-indigo-600">🏢</span>
+                  </span>
+                  Phòng ban
+                </label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={formData.phong_ban}
+                    onChange={(e) => setFormData({...formData, phong_ban: e.target.value})}
+                    className="w-full pl-5 pr-12 py-4 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 bg-white text-gray-900 placeholder-gray-500 text-lg"
+                    placeholder="Ví dụ: Phòng kinh doanh"
+                  />
+                  <div className="absolute right-4 top-4 text-gray-400">
+                    <Package className="w-6 h-6" />
+                  </div>
+                </div>
+                <p className="text-sm text-gray-600 mt-2 flex items-center">
+                  <span className="w-4 h-4 bg-gray-100 rounded-full flex items-center justify-center mr-2">
+                    <span className="text-xs">💡</span>
+                  </span>
+                  Phòng ban mà nhân viên đang công tác
+                </p>
+              </div>
+
+              {/* Luong hop dong Field */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-800 mb-3 flex items-center">
+                  <span className="w-6 h-6 bg-red-100 rounded-lg flex items-center justify-center mr-3">
+                    <span className="text-xs text-red-600">💰</span>
+                  </span>
+                  Lương hợp đồng
+                  <span className="text-red-500 ml-1">*</span>
+                </label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    required
+                    value={formData.luong_hop_dong ? Number(formData.luong_hop_dong).toLocaleString('vi-VN') : ''}
+                    onChange={(e) => {
+                      const value = e.target.value.replace(/[.,\s]/g, '');
+                      if (!isNaN(value) && value !== '') {
+                        setFormData({...formData, luong_hop_dong: parseFloat(value)});
+                      } else if (value === '') {
+                        setFormData({...formData, luong_hop_dong: ''});
+                      }
+                    }}
+                    className="w-full pl-5 pr-12 py-4 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 bg-white text-gray-900 placeholder-gray-500 text-lg"
+                    placeholder="0"
+                  />
+                  <div className="absolute right-4 top-4 text-gray-400">
+                    <DollarSign className="w-6 h-6" />
+                  </div>
+                </div>
+                <p className="text-sm text-gray-600 mt-2 flex items-center">
+                  <span className="w-4 h-4 bg-gray-100 rounded-full flex items-center justify-center mr-2">
+                    <span className="text-xs">💡</span>
+                  </span>
+                  Lương cơ bản theo hợp đồng lao động
+                </p>
+              </div>
+
+              {/* Muc luong dong BHXH Field */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-800 mb-3 flex items-center">
+                  <span className="w-6 h-6 bg-orange-100 rounded-lg flex items-center justify-center mr-3">
+                    <span className="text-xs text-orange-600">📊</span>
+                  </span>
+                  Mức lương đóng BHXH
+                  <span className="text-red-500 ml-1">*</span>
+                </label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    required
+                    value={formData.muc_luong_dong_bhxh ? Number(formData.muc_luong_dong_bhxh).toLocaleString('vi-VN') : ''}
+                    onChange={(e) => {
+                      const value = e.target.value.replace(/[.,\s]/g, '');
+                      if (!isNaN(value) && value !== '') {
+                        setFormData({...formData, muc_luong_dong_bhxh: parseFloat(value)});
+                      } else if (value === '') {
+                        setFormData({...formData, muc_luong_dong_bhxh: ''});
+                      }
+                    }}
+                    className="w-full pl-5 pr-12 py-4 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 bg-white text-gray-900 placeholder-gray-500 text-lg"
+                    placeholder="0"
+                  />
+                  <div className="absolute right-4 top-4 text-gray-400">
+                    <Calculator className="w-6 h-6" />
+                  </div>
+                </div>
+                <p className="text-sm text-gray-600 mt-2 flex items-center">
+                  <span className="w-4 h-4 bg-gray-100 rounded-full flex items-center justify-center mr-2">
+                    <span className="text-xs">💡</span>
+                  </span>
+                  Mức lương dùng để tính bảo hiểm xã hội
+                </p>
+              </div>
+
+              {/* So nguoi phu thuoc Field */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-800 mb-3 flex items-center">
+                  <span className="w-6 h-6 bg-teal-100 rounded-lg flex items-center justify-center mr-3">
+                    <span className="text-xs text-teal-600">👨‍👩‍👧‍👦</span>
+                  </span>
+                  Số người phụ thuộc
+                </label>
+                <div className="relative">
+                  <input
+                    type="number"
+                    min="0"
+                    value={formData.so_nguoi_phu_thuoc}
+                    onChange={(e) => setFormData({...formData, so_nguoi_phu_thuoc: e.target.value})}
+                    className="w-full pl-5 pr-12 py-4 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 bg-white text-gray-900 placeholder-gray-500 text-lg"
+                    placeholder="0"
+                  />
+                  <div className="absolute right-4 top-4 text-gray-400">
+                    <Users className="w-6 h-6" />
+                  </div>
+                </div>
+                <p className="text-sm text-gray-600 mt-2 flex items-center">
+                  <span className="w-4 h-4 bg-gray-100 rounded-full flex items-center justify-center mr-2">
+                    <span className="text-xs">💡</span>
+                  </span>
+                  Số người phụ thuộc để tính thuế thu nhập cá nhân
+                </p>
+              </div>
+
+              {/* Ngay vao lam Field */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-800 mb-3 flex items-center">
+                  <span className="w-6 h-6 bg-pink-100 rounded-lg flex items-center justify-center mr-3">
+                    <span className="text-xs text-pink-600">📅</span>
+                  </span>
+                  Ngày vào làm
+                </label>
+                <div className="relative">
+                  <input
+                    type="date"
+                    value={formData.ngay_vao_lam}
+                    onChange={(e) => setFormData({...formData, ngay_vao_lam: e.target.value})}
+                    className="w-full pl-5 pr-12 py-4 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 bg-white text-gray-900 text-lg"
+                  />
+                  <div className="absolute right-4 top-4 text-gray-400">
+                    <Calendar className="w-6 h-6" />
+                  </div>
+                </div>
+                <p className="text-sm text-gray-600 mt-2 flex items-center">
+                  <span className="w-4 h-4 bg-gray-100 rounded-full flex items-center justify-center mr-2">
+                    <span className="text-xs">💡</span>
+                  </span>
+                  Ngày bắt đầu làm việc chính thức
+                </p>
+              </div>
+
+              {/* Email Field */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-800 mb-3 flex items-center">
+                  <span className="w-6 h-6 bg-cyan-100 rounded-lg flex items-center justify-center mr-3">
+                    <span className="text-xs text-cyan-600">📧</span>
+                  </span>
+                  Email
+                </label>
+                <div className="relative">
+                  <input
+                    type="email"
+                    value={formData.email}
+                    onChange={(e) => setFormData({...formData, email: e.target.value})}
+                    className="w-full pl-5 pr-12 py-4 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 bg-white text-gray-900 placeholder-gray-500 text-lg"
+                    placeholder="email@example.com"
+                  />
+                  <div className="absolute right-4 top-4 text-gray-400">
+                    <FileText className="w-6 h-6" />
+                  </div>
+                </div>
+                <p className="text-sm text-gray-600 mt-2 flex items-center">
+                  <span className="w-4 h-4 bg-gray-100 rounded-full flex items-center justify-center mr-2">
+                    <span className="text-xs">💡</span>
+                  </span>
+                  Email liên hệ của nhân viên
+                </p>
+              </div>
+
+              {/* Dien thoai Field */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-800 mb-3 flex items-center">
+                  <span className="w-6 h-6 bg-lime-100 rounded-lg flex items-center justify-center mr-3">
+                    <span className="text-xs text-lime-600">📱</span>
+                  </span>
+                  Điện thoại
+                </label>
+                <div className="relative">
+                  <input
+                    type="tel"
+                    value={formData.dien_thoai}
+                    onChange={(e) => setFormData({...formData, dien_thoai: e.target.value})}
+                    className="w-full pl-5 pr-12 py-4 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 bg-white text-gray-900 placeholder-gray-500 text-lg"
+                    placeholder="0123456789"
+                  />
+                  <div className="absolute right-4 top-4 text-gray-400">
+                    <Phone className="w-6 h-6" />
+                  </div>
+                </div>
+                <p className="text-sm text-gray-600 mt-2 flex items-center">
+                  <span className="w-4 h-4 bg-gray-100 rounded-full flex items-center justify-center mr-2">
+                    <span className="text-xs">💡</span>
+                  </span>
+                  Số điện thoại liên hệ
+                </p>
+              </div>
+            </div>
+
+            {/* Dia chi Field */}
+            <div>
+              <label className="block text-sm font-semibold text-gray-800 mb-3 flex items-center">
+                <span className="w-6 h-6 bg-rose-100 rounded-lg flex items-center justify-center mr-3">
+                  <span className="text-xs text-rose-600">🏠</span>
+                </span>
+                Địa chỉ
+              </label>
+              <div className="relative">
+                <textarea
+                  value={formData.dia_chi}
+                  onChange={(e) => setFormData({...formData, dia_chi: e.target.value})}
+                  rows={4}
+                  className="w-full pl-5 pr-12 py-4 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 bg-white text-gray-900 placeholder-gray-500 text-lg"
+                  placeholder="Nhập địa chỉ đầy đủ của nhân viên"
+                />
+                <div className="absolute right-4 top-4 text-gray-400">
+                  <MapPin className="w-6 h-6" />
+                </div>
+              </div>
+              <p className="text-sm text-gray-600 mt-2 flex items-center">
+                <span className="w-4 h-4 bg-gray-100 rounded-full flex items-center justify-center mr-2">
+                  <span className="text-xs">💡</span>
+                </span>
+                Địa chỉ thường trú hoặc địa chỉ liên hệ
+              </p>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex flex-col sm:flex-row gap-4 pt-6 border-t border-gray-200">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowAddModal(false);
+                  setEditingEmployee(null);
+                  resetForm();
+                }}
+                className="flex-1 bg-gray-100 text-gray-700 py-4 px-6 rounded-xl hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500 transition-all duration-200 font-semibold hover:shadow-md text-lg"
+              >
+                <div className="flex items-center justify-center">
+                  <X className="w-5 h-5 mr-2" />
+                  Hủy
+                </div>
+              </button>
+              <button
+                type="submit"
+                className="flex-1 bg-gradient-to-r from-purple-500 to-indigo-600 text-white py-4 px-6 rounded-xl hover:from-purple-600 hover:to-indigo-700 focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 text-lg"
+              >
+                <div className="flex items-center justify-center">
+                  <Plus className="w-5 h-5 mr-2" />
+                  {editingEmployee ? 'Cập nhật nhân viên' : 'Thêm nhân viên'}
+                </div>
+              </button>
+            </div>
+          </form>
         </div>
       )}
     </div>
@@ -1091,7 +1342,7 @@ function TimesheetsTab({ selectedMonth }) {
       <div className="flex justify-between items-center">
         <div>
           <h2 className="text-2xl font-bold text-gray-900">Quản lý chấm công</h2>
-          <p className="text-gray-600 mt-1">Thêm, sửa, xóa dữ liệu chấm công nhân viên</p>
+          <p className="text-gray-900 mt-1">Thêm, sửa, xóa dữ liệu chấm công nhân viên</p>
         </div>
         <button
           onClick={() => {
@@ -1110,7 +1361,7 @@ function TimesheetsTab({ selectedMonth }) {
       <div className="bg-white rounded-lg shadow-sm p-6">
         <div className="flex items-center space-x-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Kỳ tính lương</label>
+            <label className="block text-sm font-medium text-gray-900 mb-2">Kỳ tính lương</label>
             <input
               type="month"
               value={selectedPeriod}
@@ -1119,7 +1370,7 @@ function TimesheetsTab({ selectedMonth }) {
             />
           </div>
           <div className="flex-1">
-            <label className="block text-sm font-medium text-gray-700 mb-2">Tìm kiếm</label>
+            <label className="block text-sm font-medium text-gray-900 mb-2">Tìm kiếm</label>
             <div className="relative">
               <Search className="w-5 h-5 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
               <input
@@ -1140,31 +1391,31 @@ function TimesheetsTab({ selectedMonth }) {
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-900 uppercase tracking-wider">
                   Mã NV
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-900 uppercase tracking-wider">
                   Họ tên
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-900 uppercase tracking-wider">
                   Kỳ lương
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-900 uppercase tracking-wider">
                   Công chuẩn
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-900 uppercase tracking-wider">
                   Công thực tế
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-900 uppercase tracking-wider">
                   OT Thường
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-900 uppercase tracking-wider">
                   OT Cuối tuần
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-900 uppercase tracking-wider">
                   OT Lễ tết
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-900 uppercase tracking-wider">
                   Thao tác
                 </th>
               </tr>
@@ -1178,7 +1429,7 @@ function TimesheetsTab({ selectedMonth }) {
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     {getEmployeeName(timesheet.ma_nv)}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     {timesheet.ky_tinh_luong}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
@@ -1187,13 +1438,13 @@ function TimesheetsTab({ selectedMonth }) {
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     {timesheet.ngay_cong_thuc_te}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     {timesheet.gio_ot_ngay_thuong}h
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     {timesheet.gio_ot_cuoi_tuan}h
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     {timesheet.gio_ot_le_tet}h
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
@@ -1222,7 +1473,7 @@ function TimesheetsTab({ selectedMonth }) {
           <div className="text-center py-12">
             <Clock className="w-12 h-12 text-gray-400 mx-auto mb-4" />
             <h3 className="mt-2 text-sm font-medium text-gray-900">Không có dữ liệu chấm công</h3>
-            <p className="mt-1 text-sm text-gray-500">
+            <p className="mt-1 text-sm text-gray-900">
               {searchTerm ? 'Không tìm thấy dữ liệu phù hợp.' : 'Bắt đầu bằng cách thêm dữ liệu chấm công cho kỳ này.'}
             </p>
           </div>
@@ -1231,130 +1482,310 @@ function TimesheetsTab({ selectedMonth }) {
 
       {/* Add/Edit Modal */}
       {showAddModal && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-          <div className="relative top-20 mx-auto p-5 border w-11/12 max-w-2xl shadow-lg rounded-md bg-white">
-            <div className="mt-3">
-              <h3 className="text-lg font-medium text-gray-900 mb-4">
-                {editingTimesheet ? 'Sửa bảng chấm công' : 'Thêm bảng chấm công'}
-              </h3>
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Nhân viên *</label>
-                    <select
-                      required
-                      value={formData.ma_nv}
-                      onChange={(e) => setFormData({...formData, ma_nv: e.target.value})}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                      disabled={!!editingTimesheet}
-                    >
-                      <option value="">Chọn nhân viên</option>
-                      {employees.map(employee => (
-                        <option key={employee.ma_nv} value={employee.ma_nv}>
-                          {employee.ho_ten} ({employee.ma_nv})
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Kỳ tính lương *</label>
-                    <input
-                      type="month"
-                      required
-                      value={formData.ky_tinh_luong}
-                      onChange={(e) => setFormData({...formData, ky_tinh_luong: e.target.value})}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                      disabled={!!editingTimesheet}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Ngày công chuẩn *</label>
-                    <input
-                      type="number"
-                      step="0.5"
-                      required
-                      value={formData.ngay_cong_chuan}
-                      onChange={(e) => setFormData({...formData, ngay_cong_chuan: e.target.value})}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Ngày công thực tế *</label>
-                    <input
-                      type="number"
-                      step="0.5"
-                      required
-                      value={formData.ngay_cong_thuc_te}
-                      onChange={(e) => setFormData({...formData, ngay_cong_thuc_te: e.target.value})}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Giờ OT ngày thường</label>
-                    <input
-                      type="number"
-                      step="0.5"
-                      min="0"
-                      value={formData.gio_ot_ngay_thuong}
-                      onChange={(e) => setFormData({...formData, gio_ot_ngay_thuong: e.target.value})}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Giờ OT cuối tuần</label>
-                    <input
-                      type="number"
-                      step="0.5"
-                      min="0"
-                      value={formData.gio_ot_cuoi_tuan}
-                      onChange={(e) => setFormData({...formData, gio_ot_cuoi_tuan: e.target.value})}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Giờ OT lễ tết</label>
-                    <input
-                      type="number"
-                      step="0.5"
-                      min="0"
-                      value={formData.gio_ot_le_tet}
-                      onChange={(e) => setFormData({...formData, gio_ot_le_tet: e.target.value})}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                    />
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Ghi chú</label>
-                  <textarea
-                    value={formData.ghi_chu}
-                    onChange={(e) => setFormData({...formData, ghi_chu: e.target.value})}
-                    rows={3}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                    placeholder="Ghi chú về chấm công..."
-                  />
-                </div>
-                <div className="flex justify-end space-x-3 pt-4">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowAddModal(false);
-                      setEditingTimesheet(null);
-                      resetForm();
-                    }}
-                    className="px-4 py-2 text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200"
-                  >
-                    Hủy
-                  </button>
-                  <button
-                    type="submit"
-                    className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
-                  >
-                    {editingTimesheet ? 'Cập nhật' : 'Thêm'}
-                  </button>
-                </div>
-              </form>
+        <div className="bg-gradient-to-r from-purple-100 to-indigo-100 rounded-2xl p-8 border-2 border-purple-200 mb-8">
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center space-x-3">
+              <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center">
+                <Clock className="w-6 h-6 text-purple-600" />
+              </div>
+              <div>
+                <h3 className="text-2xl font-bold text-gray-900">
+                  {editingTimesheet ? 'Chỉnh sửa bảng chấm công' : 'Thêm bảng chấm công'}
+                </h3>
+                <p className="text-purple-700 mt-1">Thêm dữ liệu chấm công cho nhân viên</p>
+              </div>
             </div>
+            <button
+              onClick={() => {
+                setShowAddModal(false);
+                setEditingTimesheet(null);
+                resetForm();
+              }}
+              className="w-10 h-10 bg-white hover:bg-gray-50 rounded-xl flex items-center justify-center transition-all duration-200 shadow-sm hover:shadow-md"
+              title="Đóng"
+            >
+              <X className="w-5 h-5 text-gray-500" />
+            </button>
           </div>
+
+          <form onSubmit={handleSubmit} className="space-y-8">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              {/* Nhan vien Field */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-800 mb-3 flex items-center">
+                  <span className="w-6 h-6 bg-blue-100 rounded-lg flex items-center justify-center mr-3">
+                    <span className="text-xs text-blue-600">👤</span>
+                  </span>
+                  Nhân viên
+                  <span className="text-red-500 ml-1">*</span>
+                </label>
+                <div className="relative">
+                  <select
+                    required
+                    value={formData.ma_nv}
+                    onChange={(e) => setFormData({...formData, ma_nv: e.target.value})}
+                    className="w-full pl-5 pr-12 py-4 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 bg-white text-gray-900 text-lg"
+                    disabled={!!editingTimesheet}
+                  >
+                    <option value="">Chọn nhân viên</option>
+                    {employees.map(employee => (
+                      <option key={employee.ma_nv} value={employee.ma_nv}>
+                        {employee.ho_ten} ({employee.ma_nv})
+                      </option>
+                    ))}
+                  </select>
+                  <div className="absolute right-4 top-4 text-gray-400">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </div>
+                </div>
+                <p className="text-sm text-gray-600 mt-2 flex items-center">
+                  <span className="w-4 h-4 bg-gray-100 rounded-full flex items-center justify-center mr-2">
+                    <span className="text-xs">💡</span>
+                  </span>
+                  Chọn nhân viên để chấm công
+                </p>
+              </div>
+
+              {/* Ky tinh luong Field */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-800 mb-3 flex items-center">
+                  <span className="w-6 h-6 bg-green-100 rounded-lg flex items-center justify-center mr-3">
+                    <span className="text-xs text-green-600">📅</span>
+                  </span>
+                  Kỳ tính lương
+                  <span className="text-red-500 ml-1">*</span>
+                </label>
+                <div className="relative">
+                  <input
+                    type="month"
+                    required
+                    value={formData.ky_tinh_luong}
+                    onChange={(e) => setFormData({...formData, ky_tinh_luong: e.target.value})}
+                    className="w-full pl-5 pr-12 py-4 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 bg-white text-gray-900 text-lg"
+                    disabled={!!editingTimesheet}
+                  />
+                  <div className="absolute right-4 top-4 text-gray-400">
+                    <Calendar className="w-6 h-6" />
+                  </div>
+                </div>
+                <p className="text-sm text-gray-600 mt-2 flex items-center">
+                  <span className="w-4 h-4 bg-gray-100 rounded-full flex items-center justify-center mr-2">
+                    <span className="text-xs">💡</span>
+                  </span>
+                  Kỳ lương áp dụng cho bảng chấm công này
+                </p>
+              </div>
+
+              {/* Ngay cong chuan Field */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-800 mb-3 flex items-center">
+                  <span className="w-6 h-6 bg-yellow-100 rounded-lg flex items-center justify-center mr-3">
+                    <span className="text-xs text-yellow-600">📊</span>
+                  </span>
+                  Ngày công chuẩn
+                  <span className="text-red-500 ml-1">*</span>
+                </label>
+                <div className="relative">
+                  <input
+                    type="number"
+                    step="0.5"
+                    required
+                    value={formData.ngay_cong_chuan}
+                    onChange={(e) => setFormData({...formData, ngay_cong_chuan: e.target.value})}
+                    className="w-full pl-5 pr-12 py-4 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 bg-white text-gray-900 placeholder-gray-500 text-lg"
+                    placeholder="26"
+                  />
+                  <div className="absolute right-4 top-4 text-gray-400">
+                    <Calculator className="w-6 h-6" />
+                  </div>
+                </div>
+                <p className="text-sm text-gray-600 mt-2 flex items-center">
+                  <span className="w-4 h-4 bg-gray-100 rounded-full flex items-center justify-center mr-2">
+                    <span className="text-xs">💡</span>
+                  </span>
+                  Số ngày công chuẩn trong tháng (thường là 26)
+                </p>
+              </div>
+
+              {/* Ngay cong thuc te Field */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-800 mb-3 flex items-center">
+                  <span className="w-6 h-6 bg-indigo-100 rounded-lg flex items-center justify-center mr-3">
+                    <span className="text-xs text-indigo-600">✅</span>
+                  </span>
+                  Ngày công thực tế
+                  <span className="text-red-500 ml-1">*</span>
+                </label>
+                <div className="relative">
+                  <input
+                    type="number"
+                    step="0.5"
+                    required
+                    value={formData.ngay_cong_thuc_te}
+                    onChange={(e) => setFormData({...formData, ngay_cong_thuc_te: e.target.value})}
+                    className="w-full pl-5 pr-12 py-4 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 bg-white text-gray-900 placeholder-gray-500 text-lg"
+                    placeholder="24.5"
+                  />
+                  <div className="absolute right-4 top-4 text-gray-400">
+                    <Clock className="w-6 h-6" />
+                  </div>
+                </div>
+                <p className="text-sm text-gray-600 mt-2 flex items-center">
+                  <span className="w-4 h-4 bg-gray-100 rounded-full flex items-center justify-center mr-2">
+                    <span className="text-xs">💡</span>
+                  </span>
+                  Số ngày công thực tế nhân viên đã làm
+                </p>
+              </div>
+
+              {/* Gio OT ngay thuong Field */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-800 mb-3 flex items-center">
+                  <span className="w-6 h-6 bg-red-100 rounded-lg flex items-center justify-center mr-3">
+                    <span className="text-xs text-red-600">🌙</span>
+                  </span>
+                  Giờ OT ngày thường
+                </label>
+                <div className="relative">
+                  <input
+                    type="number"
+                    step="0.5"
+                    min="0"
+                    value={formData.gio_ot_ngay_thuong}
+                    onChange={(e) => setFormData({...formData, gio_ot_ngay_thuong: e.target.value})}
+                    className="w-full pl-5 pr-12 py-4 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 bg-white text-gray-900 placeholder-gray-500 text-lg"
+                    placeholder="0"
+                  />
+                  <div className="absolute right-4 top-4 text-gray-400">
+                    <TrendingDown className="w-6 h-6" />
+                  </div>
+                </div>
+                <p className="text-sm text-gray-600 mt-2 flex items-center">
+                  <span className="w-4 h-4 bg-gray-100 rounded-full flex items-center justify-center mr-2">
+                    <span className="text-xs">💡</span>
+                  </span>
+                  Số giờ làm thêm ngày thường
+                </p>
+              </div>
+
+              {/* Gio OT cuoi tuan Field */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-800 mb-3 flex items-center">
+                  <span className="w-6 h-6 bg-orange-100 rounded-lg flex items-center justify-center mr-3">
+                    <span className="text-xs text-orange-600">🏖️</span>
+                  </span>
+                  Giờ OT cuối tuần
+                </label>
+                <div className="relative">
+                  <input
+                    type="number"
+                    step="0.5"
+                    min="0"
+                    value={formData.gio_ot_cuoi_tuan}
+                    onChange={(e) => setFormData({...formData, gio_ot_cuoi_tuan: e.target.value})}
+                    className="w-full pl-5 pr-12 py-4 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 bg-white text-gray-900 placeholder-gray-500 text-lg"
+                    placeholder="0"
+                  />
+                  <div className="absolute right-4 top-4 text-gray-400">
+                    <Package className="w-6 h-6" />
+                  </div>
+                </div>
+                <p className="text-sm text-gray-600 mt-2 flex items-center">
+                  <span className="w-4 h-4 bg-gray-100 rounded-full flex items-center justify-center mr-2">
+                    <span className="text-xs">💡</span>
+                  </span>
+                  Số giờ làm thêm cuối tuần (thường x1.5)
+                </p>
+              </div>
+
+              {/* Gio OT le tet Field */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-800 mb-3 flex items-center">
+                  <span className="w-6 h-6 bg-teal-100 rounded-lg flex items-center justify-center mr-3">
+                    <span className="text-xs text-teal-600">🎊</span>
+                  </span>
+                  Giờ OT lễ tết
+                </label>
+                <div className="relative">
+                  <input
+                    type="number"
+                    step="0.5"
+                    min="0"
+                    value={formData.gio_ot_le_tet}
+                    onChange={(e) => setFormData({...formData, gio_ot_le_tet: e.target.value})}
+                    className="w-full pl-5 pr-12 py-4 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 bg-white text-gray-900 placeholder-gray-500 text-lg"
+                    placeholder="0"
+                  />
+                  <div className="absolute right-4 top-4 text-gray-400">
+                    <BarChart3 className="w-6 h-6" />
+                  </div>
+                </div>
+                <p className="text-sm text-gray-600 mt-2 flex items-center">
+                  <span className="w-4 h-4 bg-gray-100 rounded-full flex items-center justify-center mr-2">
+                    <span className="text-xs">💡</span>
+                  </span>
+                  Số giờ làm thêm lễ tết (thường x2 hoặc x3)
+                </p>
+              </div>
+            </div>
+
+            {/* Ghi chu Field */}
+            <div>
+              <label className="block text-sm font-semibold text-gray-800 mb-3 flex items-center">
+                <span className="w-6 h-6 bg-pink-100 rounded-lg flex items-center justify-center mr-3">
+                  <span className="text-xs text-pink-600">📝</span>
+                </span>
+                Ghi chú
+              </label>
+              <div className="relative">
+                <textarea
+                  value={formData.ghi_chu}
+                  onChange={(e) => setFormData({...formData, ghi_chu: e.target.value})}
+                  rows={4}
+                  className="w-full pl-5 pr-12 py-4 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 bg-white text-gray-900 placeholder-gray-500 text-lg"
+                  placeholder="Ghi chú về chấm công..."
+                />
+                <div className="absolute right-4 top-4 text-gray-400">
+                  <FileText className="w-6 h-6" />
+                </div>
+              </div>
+              <p className="text-sm text-gray-600 mt-2 flex items-center">
+                <span className="w-4 h-4 bg-gray-100 rounded-full flex items-center justify-center mr-2">
+                  <span className="text-xs">💡</span>
+                </span>
+                Thông tin bổ sung về bảng chấm công
+              </p>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex flex-col sm:flex-row gap-4 pt-6 border-t border-gray-200">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowAddModal(false);
+                  setEditingTimesheet(null);
+                  resetForm();
+                }}
+                className="flex-1 bg-gray-100 text-gray-700 py-4 px-6 rounded-xl hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500 transition-all duration-200 font-semibold hover:shadow-md text-lg"
+              >
+                <div className="flex items-center justify-center">
+                  <X className="w-5 h-5 mr-2" />
+                  Hủy
+                </div>
+              </button>
+              <button
+                type="submit"
+                className="flex-1 bg-gradient-to-r from-purple-500 to-indigo-600 text-white py-4 px-6 rounded-xl hover:from-purple-600 hover:to-indigo-700 focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 text-lg"
+              >
+                <div className="flex items-center justify-center">
+                  <Plus className="w-5 h-5 mr-2" />
+                  {editingTimesheet ? 'Cập nhật bảng chấm công' : 'Thêm bảng chấm công'}
+                </div>
+              </button>
+            </div>
+          </form>
         </div>
       )}
     </div>
@@ -1485,7 +1916,7 @@ function ProductsTab() {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Đang tải...</p>
+          <p className="mt-4 text-gray-900">Đang tải...</p>
         </div>
       </div>
     );
@@ -1497,7 +1928,7 @@ function ProductsTab() {
       <div className="flex justify-between items-center">
         <div>
           <h2 className="text-2xl font-bold text-gray-900">Quản lý lương sản phẩm</h2>
-          <p className="text-gray-600 mt-1">Quản lý dữ liệu lương sản phẩm của nhân viên</p>
+          <p className="text-gray-900 mt-1">Quản lý dữ liệu lương sản phẩm của nhân viên</p>
         </div>
         <button
           onClick={() => setShowForm(true)}
@@ -1541,10 +1972,10 @@ function ProductsTab() {
                           {product.ma_nv}
                         </span>
                       </div>
-                      <div className="text-sm text-gray-500">
+                      <div className="text-sm text-gray-900">
                         Tháng {product.thang}/{product.nam}
                       </div>
-                      <div className="text-sm text-gray-500">
+                      <div className="text-sm text-gray-900">
                         Số lượng: {product.so_luong_san_pham || 0} | Đơn giá: {(product.don_gia_san_pham || 0).toLocaleString()} VND
                       </div>
                       <div className="text-sm font-medium text-purple-600">
@@ -1569,34 +2000,50 @@ function ProductsTab() {
           <div className="text-center py-12">
             <Package className="mx-auto h-12 w-12 text-gray-400" />
             <h3 className="mt-2 text-sm font-medium text-gray-900">Chưa có lương sản phẩm</h3>
-            <p className="mt-1 text-sm text-gray-500">Bắt đầu bằng cách thêm lương sản phẩm mới</p>
+            <p className="mt-1 text-sm text-gray-900">Bắt đầu bằng cách thêm lương sản phẩm mới</p>
           </div>
         )}
       </div>
 
       {/* Add Product Modal */}
       {showForm && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-          <div className="relative top-20 mx-auto p-5 border w-11/12 max-w-2xl shadow-lg rounded-md bg-white">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-medium text-gray-900">Thêm lương sản phẩm mới</h3>
-              <button
-                onClick={() => setShowForm(false)}
-                className="text-gray-400 hover:text-gray-600"
-              >
-                <X className="w-6 h-6" />
-              </button>
+        <div className="bg-gradient-to-r from-purple-100 to-indigo-100 rounded-2xl p-8 border-2 border-purple-200 mb-8">
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center space-x-3">
+              <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center">
+                <Package className="w-6 h-6 text-purple-600" />
+              </div>
+              <div>
+                <h3 className="text-2xl font-bold text-gray-900">Thêm lương sản phẩm mới</h3>
+                <p className="text-purple-700 mt-1">Thêm dữ liệu lương sản phẩm cho nhân viên</p>
+              </div>
             </div>
+            <button
+              onClick={() => setShowForm(false)}
+              className="w-10 h-10 bg-white hover:bg-gray-50 rounded-xl flex items-center justify-center transition-all duration-200 shadow-sm hover:shadow-md"
+              title="Đóng"
+            >
+              <X className="w-5 h-5 text-gray-500" />
+            </button>
+          </div>
 
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Nhân viên *</label>
+          <form onSubmit={handleSubmit} className="space-y-8">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              {/* Nhan vien Field */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-800 mb-3 flex items-center">
+                  <span className="w-6 h-6 bg-blue-100 rounded-lg flex items-center justify-center mr-3">
+                    <span className="text-xs text-blue-600">👤</span>
+                  </span>
+                  Nhân viên
+                  <span className="text-red-500 ml-1">*</span>
+                </label>
+                <div className="relative">
                   <select
                     required
                     value={formData.ma_nv}
                     onChange={(e) => setFormData({...formData, ma_nv: e.target.value})}
-                    className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-purple-500 focus:border-purple-500 sm:text-sm"
+                    className="w-full pl-5 pr-12 py-4 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 bg-white text-gray-900 text-lg"
                   >
                     <option value="">Chọn nhân viên</option>
                     {employees.map(employee => (
@@ -1605,26 +2052,63 @@ function ProductsTab() {
                       </option>
                     ))}
                   </select>
+                  <div className="absolute right-4 top-4 text-gray-400">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Tháng *</label>
+                <p className="text-sm text-gray-600 mt-2 flex items-center">
+                  <span className="w-4 h-4 bg-gray-100 rounded-full flex items-center justify-center mr-2">
+                    <span className="text-xs">💡</span>
+                  </span>
+                  Chọn nhân viên để thêm lương sản phẩm
+                </p>
+              </div>
+
+              {/* Thang Field */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-800 mb-3 flex items-center">
+                  <span className="w-6 h-6 bg-green-100 rounded-lg flex items-center justify-center mr-3">
+                    <span className="text-xs text-green-600">📅</span>
+                  </span>
+                  Tháng
+                  <span className="text-red-500 ml-1">*</span>
+                </label>
+                <div className="relative">
                   <select
                     required
                     value={formData.thang}
                     onChange={(e) => setFormData({...formData, thang: e.target.value})}
-                    className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-purple-500 focus:border-purple-500 sm:text-sm"
+                    className="w-full pl-5 pr-12 py-4 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 bg-white text-gray-900 text-lg"
                   >
                     <option value="">Chọn tháng</option>
                     {Array.from({length: 12}, (_, i) => i + 1).map(month => (
                       <option key={month} value={month}>{month}</option>
                     ))}
                   </select>
+                  <div className="absolute right-4 top-4 text-gray-400">
+                    <Calendar className="w-6 h-6" />
+                  </div>
                 </div>
+                <p className="text-sm text-gray-600 mt-2 flex items-center">
+                  <span className="w-4 h-4 bg-gray-100 rounded-full flex items-center justify-center mr-2">
+                    <span className="text-xs">💡</span>
+                  </span>
+                  Tháng áp dụng lương sản phẩm
+                </p>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Năm *</label>
+              {/* Nam Field */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-800 mb-3 flex items-center">
+                  <span className="w-6 h-6 bg-yellow-100 rounded-lg flex items-center justify-center mr-3">
+                    <span className="text-xs text-yellow-600">📊</span>
+                  </span>
+                  Năm
+                  <span className="text-red-500 ml-1">*</span>
+                </label>
+                <div className="relative">
                   <input
                     type="number"
                     required
@@ -1632,71 +2116,161 @@ function ProductsTab() {
                     max="2030"
                     value={formData.nam}
                     onChange={(e) => setFormData({...formData, nam: e.target.value})}
-                    className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-purple-500 focus:border-purple-500 sm:text-sm"
+                    className="w-full pl-5 pr-12 py-4 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 bg-white text-gray-900 placeholder-gray-500 text-lg"
+                    placeholder="2024"
                   />
+                  <div className="absolute right-4 top-4 text-gray-400">
+                    <Calculator className="w-6 h-6" />
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Số lượng sản phẩm *</label>
+                <p className="text-sm text-gray-600 mt-2 flex items-center">
+                  <span className="w-4 h-4 bg-gray-100 rounded-full flex items-center justify-center mr-2">
+                    <span className="text-xs">💡</span>
+                  </span>
+                  Năm áp dụng lương sản phẩm
+                </p>
+              </div>
+
+              {/* So luong san pham Field */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-800 mb-3 flex items-center">
+                  <span className="w-6 h-6 bg-indigo-100 rounded-lg flex items-center justify-center mr-3">
+                    <span className="text-xs text-indigo-600">📦</span>
+                  </span>
+                  Số lượng sản phẩm
+                  <span className="text-red-500 ml-1">*</span>
+                </label>
+                <div className="relative">
                   <input
                     type="number"
                     required
                     min="0"
                     value={formData.so_luong_san_pham}
                     onChange={(e) => setFormData({...formData, so_luong_san_pham: e.target.value})}
-                    className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-purple-500 focus:border-purple-500 sm:text-sm"
+                    className="w-full pl-5 pr-12 py-4 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 bg-white text-gray-900 placeholder-gray-500 text-lg"
+                    placeholder="100"
                   />
+                  <div className="absolute right-4 top-4 text-gray-400">
+                    <Package className="w-6 h-6" />
+                  </div>
                 </div>
+                <p className="text-sm text-gray-600 mt-2 flex items-center">
+                  <span className="w-4 h-4 bg-gray-100 rounded-full flex items-center justify-center mr-2">
+                    <span className="text-xs">💡</span>
+                  </span>
+                  Số lượng sản phẩm nhân viên đã sản xuất
+                </p>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Đơn giá sản phẩm *</label>
+              {/* Don gia san pham Field */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-800 mb-3 flex items-center">
+                  <span className="w-6 h-6 bg-red-100 rounded-lg flex items-center justify-center mr-3">
+                    <span className="text-xs text-red-600">💰</span>
+                  </span>
+                  Đơn giá sản phẩm
+                  <span className="text-red-500 ml-1">*</span>
+                </label>
+                <div className="relative">
                   <input
                     type="number"
                     required
                     min="0"
                     value={formData.don_gia_san_pham}
                     onChange={(e) => setFormData({...formData, don_gia_san_pham: e.target.value})}
-                    className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-purple-500 focus:border-purple-500 sm:text-sm"
+                    className="w-full pl-5 pr-12 py-4 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 bg-white text-gray-900 placeholder-gray-500 text-lg"
+                    placeholder="50000"
                   />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Tổng tiền</label>
-                  <div className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm bg-gray-50 text-gray-500 sm:text-sm">
-                    {formData.so_luong_san_pham && formData.don_gia_san_pham
-                      ? ((parseInt(formData.so_luong_san_pham) || 0) * (parseFloat(formData.don_gia_san_pham) || 0)).toLocaleString()
-                      : '0'} VND
+                  <div className="absolute right-4 top-4 text-gray-400">
+                    <DollarSign className="w-6 h-6" />
                   </div>
                 </div>
+                <p className="text-sm text-gray-600 mt-2 flex items-center">
+                  <span className="w-4 h-4 bg-gray-100 rounded-full flex items-center justify-center mr-2">
+                    <span className="text-xs">💡</span>
+                  </span>
+                  Đơn giá tính lương cho mỗi sản phẩm
+                </p>
               </div>
 
+              {/* Tong tien Field (read-only) */}
               <div>
-                <label className="block text-sm font-medium text-gray-700">Ghi chú</label>
+                <label className="block text-sm font-semibold text-gray-800 mb-3 flex items-center">
+                  <span className="w-6 h-6 bg-orange-100 rounded-lg flex items-center justify-center mr-3">
+                    <span className="text-xs text-orange-600">🧮</span>
+                  </span>
+                  Tổng tiền
+                </label>
+                <div className="relative">
+                  <div className="w-full pl-5 pr-12 py-4 border border-gray-300 rounded-xl bg-gray-50 text-gray-900 text-lg font-semibold">
+                    {formData.so_luong_san_pham && formData.don_gia_san_pham
+                      ? ((parseInt(formData.so_luong_san_pham) || 0) * (parseFloat(formData.don_gia_san_pham) || 0)).toLocaleString('vi-VN')
+                      : '0'} VND
+                  </div>
+                  <div className="absolute right-4 top-4 text-gray-400">
+                    <Calculator className="w-6 h-6" />
+                  </div>
+                </div>
+                <p className="text-sm text-gray-600 mt-2 flex items-center">
+                  <span className="w-4 h-4 bg-gray-100 rounded-full flex items-center justify-center mr-2">
+                    <span className="text-xs">💡</span>
+                  </span>
+                  Tự động tính từ số lượng x đơn giá
+                </p>
+              </div>
+            </div>
+
+            {/* Ghi chu Field */}
+            <div>
+              <label className="block text-sm font-semibold text-gray-800 mb-3 flex items-center">
+                <span className="w-6 h-6 bg-pink-100 rounded-lg flex items-center justify-center mr-3">
+                  <span className="text-xs text-pink-600">📝</span>
+                </span>
+                Ghi chú
+              </label>
+              <div className="relative">
                 <textarea
-                  rows={3}
                   value={formData.ghi_chu}
                   onChange={(e) => setFormData({...formData, ghi_chu: e.target.value})}
-                  className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-purple-500 focus:border-purple-500 sm:text-sm"
+                  rows={4}
+                  className="w-full pl-5 pr-12 py-4 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 bg-white text-gray-900 placeholder-gray-500 text-lg"
+                  placeholder="Ghi chú về lương sản phẩm..."
                 />
+                <div className="absolute right-4 top-4 text-gray-400">
+                  <FileText className="w-6 h-6" />
+                </div>
               </div>
+              <p className="text-sm text-gray-600 mt-2 flex items-center">
+                <span className="w-4 h-4 bg-gray-100 rounded-full flex items-center justify-center mr-2">
+                  <span className="text-xs">💡</span>
+                </span>
+                Thông tin bổ sung về lương sản phẩm
+              </p>
+            </div>
 
-              <div className="flex justify-end space-x-3 pt-4">
-                <button
-                  type="button"
-                  onClick={() => setShowForm(false)}
-                  className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
-                >
+            {/* Action Buttons */}
+            <div className="flex flex-col sm:flex-row gap-4 pt-6 border-t border-gray-200">
+              <button
+                type="button"
+                onClick={() => setShowForm(false)}
+                className="flex-1 bg-gray-100 text-gray-700 py-4 px-6 rounded-xl hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500 transition-all duration-200 font-semibold hover:shadow-md text-lg"
+              >
+                <div className="flex items-center justify-center">
+                  <X className="w-5 h-5 mr-2" />
                   Hủy
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-purple-600 hover:bg-purple-700"
-                >
+                </div>
+              </button>
+              <button
+                type="submit"
+                className="flex-1 bg-gradient-to-r from-purple-500 to-indigo-600 text-white py-4 px-6 rounded-xl hover:from-purple-600 hover:to-indigo-700 focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 text-lg"
+              >
+                <div className="flex items-center justify-center">
+                  <Plus className="w-5 h-5 mr-2" />
                   Thêm lương sản phẩm
-                </button>
-              </div>
-            </form>
-          </div>
+                </div>
+              </button>
+            </div>
+          </form>
         </div>
       )}
     </div>

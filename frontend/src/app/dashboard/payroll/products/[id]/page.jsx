@@ -72,7 +72,8 @@ export default function ProductDetailPage() {
   };
 
   const calculateTotal = (so_luong, don_gia) => {
-    return (so_luong * don_gia).toLocaleString();
+    const total = (so_luong || 0) * (don_gia || 0);
+    return total.toLocaleString();
   };
 
   if (loading) {
@@ -253,7 +254,7 @@ export default function ProductDetailPage() {
                   />
                 ) : (
                   <div className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm bg-gray-50 text-gray-500 sm:text-sm">
-                    {product.don_gia_san_pham.toLocaleString()} VND
+                    {product.don_gia_san_pham ? product.don_gia_san_pham.toLocaleString() : '0'} VND
                   </div>
                 )}
               </div>

@@ -422,15 +422,18 @@ def get_phieu_luong_list(
 
         response_list = []
         for row in result.data:
-            item = PhieuLuongResponse(**row)
+            # Parse JSON fields trước khi tạo response object
+            parsed_row = dict(row)
             try:
-                item.chi_tiet_thu_nhap = json.loads(item.chi_tiet_thu_nhap) if item.chi_tiet_thu_nhap else {}
+                parsed_row['chi_tiet_thu_nhap'] = json.loads(row['chi_tiet_thu_nhap']) if row['chi_tiet_thu_nhap'] else {}
             except (json.JSONDecodeError, TypeError):
-                item.chi_tiet_thu_nhap = {}
+                parsed_row['chi_tiet_thu_nhap'] = {}
             try:
-                item.chi_tiet_khau_tru = json.loads(item.chi_tiet_khau_tru) if item.chi_tiet_khau_tru else {}
+                parsed_row['chi_tiet_khau_tru'] = json.loads(row['chi_tiet_khau_tru']) if row['chi_tiet_khau_tru'] else {}
             except (json.JSONDecodeError, TypeError):
-                item.chi_tiet_khau_tru = {}
+                parsed_row['chi_tiet_khau_tru'] = {}
+            
+            item = PhieuLuongResponse(**parsed_row)
             response_list.append(item)
 
         return response_list

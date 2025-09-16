@@ -112,7 +112,8 @@ export default function ProductsPage() {
   };
 
   const calculateTotal = (so_luong, don_gia) => {
-    return (so_luong * don_gia).toLocaleString();
+    const total = (so_luong || 0) * (don_gia || 0);
+    return total.toLocaleString();
   };
 
   const filteredProducts = products.filter(product =>
@@ -191,7 +192,7 @@ export default function ProductsPage() {
                           Tháng {product.thang}/{product.nam}
                         </div>
                         <div className="text-sm text-gray-500">
-                          Số lượng: {product.so_luong_san_pham} | Đơn giá: {product.don_gia_san_pham.toLocaleString()} VND
+                          Số lượng: {product.so_luong_san_pham} | Đơn giá: {product.don_gia_san_pham ? product.don_gia_san_pham.toLocaleString() : '0'} VND
                         </div>
                         <div className="text-sm font-medium text-green-600">
                           Tổng: {calculateTotal(product.so_luong_san_pham, product.don_gia_san_pham)} VND
