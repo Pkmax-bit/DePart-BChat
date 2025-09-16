@@ -6,3 +6,6 @@ pandas==2.3.2
 openpyxl==3.1.5
 python-multipart==0.0.6
 yagmail==0.15.293
+pytest==7.4.3
+websockets>=11
+psycopg2-binary==2.9.9

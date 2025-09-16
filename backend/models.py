@@ -159,3 +159,128 @@ class UserChatResponse(BaseModel):
     user_id: Optional[int]
     name_app: str
     created_at: Optional[str]
+
+# ===== PAYROLL MODELS =====
+
+# Model cho Nhân viên
+class NhanVienCreate(BaseModel):
+    ma_nv: str
+    ho_ten: str
+    chuc_vu: Optional[str] = None
+    phong_ban: Optional[str] = None
+    luong_hop_dong: float
+    muc_luong_dong_bhxh: float
+    so_nguoi_phu_thuoc: int = 0
+    email: Optional[str] = None
+    dien_thoai: Optional[str] = None
+    dia_chi: Optional[str] = None
+    ngay_vao_lam: Optional[str] = None
+
+class NhanVienUpdate(BaseModel):
+    ho_ten: Optional[str] = None
+    chuc_vu: Optional[str] = None
+    phong_ban: Optional[str] = None
+    luong_hop_dong: Optional[float] = None
+    muc_luong_dong_bhxh: Optional[float] = None
+    so_nguoi_phu_thuoc: Optional[int] = None
+    email: Optional[str] = None
+    dien_thoai: Optional[str] = None
+    dia_chi: Optional[str] = None
+    ngay_vao_lam: Optional[str] = None
+    is_active: Optional[bool] = None
+
+class NhanVienResponse(BaseModel):
+    ma_nv: str
+    ho_ten: str
+    chuc_vu: Optional[str]
+    phong_ban: Optional[str]
+    luong_hop_dong: float
+    muc_luong_dong_bhxh: float
+    so_nguoi_phu_thuoc: int
+    email: Optional[str]
+    dien_thoai: Optional[str]
+    dia_chi: Optional[str]
+    ngay_vao_lam: Optional[str]
+    is_active: bool
+    created_at: Optional[str]
+    updated_at: Optional[str]
+
+# Model cho Bảng chấm công
+class BangChamCongCreate(BaseModel):
+    ma_nv: str
+    ky_tinh_luong: str
+    ngay_cong_chuan: float
+    ngay_cong_thuc_te: float
+    gio_ot_ngay_thuong: float = 0
+    gio_ot_cuoi_tuan: float = 0
+    gio_ot_le_tet: float = 0
+    ghi_chu: Optional[str] = None
+
+class BangChamCongUpdate(BaseModel):
+    ngay_cong_chuan: Optional[float] = None
+    ngay_cong_thuc_te: Optional[float] = None
+    gio_ot_ngay_thuong: Optional[float] = None
+    gio_ot_cuoi_tuan: Optional[float] = None
+    gio_ot_le_tet: Optional[float] = None
+    ghi_chu: Optional[str] = None
+
+class BangChamCongResponse(BaseModel):
+    id: int
+    ma_nv: str
+    ky_tinh_luong: str
+    ngay_cong_chuan: float
+    ngay_cong_thuc_te: float
+    gio_ot_ngay_thuong: float
+    gio_ot_cuoi_tuan: float
+    gio_ot_le_tet: float
+    ghi_chu: Optional[str]
+    created_at: Optional[str]
+    updated_at: Optional[str]
+
+# Model cho Lương sản phẩm
+class LuongSanPhamCreate(BaseModel):
+    ma_nv: str
+    ky_tinh_luong: str
+    san_pham_id: str
+    ten_san_pham: Optional[str] = None
+    so_luong: float
+    don_gia: float
+
+class LuongSanPhamUpdate(BaseModel):
+    ten_san_pham: Optional[str] = None
+    so_luong: Optional[float] = None
+    don_gia: Optional[float] = None
+
+class LuongSanPhamResponse(BaseModel):
+    id: int
+    ma_nv: str
+    ky_tinh_luong: str
+    san_pham_id: str
+    ten_san_pham: Optional[str]
+    so_luong: float
+    don_gia: float
+    thanh_tien: float
+    created_at: Optional[str]
+    updated_at: Optional[str]
+
+# Model cho Phiếu lương
+class PhieuLuongResponse(BaseModel):
+    id: int
+    ma_nv: str
+    ky_tinh_luong: str
+    tong_thu_nhap: float
+    tong_khau_tru: float
+    luong_thuc_nhan: float
+    chi_tiet_thu_nhap: dict
+    chi_tiet_khau_tru: dict
+    trang_thai: str
+    ngay_tao: Optional[str]
+    ngay_duyet: Optional[str]
+    nguoi_duyet: Optional[str]
+
+# Model cho tính lương
+class TinhLuongRequest(BaseModel):
+    ma_nv: str
+    ky_tinh_luong: str
+    phu_cap_khac: float = 0
+    thuong_kpi: float = 0

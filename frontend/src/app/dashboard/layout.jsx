@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'; // Import client mới
-import { LogOut, ChevronFirst, ChevronLast, Bot, DollarSign, Receipt, BarChart3 } from "lucide-react";
+import { LogOut, ChevronFirst, ChevronLast, Bot, DollarSign, Receipt, BarChart3, Calculator } from "lucide-react";
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
@@ -54,6 +54,7 @@ export default function DashboardLayout({ children }) {
     if (pathname === '/dashboard') return 'chatflows';
     if (pathname.startsWith('/dashboard/accounting')) return 'revenue';
     if (pathname.startsWith('/dashboard/profit')) return 'profit';
+    if (pathname.startsWith('/dashboard/payroll')) return 'payroll';
     if (pathname.startsWith('/dashboard/expenses')) return 'expenses';
     return 'chatflows'; // Default
   };
@@ -113,6 +114,18 @@ export default function DashboardLayout({ children }) {
                  <span className={`overflow-hidden transition-all font-heading text-gray-800 ${sidebarExpanded ? "w-52 ml-3" : "w-0"}`}>Profit</span>
                </li>
              </Link>
+             <Link href="/dashboard/payroll/salary">
+               <li className={`relative flex items-center py-2 px-3 my-1 font-medium rounded-md cursor-pointer transition-colors ${
+                 activeTab === 'payroll' 
+                   ? 'bg-gradient-to-tr from-blue-200 to-blue-100 text-blue-800' 
+                   : 'text-gray-600 hover:bg-blue-50 group'
+               }`}>
+                 <Calculator className={`w-6 h-6 mr-3 text-gray-700 group-hover:text-blue-600 group-hover:scale-110 transition-all duration-200 flex-shrink-0 ${
+                   activeTab === 'payroll' ? 'text-blue-700' : ''
+                 }`} />
+                 <span className={`overflow-hidden transition-all font-heading text-gray-800 ${sidebarExpanded ? "w-52 ml-3" : "w-0"}`}>Payroll</span>
+               </li>
+             </Link>
              <Link href="/dashboard/expenses">
                <li className={`relative flex items-center py-2 px-3 my-1 font-medium rounded-md cursor-pointer transition-colors ${
                  activeTab === 'expenses' 
@@ -138,7 +151,18 @@ export default function DashboardLayout({ children }) {
                  <span className={`overflow-hidden transition-all font-heading text-gray-800 ${sidebarExpanded ? "w-52 ml-3" : "w-0"}`}>Feedback</span>
              </li>
            </ul>
- 
+
+           {/* Logout Button */}
+           <div className="mt-auto mb-4 mx-3">
+             <button
+               onClick={handleLogout}
+               className="w-full flex items-center py-3 px-3 font-medium rounded-lg cursor-pointer transition-colors bg-red-50 text-red-600 hover:bg-red-100 hover:text-red-700 group"
+             >
+               <LogOut className="w-6 h-6 mr-3 group-hover:scale-110 transition-all duration-200 flex-shrink-0" />
+               <span className={`overflow-hidden transition-all font-heading ${sidebarExpanded ? "w-52 ml-3" : "w-0"}`}>Đăng xuất</span>
+             </button>
+           </div>
+
            <div className="border-t flex p-3">
              <div className="w-10 h-10 rounded-md bg-blue-200 flex items-center justify-center font-bold text-blue-700">
                {user?.email?.charAt(0).toUpperCase()}
