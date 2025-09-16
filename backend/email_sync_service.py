@@ -67,7 +67,7 @@ class EmailSyncService:
             print(f"🔄 Syncing email: {email} for conversation: {conversation_id}")
 
             # Tìm user theo email
-            user_result = supabase.table('users').select('*').eq('email', email).execute()
+            user_result = supabase.table('employees').select('*').eq('email', email).execute()
 
             if not user_result.data:
                 print(f"⚠️  No user found for email: {email}")

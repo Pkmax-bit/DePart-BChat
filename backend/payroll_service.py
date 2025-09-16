@@ -34,7 +34,7 @@ def tinh_luong(nhan_vien: NhanVien, cham_cong: BangChamCong, luong_san_pham: Lis
                luong_gio * cham_cong.gio_ot_le_tet * config['he_so_ot_le_tet'])
 
     # Tính lương sản phẩm
-    tien_luong_sp = round(sum(sp.so_luong * sp.don_gia * (sp.ty_le / 100) for sp in luong_san_pham))
+    tien_luong_sp = round(sum(sp.gia_thanh for sp in luong_san_pham))
 
     # Tổng thu nhập
     tong_thu_nhap = round(luong_thuc_te + tien_ot + tien_luong_sp + phu_cap_khac + thuong_kpi)

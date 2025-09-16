@@ -10,3 +10,4 @@ from . import test_router
 from . import conversation_sync
 from . import user_chat
 from . import accounting
+from . import payroll

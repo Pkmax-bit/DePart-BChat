@@ -386,11 +386,12 @@ async def create_invoice(invoice_data: dict):
                     'thanh_tien': item['thanh_tien']
                 }).execute()
 
-        # Tự động tạo hoa hồng cho nhân viên bán hàng (5%)
+        # Tự động tạo hoa hồng cho nhân viên bán hàng
         if invoice_data.get('sales_employee_id'):
             sales_employee_id = invoice_data['sales_employee_id']
             total_amount = invoice_data['total_amount']
-            commission_amount = total_amount * 0.05  # 5% hoa hồng
+            commission_percentage = invoice_data.get('commission_percentage', 5.0)  # Default to 5% if not provided
+            commission_amount = total_amount * (commission_percentage / 100.0)
             
             # Lấy tháng từ invoice_date
             from datetime import datetime
@@ -405,7 +406,7 @@ async def create_invoice(invoice_data: dict):
                 'ten_san_pham': f'Hoa hồng hóa đơn {invoice_id}',
                 'so_luong': 1,
                 'don_gia': commission_amount,
-                'ty_le': 5.0  # 5% hoa hồng
+                'ty_le': commission_percentage
             }).execute()
 
         return {"message": "Invoice created successfully", "invoice_id": invoice_id}

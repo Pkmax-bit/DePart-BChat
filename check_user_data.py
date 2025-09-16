@@ -3,7 +3,7 @@ sys.path.append('./backend')
 from supabase_client import supabase
 
 # Kiểm tra users table
-result = supabase.table('users').select('id, email, username').execute()
+result = supabase.table('employees').select('id, email, username').execute()
 print('Users:')
 for user in result.data:
     print(f'ID: {user["id"]}, Email: {user["email"]}, Username: {user["username"]}')

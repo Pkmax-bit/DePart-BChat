@@ -32,6 +32,9 @@ def insert_sample_data():
                 'dien_thoai': '0901234567',
                 'dia_chi': '123 Đường ABC, Quận 1, TP.HCM',
                 'ngay_vao_lam': '2023-01-15',
+                'username': 'nguyenvana',
+                'hashed_password': '$2b$12$nLN8gS9tW6XMb5JzNVRNKu4TOp26Cx7BrN.J42jm7tsBzLxi4cATO',  # Default password
+                'role_id': 2,  # Regular user
                 'is_active': True
             },
             {
@@ -46,6 +49,9 @@ def insert_sample_data():
                 'dien_thoai': '0902345678',
                 'dia_chi': '456 Đường XYZ, Quận 2, TP.HCM',
                 'ngay_vao_lam': '2023-03-01',
+                'username': 'tranthib',
+                'hashed_password': '$2b$12$nLN8gS9tW6XMb5JzNVRNKu4TOp26Cx7BrN.J42jm7tsBzLxi4cATO',
+                'role_id': 2,
                 'is_active': True
             },
             {
@@ -60,13 +66,16 @@ def insert_sample_data():
                 'dien_thoai': '0903456789',
                 'dia_chi': '789 Đường DEF, Quận 3, TP.HCM',
                 'ngay_vao_lam': '2023-06-15',
+                'username': 'levanc',
+                'hashed_password': '$2b$12$nLN8gS9tW6XMb5JzNVRNKu4TOp26Cx7BrN.J42jm7tsBzLxi4cATO',
+                'role_id': 2,
                 'is_active': True
             }
         ]
 
         # Insert employees
         for emp in employees:
-            result = supabase.table('nhan_vien').insert(emp).execute()
+            result = supabase.table('employees').insert(emp).execute()
             print(f"✅ Đã tạo nhân viên: {emp['ho_ten']}")
 
         # Sample timesheets

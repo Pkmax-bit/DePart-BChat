@@ -76,7 +76,7 @@ def test_direct_connection():
                 updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
 
                 CONSTRAINT fk_user_chat_sessions_user
-                    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+                    FOREIGN KEY (user_id) REFERENCES employees(id) ON DELETE CASCADE,
                 CONSTRAINT fk_user_chat_sessions_chatflow
                     FOREIGN KEY (chatflow_id) REFERENCES chatflows(id) ON DELETE CASCADE,
                 CONSTRAINT unique_user_chatflow UNIQUE (user_id, chatflow_id)

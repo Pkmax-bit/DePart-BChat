@@ -22,7 +22,7 @@ if result.data:
     print(f"Record ID: {record_id}")
 
     # Kiểm tra user
-    user_result = supabase.table('users').select('*').eq('email', 'phannguyendangkhoa0915@gmail.com').execute()
+    user_result = supabase.table('employees').select('*').eq('email', 'phannguyendangkhoa0915@gmail.com').execute()
     if user_result.data:
         user = user_result.data[0]
         print(f"Found user: {user['id']}")

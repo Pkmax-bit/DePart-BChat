@@ -74,7 +74,7 @@ try:
     ]
 
     for employee in sample_employees:
-        result = supabase.table('nhan_vien').insert(employee).execute()
+        result = supabase.table('employees').insert(employee).execute()
         print(f'Added employee: {employee["ho_ten"]} ({employee["ma_nv"]})')
 
     # 2. Add sample timesheets for current month

@@ -14,7 +14,7 @@ for chat_record in chat_result.data:
     chat_user_id = chat_record.get('user_id')
 
     # Tìm user thực tế
-    user_result = supabase.table('users').select('id, full_name').eq('email', email).execute()
+    user_result = supabase.table('employees').select('id, full_name').eq('email', email).execute()
     if user_result.data:
         real_user = user_result.data[0]
         real_user_id = real_user['id']

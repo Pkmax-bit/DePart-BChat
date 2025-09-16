@@ -33,7 +33,7 @@ def create_table_manually():
 
             -- Foreign key constraints
             CONSTRAINT fk_user_chat_sessions_user
-                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+                FOREIGN KEY (user_id) REFERENCES employees(id) ON DELETE CASCADE,
             CONSTRAINT fk_user_chat_sessions_chatflow
                 FOREIGN KEY (chatflow_id) REFERENCES chatflows(id) ON DELETE CASCADE,
 

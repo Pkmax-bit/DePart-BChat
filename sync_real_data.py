@@ -16,7 +16,7 @@ for record in result.data:
 
     if email and user_id:
         # Kiểm tra user với email này
-        user_result = supabase.table('users').select('id').eq('email', email).execute()
+        user_result = supabase.table('employees').select('id').eq('email', email).execute()
         if user_result.data:
             correct_user_id = user_result.data[0]['id']
             if str(user_id) != str(correct_user_id):

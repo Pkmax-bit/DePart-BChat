@@ -16,9 +16,9 @@ try:
 
     # List of tables to check
     tables = [
-        'users', 'departments', 'department_members', 'chatflows',
+        'employees', 'departments', 'department_members', 'chatflows',
         'activity_logs', 'feedback', 'chat_history', 'user_chat_sessions',
-        'user_chat', 'nhan_vien', 'bang_cham_cong', 'luong_san_pham',
+        'user_chat', 'bang_cham_cong', 'luong_san_pham',
         'phieu_luong', 'invoices', 'quanly_chiphi', 'loaichiphi'
     ]
 
@@ -34,7 +34,7 @@ try:
     print('=== DETAILED SCHEMA ===')
     print()
     print('1. USERS SYSTEM:')
-    print('   - users: User accounts and authentication')
+    print('   - employees: User accounts and authentication')
     print('   - departments: Department management')
     print('   - department_members: User-department relationships')
     print('   - activity_logs: User activity tracking')
@@ -46,7 +46,7 @@ try:
     print('   - user_chat: User chat mappings with email')
     print()
     print('3. PAYROLL SYSTEM:')
-    print('   - nhan_vien: Employee information (mã NV, họ tên, chức vụ, lương,...)')
+    print('   - employees: Employee information (mã NV, họ tên, chức vụ, lương,...)')
     print('   - bang_cham_cong: Timesheets/attendance (ngày công, OT,...)')
     print('   - luong_san_pham: Product-based salary (sản phẩm, số lượng, đơn giá)')
     print('   - phieu_luong: Salary slips/payslips (tổng thu nhập, khấu trừ,...)')
@@ -61,16 +61,19 @@ try:
     print()
     print('=== PAYROLL TABLES DETAIL ===')
     print()
-    print('NHAN_VIEN (Employees):')
-    print('  - ma_nv: Employee code (Primary Key)')
+    print('EMPLOYEES (Employees):')
+    print('  - id: Auto-increment primary key')
+    print('  - ma_nv: Employee code (unique)')
     print('  - ho_ten: Full name')
     print('  - chuc_vu: Position')
     print('  - phong_ban: Department')
     print('  - luong_hop_dong: Contract salary')
     print('  - muc_luong_dong_bhxh: BHXH salary level')
     print('  - so_nguoi_phu_thuoc: Number of dependents')
+    print('  - username, hashed_password: Login credentials')
     print('  - email, dien_thoai, dia_chi: Contact info')
     print('  - ngay_vao_lam: Start date')
+    print('  - role_id, department_id: Foreign keys')
     print()
     print('BANG_CHAM_CONG (Timesheets):')
     print('  - ma_nv: Employee code (Foreign Key)')

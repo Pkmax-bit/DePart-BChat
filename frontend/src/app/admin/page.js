@@ -109,7 +109,17 @@ function UserManagement() {
     password: '',
     full_name: '',
     role_id: 2,
-    department_id: null
+    department_id: null,
+    // Employee fields
+    ma_nv: '',
+    chuc_vu: '',
+    phong_ban: '',
+    luong_hop_dong: '',
+    muc_luong_dong_bhxh: '',
+    so_nguoi_phu_thuoc: 0,
+    dien_thoai: '',
+    dia_chi: '',
+    ngay_vao_lam: ''
   });
   const [editUser, setEditUser] = useState({
     username: '',
@@ -213,41 +223,76 @@ function UserManagement() {
 
   const handleAddUser = async (e) => {
     e.preventDefault();
-    console.log('Submitting user data:', newUser); // Debug log
+    console.log('Submitting unified employee data:', newUser); // Debug log
 
     try {
-      const { data: { session } } = await supabase.auth.getSession();
+      // Create unified employee record
+      const employeeData = {
+        username: newUser.username,
+        email: newUser.email,
+        password: newUser.password,
+        full_name: newUser.full_name,
+        role_id: newUser.role_id,
+        department_id: newUser.department_id,
+        // Employee-specific fields
+        ma_nv: newUser.ma_nv,
+        chuc_vu: newUser.chuc_vu,
+        phong_ban: newUser.phong_ban,
+        luong_hop_dong: parseFloat(newUser.luong_hop_dong) || 0,
+        muc_luong_dong_bhxh: parseFloat(newUser.muc_luong_dong_bhxh) || 0,
+        so_nguoi_phu_thuoc: newUser.so_nguoi_phu_thuoc || 0,
+        dien_thoai: newUser.dien_thoai,
+        dia_chi: newUser.dia_chi,
+        ngay_vao_lam: newUser.ngay_vao_lam
+      };
+
+      console.log('Creating unified employee with data:', employeeData);
+
       const response = await fetch('http://localhost:8001/api/v1/users/', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          // 'Authorization': session ? `Bearer ${session.access_token}` : ''
         },
-        body: JSON.stringify(newUser)
+        body: JSON.stringify(employeeData)
       });
 
-      console.log('Response status:', response.status); // Debug log
-      console.log('Response ok:', response.ok); // Debug log
+      console.log('Employee creation response status:', response.status);
 
-      if (response.ok) {
-        const result = await response.json();
-        console.log('Success result:', result); // Debug log
-        setShowAddForm(false);
-        setNewUser({
-          username: '',
-          email: '',
-          password: '',
-          full_name: '',
-          role_id: 2,
-          department_id: null
-        });
-        fetchUsers();
-      } else {
+      if (!response.ok) {
         const errorText = await response.text();
-        console.error('Error response:', errorText); // Debug log
+        console.error('Error creating employee:', errorText);
+        alert('Lỗi tạo nhân viên: ' + errorText);
+        return;
       }
+
+      const result = await response.json();
+      console.log('Employee creation success result:', result);
+
+      // Success - reset form and refresh list
+      setShowAddForm(false);
+      setNewUser({
+        username: '',
+        email: '',
+        password: '',
+        full_name: '',
+        role_id: 2,
+        department_id: null,
+        // Employee fields
+        ma_nv: '',
+        chuc_vu: '',
+        phong_ban: '',
+        luong_hop_dong: '',
+        muc_luong_dong_bhxh: '',
+        so_nguoi_phu_thuoc: 0,
+        dien_thoai: '',
+        dia_chi: '',
+        ngay_vao_lam: ''
+      });
+      fetchUsers();
+      alert('Đã tạo nhân viên thành công!');
     } catch (error) {
-      console.error('Error adding user:', error);
+      console.error('Error adding employee:', error);
+      alert('Lỗi kết nối đến server: ' + error.message);
     }
   };
 
@@ -272,7 +317,17 @@ function UserManagement() {
           full_name: '',
           role_id: 2,
           department_id: null,
-          is_active: true
+          is_active: true,
+          // Employee fields
+          ma_nv: '',
+          chuc_vu: '',
+          phong_ban: '',
+          luong_hop_dong: '',
+          muc_luong_dong_bhxh: '',
+          so_nguoi_phu_thuoc: 0,
+          dien_thoai: '',
+          dia_chi: '',
+          ngay_vao_lam: ''
         });
         fetchUsers();
         alert('Đã cập nhật nhân viên thành công!');
@@ -280,7 +335,7 @@ function UserManagement() {
         alert('Có lỗi xảy ra khi cập nhật nhân viên!');
       }
     } catch (error) {
-      console.error('Error updating user:', error);
+      console.error('Error updating employee:', error);
       alert('Có lỗi xảy ra khi cập nhật nhân viên!');
     }
   };
@@ -321,7 +376,12 @@ function UserManagement() {
       full_name: user.full_name,
       role_id: user.role_id || 2,
       department_id: user.department_id,
-      is_active: user.is_active
+      is_active: user.is_active,
+      // Employee fields
+      employee_code: user.employee_code || '',
+      position: user.position || '',
+      salary: user.salary || null,
+      hire_date: user.hire_date || ''
     });
     setShowEditForm(true);
   };
@@ -442,66 +502,173 @@ function UserManagement() {
           <div className="bg-white p-4 sm:p-6 rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
             <h3 className="text-lg sm:text-xl font-semibold mb-4">Thêm Nhân viên Mới</h3>
             <form onSubmit={handleAddUser} className="space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {/* User Information Section */}
+              <div className="border-b border-gray-200 pb-4 mb-4">
+                <h4 className="text-md font-semibold text-gray-800 mb-3">Thông tin tài khoản</h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Username</label>
+                    <input
+                      type="text"
+                      value={newUser.username}
+                      onChange={(e) => setNewUser({...newUser, username: e.target.value})}
+                      className="w-full border border-gray-300 rounded-md shadow-sm p-2 text-black focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                    <input
+                      type="email"
+                      value={newUser.email}
+                      onChange={(e) => setNewUser({...newUser, email: e.target.value})}
+                      className="w-full border border-gray-300 rounded-md shadow-sm p-2 text-black focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      required
+                    />
+                  </div>
+                </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Username</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Mật khẩu</label>
+                  <input
+                    type="password"
+                    value={newUser.password}
+                    onChange={(e) => setNewUser({...newUser, password: e.target.value})}
+                    className="w-full border border-gray-300 rounded-md shadow-sm p-2 text-black focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Họ và tên</label>
                   <input
                     type="text"
-                    value={newUser.username}
-                    onChange={(e) => setNewUser({...newUser, username: e.target.value})}
+                    value={newUser.full_name}
+                    onChange={(e) => setNewUser({...newUser, full_name: e.target.value})}
                     className="w-full border border-gray-300 rounded-md shadow-sm p-2 text-black focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     required
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                  <input
-                    type="email"
-                    value={newUser.email}
-                    onChange={(e) => setNewUser({...newUser, email: e.target.value})}
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Phòng ban</label>
+                  <select
+                    value={newUser.department_id || ''}
+                    onChange={(e) => setNewUser({...newUser, department_id: e.target.value ? parseInt(e.target.value) : null})}
                     className="w-full border border-gray-300 rounded-md shadow-sm p-2 text-black focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    required
+                  >
+                    <option value="">Không thuộc phòng ban nào</option>
+                    {departments.map((dept) => (
+                      <option key={dept.id} value={dept.id}>
+                        {dept.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* Employee Information Section */}
+              <div>
+                <h4 className="text-md font-semibold text-gray-800 mb-3">Thông tin nhân viên</h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Mã nhân viên</label>
+                    <input
+                      type="text"
+                      value={newUser.ma_nv}
+                      onChange={(e) => setNewUser({...newUser, ma_nv: e.target.value})}
+                      className="w-full border border-gray-300 rounded-md shadow-sm p-2 text-black focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Chức vụ</label>
+                    <input
+                      type="text"
+                      value={newUser.chuc_vu}
+                      onChange={(e) => setNewUser({...newUser, chuc_vu: e.target.value})}
+                      className="w-full border border-gray-300 rounded-md shadow-sm p-2 text-black focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Phòng ban (nhân viên)</label>
+                    <input
+                      type="text"
+                      value={newUser.phong_ban}
+                      onChange={(e) => setNewUser({...newUser, phong_ban: e.target.value})}
+                      className="w-full border border-gray-300 rounded-md shadow-sm p-2 text-black focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Số người phụ thuộc</label>
+                    <input
+                      type="number"
+                      value={newUser.so_nguoi_phu_thuoc}
+                      onChange={(e) => setNewUser({...newUser, so_nguoi_phu_thuoc: parseInt(e.target.value) || 0})}
+                      className="w-full border border-gray-300 rounded-md shadow-sm p-2 text-black focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      min="0"
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Lương hợp đồng</label>
+                    <input
+                      type="number"
+                      value={newUser.luong_hop_dong}
+                      onChange={(e) => setNewUser({...newUser, luong_hop_dong: e.target.value})}
+                      className="w-full border border-gray-300 rounded-md shadow-sm p-2 text-black focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      step="0.01"
+                      min="0"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Mức lương đóng BHXH</label>
+                    <input
+                      type="number"
+                      value={newUser.muc_luong_dong_bhxh}
+                      onChange={(e) => setNewUser({...newUser, muc_luong_dong_bhxh: e.target.value})}
+                      className="w-full border border-gray-300 rounded-md shadow-sm p-2 text-black focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      step="0.01"
+                      min="0"
+                      required
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Điện thoại</label>
+                    <input
+                      type="tel"
+                      value={newUser.dien_thoai}
+                      onChange={(e) => setNewUser({...newUser, dien_thoai: e.target.value})}
+                      className="w-full border border-gray-300 rounded-md shadow-sm p-2 text-black focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Ngày vào làm</label>
+                    <input
+                      type="date"
+                      value={newUser.ngay_vao_lam}
+                      onChange={(e) => setNewUser({...newUser, ngay_vao_lam: e.target.value})}
+                      className="w-full border border-gray-300 rounded-md shadow-sm p-2 text-black focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Địa chỉ</label>
+                  <textarea
+                    value={newUser.dia_chi}
+                    onChange={(e) => setNewUser({...newUser, dia_chi: e.target.value})}
+                    className="w-full border border-gray-300 rounded-md shadow-sm p-2 text-black focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    rows="2"
                   />
                 </div>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Mật khẩu</label>
-                <input
-                  type="password"
-                  value={newUser.password}
-                  onChange={(e) => setNewUser({...newUser, password: e.target.value})}
-                  className="w-full border border-gray-300 rounded-md shadow-sm p-2 text-black focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Họ và tên</label>
-                <input
-                  type="text"
-                  value={newUser.full_name}
-                  onChange={(e) => setNewUser({...newUser, full_name: e.target.value})}
-                  className="w-full border border-gray-300 rounded-md shadow-sm p-2 text-black focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Phòng ban</label>
-                <select
-                  value={newUser.department_id || ''}
-                  onChange={(e) => setNewUser({...newUser, department_id: e.target.value ? parseInt(e.target.value) : null})}
-                  className="w-full border border-gray-300 rounded-md shadow-sm p-2 text-black focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                >
-                  <option value="">Không thuộc phòng ban nào</option>
-                  {departments.map((dept) => (
-                    <option key={dept.id} value={dept.id}>
-                      {dept.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
+
               <div className="flex flex-col sm:flex-row gap-2 sm:justify-end pt-4">
                 <button type="submit" className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 order-2 sm:order-1">
-                  Thêm
+                  Thêm Nhân viên
                 </button>
                 <button type="button" onClick={() => setShowAddForm(false)} className="bg-gray-600 text-white px-4 py-2 rounded hover:bg-gray-700 order-1 sm:order-2">
                   Hủy
@@ -574,6 +741,49 @@ function UserManagement() {
                   <option value={true}>Hoạt động</option>
                   <option value={false}>Không hoạt động</option>
                 </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Mã nhân viên</label>
+                <input
+                  type="text"
+                  value={editUser.employee_code || ''}
+                  onChange={(e) => setEditUser({...editUser, employee_code: e.target.value})}
+                  className="w-full border border-gray-300 rounded-md shadow-sm p-2 text-black focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="Nhập mã nhân viên"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Chức vụ</label>
+                <input
+                  type="text"
+                  value={editUser.position || ''}
+                  onChange={(e) => setEditUser({...editUser, position: e.target.value})}
+                  className="w-full border border-gray-300 rounded-md shadow-sm p-2 text-black focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="Nhập chức vụ"
+                />
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Lương</label>
+                  <input
+                    type="number"
+                    value={editUser.salary || ''}
+                    onChange={(e) => setEditUser({...editUser, salary: e.target.value ? parseFloat(e.target.value) : null})}
+                    className="w-full border border-gray-300 rounded-md shadow-sm p-2 text-black focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="0"
+                    min="0"
+                    step="0.01"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Ngày vào làm</label>
+                  <input
+                    type="date"
+                    value={editUser.hire_date ? editUser.hire_date.split('T')[0] : ''}
+                    onChange={(e) => setEditUser({...editUser, hire_date: e.target.value})}
+                    className="w-full border border-gray-300 rounded-md shadow-sm p-2 text-black focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
               </div>
               <div className="flex flex-col sm:flex-row gap-2 sm:justify-end pt-4">
                 <button type="submit" className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 order-2 sm:order-1">

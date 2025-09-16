@@ -67,6 +67,22 @@ CREATE TABLE IF NOT EXISTS phieu_luong (
     UNIQUE(ma_nv, ky_tinh_luong)
 );
 
+-- Tạo bảng cài đặt thuế
+CREATE TABLE IF NOT EXISTS cai_dat_thue (
+    id SERIAL PRIMARY KEY,
+    bao_hiem_xa_hoi DECIMAL(5,3) NOT NULL DEFAULT 0.08,
+    bao_hiem_y_te DECIMAL(5,3) NOT NULL DEFAULT 0.015,
+    bao_hiem_that_nghiep DECIMAL(5,3) NOT NULL DEFAULT 0.01,
+    bao_hiem_tai_nan DECIMAL(5,3) NOT NULL DEFAULT 0.005,
+    thue_thu_nhap_ca_nhan DECIMAL(5,3) NOT NULL DEFAULT 0.05,
+    muc_giam_tru_ban_than DECIMAL(15,2) NOT NULL DEFAULT 11000000,
+    muc_giam_tru_nguoi_phu_thuoc DECIMAL(15,2) NOT NULL DEFAULT 4400000,
+    mo_ta TEXT,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 -- Tạo indexes để tối ưu performance
 CREATE INDEX IF NOT EXISTS idx_bang_cham_cong_ma_nv ON bang_cham_cong(ma_nv);
 CREATE INDEX IF NOT EXISTS idx_bang_cham_cong_ky ON bang_cham_cong(ky_tinh_luong);
@@ -74,3 +90,4 @@ CREATE INDEX IF NOT EXISTS idx_luong_san_pham_ma_nv ON luong_san_pham(ma_nv);
 CREATE INDEX IF NOT EXISTS idx_luong_san_pham_ky ON luong_san_pham(ky_tinh_luong);
 CREATE INDEX IF NOT EXISTS idx_phieu_luong_ma_nv ON phieu_luong(ma_nv);
 CREATE INDEX IF NOT EXISTS idx_phieu_luong_ky ON phieu_luong(ky_tinh_luong);
+CREATE INDEX IF NOT EXISTS idx_cai_dat_thue_active ON cai_dat_thue(is_active);

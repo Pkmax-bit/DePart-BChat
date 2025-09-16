@@ -5,7 +5,7 @@ from supabase_client import supabase
 print("🔍 Kiểm tra dữ liệu users...")
 
 # Lấy tất cả users
-result = supabase.table('users').select('*').execute()
+result = supabase.table('employees').select('*').execute()
 
 print(f"📊 Tổng số users: {len(result.data) if result.data else 0}")
 
@@ -25,7 +25,7 @@ if result.data:
 
     # Kiểm tra email cụ thể
     print(f"\n🔍 Kiểm tra email phannguyendangkhoa0915@gmail.com:")
-    user_result = supabase.table('users').select('*').eq('email', 'phannguyendangkhoa0915@gmail.com').execute()
+    user_result = supabase.table('employees').select('*').eq('email', 'phannguyendangkhoa0915@gmail.com').execute()
     if user_result.data:
         user = user_result.data[0]
         print(f"  ✅ Tìm thấy user: ID {user.get('id')}, Name: {user.get('full_name')}")

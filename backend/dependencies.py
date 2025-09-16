@@ -39,7 +39,7 @@ async def get_current_admin_user(current_user = Depends(get_current_user)):
         from supabase_client import supabase
 
         # Tìm user trong bảng users theo email
-        result = supabase.table('users').select('role_id, email').eq('email', current_user.email).execute()
+        result = supabase.table('employees').select('role_id, email').eq('email', current_user.email).execute()
 
         if result.data and len(result.data) > 0:
             user_data = result.data[0]

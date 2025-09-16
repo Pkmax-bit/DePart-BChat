@@ -14,7 +14,7 @@ def create_feedback_table():
     -- Tạo bảng feedback cho góp ý của nhân viên
     CREATE TABLE IF NOT EXISTS feedback (
         id SERIAL PRIMARY KEY,
-        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        user_id INTEGER REFERENCES employees(id) ON DELETE CASCADE,
         subject VARCHAR(255) NOT NULL,
         message TEXT NOT NULL,
         category VARCHAR(50) DEFAULT 'general',

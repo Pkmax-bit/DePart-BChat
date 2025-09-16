@@ -29,7 +29,7 @@ def list_departments():
     try:
         data, count = supabase.table('departments').select('''
             *,
-            users!departments_manager_id_fkey(username, full_name, email)
+            employees!departments_manager_id_fkey(username, full_name, email)
         ''').order('name').execute()
         return data[1]
     except Exception as e:
@@ -43,12 +43,12 @@ def get_department(department_id: int):
     try:
         data, count = supabase.table('departments').select('''
             *,
-            users!departments_manager_id_fkey(username, full_name, email),
+            employees!departments_manager_id_fkey(username, full_name, email),
             department_members(
                 id,
                 role_in_department,
                 joined_at,
-                users(user_id, username, full_name, email)
+                employees(user_id, username, full_name, email)
             )
         ''').eq('id', department_id).execute()
 
@@ -103,7 +103,7 @@ def add_department_member(department_id: int, member: DepartmentMemberCreate):
             raise HTTPException(status_code=404, detail="Department not found")
 
         # Kiểm tra user tồn tại
-        user_check = supabase.table('users').select('id').eq('id', member.user_id).execute()
+        user_check = supabase.table('employees').select('id').eq('id', member.user_id).execute()
         if not user_check.data:
             raise HTTPException(status_code=404, detail="User not found")
 
@@ -142,20 +142,20 @@ def assign_user_to_department(user_id: int, department_id: int = None):
     """
     try:
         # Kiểm tra user tồn tại
-        user_check = supabase.table('users').select('id').eq('id', user_id).execute()
+        user_check = supabase.table('employees').select('id').eq('id', user_id).execute()
         if not user_check.data:
             raise HTTPException(status_code=404, detail="User not found")
 
         # Nếu department_id là null, bỏ user khỏi department
         if department_id is None:
-            data, count = supabase.table('users').update({'department_id': None}).eq('id', user_id).execute()
+            data, count = supabase.table('employees').update({'department_id': None}).eq('id', user_id).execute()
         else:
             # Kiểm tra department tồn tại
             dept_check = supabase.table('departments').select('id').eq('id', department_id).execute()
             if not dept_check.data:
                 raise HTTPException(status_code=404, detail="Department not found")
 
-            data, count = supabase.table('users').update({'department_id': department_id}).eq('id', user_id).execute()
+            data, count = supabase.table('employees').update({'department_id': department_id}).eq('id', user_id).execute()
 
         if not data[1]:
             raise HTTPException(status_code=404, detail="User not found")

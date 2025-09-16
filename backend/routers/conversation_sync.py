@@ -86,7 +86,7 @@ def login_and_sync_conversations(login_data: LoginRequest):
         from supabase_client import supabase
 
         # Tìm user theo username
-        user_result = supabase.table('users').select('id, username, email').eq('username', login_data.username).execute()
+        user_result = supabase.table('employees').select('id, username, email').eq('username', login_data.username).execute()
 
         if not user_result.data:
             raise HTTPException(status_code=401, detail="Invalid username or password")

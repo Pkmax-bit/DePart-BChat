@@ -182,6 +182,7 @@ function InvoicesTab() {
   const [invoiceDate, setInvoiceDate] = useState(new Date().toISOString().split('T')[0]);
   const [invoiceTime, setInvoiceTime] = useState(new Date().toTimeString().split(' ')[0]);
   const [salesEmployee, setSalesEmployee] = useState('');
+  const [commissionPercentage, setCommissionPercentage] = useState(5);
   const [employees, setEmployees] = useState([]);
   const [invoiceItems, setInvoiceItems] = useState([]);
   const [globalNhom, setGlobalNhom] = useState('');
@@ -721,6 +722,7 @@ function InvoicesTab() {
       const invoiceData = {
         customer_name: customerName,
         sales_employee_id: salesEmployee,
+        commission_percentage: commissionPercentage,
         invoice_date: `${invoiceDate}T${invoiceTime}`,
         items: invoiceItems.map(item => {
           if (item.loai_san_pham === 'phu_kien_bep') {
@@ -768,6 +770,7 @@ function InvoicesTab() {
         // Reset form
         setCustomerName('');
         setSalesEmployee('');
+        setCommissionPercentage(5);
         setInvoiceItems([]);
         setInvoiceDate(new Date().toISOString().split('T')[0]);
         setInvoiceTime(new Date().toTimeString().split(' ')[0]);
@@ -813,7 +816,7 @@ function InvoicesTab() {
       {/* Invoice Info */}
       <div className="bg-white rounded-lg shadow-sm border p-6">
         <h3 className="text-lg font-semibold text-gray-900 mb-4">Thông tin hóa đơn</h3>
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Tên khách hàng</label>
             <input
@@ -840,6 +843,19 @@ function InvoicesTab() {
                 </option>
               ))}
             </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">% hoa hồng</label>
+            <input
+              type="number"
+              min="0"
+              max="100"
+              step="0.1"
+              value={commissionPercentage}
+              onChange={(e) => setCommissionPercentage(parseFloat(e.target.value) || 0)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-yellow-100 text-black"
+              placeholder="5"
+            />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Ngày hóa đơn</label>

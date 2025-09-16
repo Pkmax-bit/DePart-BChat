@@ -23,7 +23,7 @@ try:
     supabase.table('bang_cham_cong').delete().neq('id', 0).execute()
 
     print("Clearing employees...")
-    supabase.table('nhan_vien').delete().neq('ma_nv', '').execute()
+    supabase.table('employees').delete().neq('ma_nv', '').execute()
 
     print("✅ Existing data cleared!")
 
@@ -91,7 +91,7 @@ try:
     ]
 
     for employee in sample_employees:
-        result = supabase.table('nhan_vien').insert(employee).execute()
+        result = supabase.table('employees').insert(employee).execute()
         print(f'✓ Added employee: {employee["ho_ten"]} ({employee["ma_nv"]})')
 
     # 2. Add sample timesheets for current month

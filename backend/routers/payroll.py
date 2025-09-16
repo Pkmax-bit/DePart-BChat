@@ -17,13 +17,13 @@ def create_nhan_vien(nhan_vien: NhanVienCreate):
 
     try:
         # Kiểm tra mã NV đã tồn tại
-        existing = supabase.table('nhan_vien').select('ma_nv').eq('ma_nv', nhan_vien.ma_nv).execute()
+        existing = supabase.table('employees').select('ma_nv').eq('ma_nv', nhan_vien.ma_nv).execute()
         if existing.data:
             raise HTTPException(status_code=400, detail="Mã nhân viên đã tồn tại")
 
         # Insert vào database
         data = nhan_vien.dict()
-        result = supabase.table('nhan_vien').insert(data).execute()
+        result = supabase.table('employees').insert(data).execute()
 
         return NhanVienResponse(**result.data[0])
     except Exception as e:
@@ -40,7 +40,7 @@ def get_nhan_vien_list(
         raise HTTPException(status_code=503, detail="Database service unavailable")
 
     try:
-        query = supabase.table('nhan_vien').select('*')
+        query = supabase.table('employees').select('*')
 
         if search:
             query = query.or_(f'ho_ten.ilike.%{search}%,ma_nv.ilike.%{search}%')
@@ -60,7 +60,7 @@ def get_nhan_vien(ma_nv: str):
         raise HTTPException(status_code=503, detail="Database service unavailable")
 
     try:
-        result = supabase.table('nhan_vien').select('*').eq('ma_nv', ma_nv).execute()
+        result = supabase.table('employees').select('*').eq('ma_nv', ma_nv).execute()
 
         if not result.data:
             raise HTTPException(status_code=404, detail="Nhân viên không tồn tại")
@@ -76,14 +76,14 @@ def update_nhan_vien(ma_nv: str, update_data: NhanVienUpdate):
 
     try:
         # Kiểm tra tồn tại
-        existing = supabase.table('nhan_vien').select('ma_nv').eq('ma_nv', ma_nv).execute()
+        existing = supabase.table('employees').select('ma_nv').eq('ma_nv', ma_nv).execute()
         if not existing.data:
             raise HTTPException(status_code=404, detail="Nhân viên không tồn tại")
 
         # Cập nhật
         update_dict = {k: v for k, v in update_data.dict().items() if v is not None}
         if update_dict:
-            result = supabase.table('nhan_vien').update(update_dict).eq('ma_nv', ma_nv).execute()
+            result = supabase.table('employees').update(update_dict).eq('ma_nv', ma_nv).execute()
             return NhanVienResponse(**result.data[0])
         else:
             return get_nhan_vien(ma_nv)
@@ -96,7 +96,7 @@ def delete_nhan_vien(ma_nv: str):
         raise HTTPException(status_code=503, detail="Database service unavailable")
 
     try:
-        result = supabase.table('nhan_vien').delete().eq('ma_nv', ma_nv).execute()
+        result = supabase.table('employees').delete().eq('ma_nv', ma_nv).execute()
 
         if not result.data:
             raise HTTPException(status_code=404, detail="Nhân viên không tồn tại")
@@ -114,7 +114,7 @@ def create_cham_cong(cham_cong: BangChamCongCreate):
 
     try:
         # Kiểm tra nhân viên tồn tại
-        nv = supabase.table('nhan_vien').select('ma_nv').eq('ma_nv', cham_cong.ma_nv).execute()
+        nv = supabase.table('employees').select('ma_nv').eq('ma_nv', cham_cong.ma_nv).execute()
         if not nv.data:
             raise HTTPException(status_code=404, detail="Nhân viên không tồn tại")
 
@@ -228,7 +228,7 @@ def create_luong_san_pham(luong_sp: LuongSanPhamCreate):
 
     try:
         # Kiểm tra nhân viên tồn tại
-        nv = supabase.table('nhan_vien').select('ma_nv').eq('ma_nv', luong_sp.ma_nv).execute()
+        nv = supabase.table('employees').select('ma_nv').eq('ma_nv', luong_sp.ma_nv).execute()
         if not nv.data:
             raise HTTPException(status_code=404, detail="Nhân viên không tồn tại")
 
@@ -340,7 +340,7 @@ def tinh_luong_endpoint(request: TinhLuongRequest):
 
     try:
         # Lấy dữ liệu nhân viên
-        nv_result = supabase.table('nhan_vien').select('ma_nv, ho_ten, chuc_vu, phong_ban, luong_hop_dong, muc_luong_dong_bhxh, so_nguoi_phu_thuoc').eq('ma_nv', request.ma_nv).execute()
+        nv_result = supabase.table('employees').select('ma_nv, ho_ten, chuc_vu, phong_ban, luong_hop_dong, muc_luong_dong_bhxh, so_nguoi_phu_thuoc').eq('ma_nv', request.ma_nv).execute()
         if not nv_result.data:
             raise HTTPException(status_code=404, detail="Nhân viên không tồn tại")
 

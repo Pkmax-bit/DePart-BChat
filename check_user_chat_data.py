@@ -38,7 +38,7 @@ if result.data:
     user_ids = list(set(record.get('user_id') for record in result.data if record.get('user_id')))
     for user_id in user_ids:
         if user_id:
-            user_result = supabase.table('users').select('id, full_name, email').eq('id', user_id).execute()
+            user_result = supabase.table('employees').select('id, full_name, email').eq('id', user_id).execute()
             if user_result.data:
                 user = user_result.data[0]
                 print(f"  User ID {user_id}: {user.get('full_name')} ({user.get('email')})")

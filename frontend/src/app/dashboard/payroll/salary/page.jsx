@@ -14,6 +14,7 @@ function SalaryLayout({ user, activeTab, onTabChange, selectedMonth, onMonthChan
     { id: 'employees', label: 'Nhân viên', icon: Users },
     { id: 'timesheets', label: 'Chấm công', icon: Clock },
     { id: 'products', label: 'Lương sản phẩm', icon: Package },
+    { id: 'taxes', label: 'Thuế', icon: Calculator },
     { id: 'calculation', label: 'Tính lương', icon: Calculator },
     { id: 'reports', label: 'Báo cáo', icon: FileSpreadsheet }
   ];
@@ -312,7 +313,7 @@ function SalaryCalculationTab({ selectedMonth, onSalaryUpdate }) {
             <select
               value={selectedEmployee}
               onChange={(e) => setSelectedEmployee(e.target.value)}
-              className="block w-full border-gray-300 rounded-md shadow-sm focus:ring-purple-500 focus:border-purple-500 sm:text-sm"
+              className="block w-full border-gray-300 rounded-md shadow-sm focus:ring-purple-500 focus:border-purple-500 sm:text-sm text-gray-900"
             >
               <option value="">Chọn nhân viên</option>
               {employees.map(employee => (
@@ -329,7 +330,7 @@ function SalaryCalculationTab({ selectedMonth, onSalaryUpdate }) {
               type="month"
               value={selectedMonth}
               readOnly
-              className="block w-full border-gray-300 rounded-md shadow-sm bg-gray-50 sm:text-sm"
+              className="block w-full border-gray-300 rounded-md shadow-sm bg-gray-50 sm:text-sm text-gray-900"
             />
           </div>
 
@@ -847,7 +848,7 @@ function EmployeesTab() {
                     <Users className="w-6 h-6" />
                   </div>
                 </div>
-                <p className="text-sm text-gray-600 mt-2 flex items-center">
+                <p className="text-sm text-gray-900 mt-2 flex items-center">
                   <span className="w-4 h-4 bg-gray-100 rounded-full flex items-center justify-center mr-2">
                     <span className="text-xs">💡</span>
                   </span>
@@ -877,7 +878,7 @@ function EmployeesTab() {
                     <User className="w-6 h-6" />
                   </div>
                 </div>
-                <p className="text-sm text-gray-600 mt-2 flex items-center">
+                <p className="text-sm text-gray-900 mt-2 flex items-center">
                   <span className="w-4 h-4 bg-gray-100 rounded-full flex items-center justify-center mr-2">
                     <span className="text-xs">💡</span>
                   </span>
@@ -905,7 +906,7 @@ function EmployeesTab() {
                     <Wrench className="w-6 h-6" />
                   </div>
                 </div>
-                <p className="text-sm text-gray-600 mt-2 flex items-center">
+                <p className="text-sm text-gray-900 mt-2 flex items-center">
                   <span className="w-4 h-4 bg-gray-100 rounded-full flex items-center justify-center mr-2">
                     <span className="text-xs">💡</span>
                   </span>
@@ -933,7 +934,7 @@ function EmployeesTab() {
                     <Package className="w-6 h-6" />
                   </div>
                 </div>
-                <p className="text-sm text-gray-600 mt-2 flex items-center">
+                <p className="text-sm text-gray-900 mt-2 flex items-center">
                   <span className="w-4 h-4 bg-gray-100 rounded-full flex items-center justify-center mr-2">
                     <span className="text-xs">💡</span>
                   </span>
@@ -970,7 +971,7 @@ function EmployeesTab() {
                     <DollarSign className="w-6 h-6" />
                   </div>
                 </div>
-                <p className="text-sm text-gray-600 mt-2 flex items-center">
+                <p className="text-sm text-gray-900 mt-2 flex items-center">
                   <span className="w-4 h-4 bg-gray-100 rounded-full flex items-center justify-center mr-2">
                     <span className="text-xs">💡</span>
                   </span>
@@ -1007,7 +1008,7 @@ function EmployeesTab() {
                     <Calculator className="w-6 h-6" />
                   </div>
                 </div>
-                <p className="text-sm text-gray-600 mt-2 flex items-center">
+                <p className="text-sm text-gray-900 mt-2 flex items-center">
                   <span className="w-4 h-4 bg-gray-100 rounded-full flex items-center justify-center mr-2">
                     <span className="text-xs">💡</span>
                   </span>
@@ -1036,7 +1037,7 @@ function EmployeesTab() {
                     <Users className="w-6 h-6" />
                   </div>
                 </div>
-                <p className="text-sm text-gray-600 mt-2 flex items-center">
+                <p className="text-sm text-gray-900 mt-2 flex items-center">
                   <span className="w-4 h-4 bg-gray-100 rounded-full flex items-center justify-center mr-2">
                     <span className="text-xs">💡</span>
                   </span>
@@ -1063,7 +1064,7 @@ function EmployeesTab() {
                     <Calendar className="w-6 h-6" />
                   </div>
                 </div>
-                <p className="text-sm text-gray-600 mt-2 flex items-center">
+                <p className="text-sm text-gray-900 mt-2 flex items-center">
                   <span className="w-4 h-4 bg-gray-100 rounded-full flex items-center justify-center mr-2">
                     <span className="text-xs">💡</span>
                   </span>
@@ -1091,7 +1092,7 @@ function EmployeesTab() {
                     <FileText className="w-6 h-6" />
                   </div>
                 </div>
-                <p className="text-sm text-gray-600 mt-2 flex items-center">
+                <p className="text-sm text-gray-900 mt-2 flex items-center">
                   <span className="w-4 h-4 bg-gray-100 rounded-full flex items-center justify-center mr-2">
                     <span className="text-xs">💡</span>
                   </span>
@@ -1119,7 +1120,7 @@ function EmployeesTab() {
                     <Phone className="w-6 h-6" />
                   </div>
                 </div>
-                <p className="text-sm text-gray-600 mt-2 flex items-center">
+                <p className="text-sm text-gray-900 mt-2 flex items-center">
                   <span className="w-4 h-4 bg-gray-100 rounded-full flex items-center justify-center mr-2">
                     <span className="text-xs">💡</span>
                   </span>
@@ -1148,7 +1149,7 @@ function EmployeesTab() {
                   <MapPin className="w-6 h-6" />
                 </div>
               </div>
-              <p className="text-sm text-gray-600 mt-2 flex items-center">
+              <p className="text-sm text-gray-900 mt-2 flex items-center">
                 <span className="w-4 h-4 bg-gray-100 rounded-full flex items-center justify-center mr-2">
                   <span className="text-xs">💡</span>
                 </span>
@@ -1540,7 +1541,7 @@ function TimesheetsTab({ selectedMonth }) {
                     </svg>
                   </div>
                 </div>
-                <p className="text-sm text-gray-600 mt-2 flex items-center">
+                <p className="text-sm text-gray-900 mt-2 flex items-center">
                   <span className="w-4 h-4 bg-gray-100 rounded-full flex items-center justify-center mr-2">
                     <span className="text-xs">💡</span>
                   </span>
@@ -1570,7 +1571,7 @@ function TimesheetsTab({ selectedMonth }) {
                     <Calendar className="w-6 h-6" />
                   </div>
                 </div>
-                <p className="text-sm text-gray-600 mt-2 flex items-center">
+                <p className="text-sm text-gray-900 mt-2 flex items-center">
                   <span className="w-4 h-4 bg-gray-100 rounded-full flex items-center justify-center mr-2">
                     <span className="text-xs">💡</span>
                   </span>
@@ -1601,7 +1602,7 @@ function TimesheetsTab({ selectedMonth }) {
                     <Calculator className="w-6 h-6" />
                   </div>
                 </div>
-                <p className="text-sm text-gray-600 mt-2 flex items-center">
+                <p className="text-sm text-gray-900 mt-2 flex items-center">
                   <span className="w-4 h-4 bg-gray-100 rounded-full flex items-center justify-center mr-2">
                     <span className="text-xs">💡</span>
                   </span>
@@ -1632,7 +1633,7 @@ function TimesheetsTab({ selectedMonth }) {
                     <Clock className="w-6 h-6" />
                   </div>
                 </div>
-                <p className="text-sm text-gray-600 mt-2 flex items-center">
+                <p className="text-sm text-gray-900 mt-2 flex items-center">
                   <span className="w-4 h-4 bg-gray-100 rounded-full flex items-center justify-center mr-2">
                     <span className="text-xs">💡</span>
                   </span>
@@ -1662,7 +1663,7 @@ function TimesheetsTab({ selectedMonth }) {
                     <TrendingDown className="w-6 h-6" />
                   </div>
                 </div>
-                <p className="text-sm text-gray-600 mt-2 flex items-center">
+                <p className="text-sm text-gray-900 mt-2 flex items-center">
                   <span className="w-4 h-4 bg-gray-100 rounded-full flex items-center justify-center mr-2">
                     <span className="text-xs">💡</span>
                   </span>
@@ -1692,7 +1693,7 @@ function TimesheetsTab({ selectedMonth }) {
                     <Package className="w-6 h-6" />
                   </div>
                 </div>
-                <p className="text-sm text-gray-600 mt-2 flex items-center">
+                <p className="text-sm text-gray-900 mt-2 flex items-center">
                   <span className="w-4 h-4 bg-gray-100 rounded-full flex items-center justify-center mr-2">
                     <span className="text-xs">💡</span>
                   </span>
@@ -1722,7 +1723,7 @@ function TimesheetsTab({ selectedMonth }) {
                     <BarChart3 className="w-6 h-6" />
                   </div>
                 </div>
-                <p className="text-sm text-gray-600 mt-2 flex items-center">
+                <p className="text-sm text-gray-900 mt-2 flex items-center">
                   <span className="w-4 h-4 bg-gray-100 rounded-full flex items-center justify-center mr-2">
                     <span className="text-xs">💡</span>
                   </span>
@@ -1751,7 +1752,7 @@ function TimesheetsTab({ selectedMonth }) {
                   <FileText className="w-6 h-6" />
                 </div>
               </div>
-              <p className="text-sm text-gray-600 mt-2 flex items-center">
+              <p className="text-sm text-gray-900 mt-2 flex items-center">
                 <span className="w-4 h-4 bg-gray-100 rounded-full flex items-center justify-center mr-2">
                   <span className="text-xs">💡</span>
                 </span>
@@ -1802,8 +1803,9 @@ function ProductsTab() {
     ma_nv: '',
     thang: '',
     nam: '',
-    so_luong_san_pham: '',
-    don_gia_san_pham: '',
+    gia_thanh: '',
+    so_luong_hang_hoa: '',
+    ty_le: '',
     ghi_chu: ''
   });
 
@@ -1847,11 +1849,13 @@ function ProductsTab() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          ...formData,
-          thang: parseInt(formData.thang),
-          nam: parseInt(formData.nam),
-          so_luong_san_pham: parseInt(formData.so_luong_san_pham),
-          don_gia_san_pham: parseFloat(formData.don_gia_san_pham)
+          ma_nv: formData.ma_nv,
+          ky_tinh_luong: `${formData.nam}-${String(formData.thang).padStart(2, '0')}`,
+          san_pham_id: `SP_${Date.now()}`, // Generate a simple product ID
+          ten_san_pham: `Sản phẩm ${formData.thang}/${formData.nam}`,
+          so_luong: parseInt(formData.so_luong_hang_hoa),
+          gia_thanh: parseFloat(formData.gia_thanh),
+          ty_le: parseFloat(formData.ty_le)
         }),
       });
 
@@ -1861,8 +1865,9 @@ function ProductsTab() {
           ma_nv: '',
           thang: '',
           nam: '',
-          so_luong_san_pham: '',
-          don_gia_san_pham: '',
+          gia_thanh: '',
+          so_luong_hang_hoa: '',
+          ty_le: '',
           ghi_chu: ''
         });
         fetchProducts();
@@ -1900,8 +1905,8 @@ function ProductsTab() {
     return employee ? employee.ho_ten : ma_nv;
   };
 
-  const calculateTotal = (so_luong, don_gia) => {
-    const total = (so_luong || 0) * (don_gia || 0);
+  const calculateTotal = (so_luong, gia_thanh, ty_le) => {
+    const total = (so_luong || 0) * (gia_thanh || 0) * ((ty_le || 0) / 100);
     return total.toLocaleString();
   };
 
@@ -1976,10 +1981,10 @@ function ProductsTab() {
                         Tháng {product.thang}/{product.nam}
                       </div>
                       <div className="text-sm text-gray-900">
-                        Số lượng: {product.so_luong_san_pham || 0} | Đơn giá: {(product.don_gia_san_pham || 0).toLocaleString()} VND
+                        Số lượng: {product.so_luong || 0} | Hoa hồng: {(product.gia_thanh || 0).toLocaleString()} VND | Tỷ lệ: {product.ty_le || 0}%
                       </div>
                       <div className="text-sm font-medium text-purple-600">
-                        Tổng: {calculateTotal(product.so_luong_san_pham, product.don_gia_san_pham)} VND
+                        Hoa hồng: {(product.gia_thanh || 0).toLocaleString()} VND
                       </div>
                     </div>
                   </div>
@@ -2058,7 +2063,7 @@ function ProductsTab() {
                     </svg>
                   </div>
                 </div>
-                <p className="text-sm text-gray-600 mt-2 flex items-center">
+                <p className="text-sm text-gray-900 mt-2 flex items-center">
                   <span className="w-4 h-4 bg-gray-100 rounded-full flex items-center justify-center mr-2">
                     <span className="text-xs">💡</span>
                   </span>
@@ -2091,7 +2096,7 @@ function ProductsTab() {
                     <Calendar className="w-6 h-6" />
                   </div>
                 </div>
-                <p className="text-sm text-gray-600 mt-2 flex items-center">
+                <p className="text-sm text-gray-900 mt-2 flex items-center">
                   <span className="w-4 h-4 bg-gray-100 rounded-full flex items-center justify-center mr-2">
                     <span className="text-xs">💡</span>
                   </span>
@@ -2123,7 +2128,7 @@ function ProductsTab() {
                     <Calculator className="w-6 h-6" />
                   </div>
                 </div>
-                <p className="text-sm text-gray-600 mt-2 flex items-center">
+                <p className="text-sm text-gray-900 mt-2 flex items-center">
                   <span className="w-4 h-4 bg-gray-100 rounded-full flex items-center justify-center mr-2">
                     <span className="text-xs">💡</span>
                   </span>
@@ -2131,13 +2136,13 @@ function ProductsTab() {
                 </p>
               </div>
 
-              {/* So luong san pham Field */}
+              {/* So luong hang hoa Field */}
               <div>
                 <label className="block text-sm font-semibold text-gray-800 mb-3 flex items-center">
                   <span className="w-6 h-6 bg-indigo-100 rounded-lg flex items-center justify-center mr-3">
                     <span className="text-xs text-indigo-600">📦</span>
                   </span>
-                  Số lượng sản phẩm
+                  Số lượng hàng hóa
                   <span className="text-red-500 ml-1">*</span>
                 </label>
                 <div className="relative">
@@ -2145,8 +2150,8 @@ function ProductsTab() {
                     type="number"
                     required
                     min="0"
-                    value={formData.so_luong_san_pham}
-                    onChange={(e) => setFormData({...formData, so_luong_san_pham: e.target.value})}
+                    value={formData.so_luong_hang_hoa}
+                    onChange={(e) => setFormData({...formData, so_luong_hang_hoa: e.target.value})}
                     className="w-full pl-5 pr-12 py-4 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 bg-white text-gray-900 placeholder-gray-500 text-lg"
                     placeholder="100"
                   />
@@ -2154,21 +2159,21 @@ function ProductsTab() {
                     <Package className="w-6 h-6" />
                   </div>
                 </div>
-                <p className="text-sm text-gray-600 mt-2 flex items-center">
+                <p className="text-sm text-gray-900 mt-2 flex items-center">
                   <span className="w-4 h-4 bg-gray-100 rounded-full flex items-center justify-center mr-2">
                     <span className="text-xs">💡</span>
                   </span>
-                  Số lượng sản phẩm nhân viên đã sản xuất
+                  Số lượng hàng hóa đã bán
                 </p>
               </div>
 
-              {/* Don gia san pham Field */}
+              {/* Gia thanh Field */}
               <div>
                 <label className="block text-sm font-semibold text-gray-800 mb-3 flex items-center">
                   <span className="w-6 h-6 bg-red-100 rounded-lg flex items-center justify-center mr-3">
                     <span className="text-xs text-red-600">💰</span>
                   </span>
-                  Đơn giá sản phẩm
+                  Hoa hồng sản phẩm
                   <span className="text-red-500 ml-1">*</span>
                 </label>
                 <div className="relative">
@@ -2176,8 +2181,8 @@ function ProductsTab() {
                     type="number"
                     required
                     min="0"
-                    value={formData.don_gia_san_pham}
-                    onChange={(e) => setFormData({...formData, don_gia_san_pham: e.target.value})}
+                    value={formData.gia_thanh}
+                    onChange={(e) => setFormData({...formData, gia_thanh: e.target.value})}
                     className="w-full pl-5 pr-12 py-4 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 bg-white text-gray-900 placeholder-gray-500 text-lg"
                     placeholder="50000"
                   />
@@ -2185,11 +2190,44 @@ function ProductsTab() {
                     <DollarSign className="w-6 h-6" />
                   </div>
                 </div>
-                <p className="text-sm text-gray-600 mt-2 flex items-center">
+                <p className="text-sm text-gray-900 mt-2 flex items-center">
                   <span className="w-4 h-4 bg-gray-100 rounded-full flex items-center justify-center mr-2">
                     <span className="text-xs">💡</span>
                   </span>
-                  Đơn giá tính lương cho mỗi sản phẩm
+                  Số tiền hoa hồng sản phẩm đã tính sẵn
+                </p>
+              </div>
+
+              {/* Ty le Field */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-800 mb-3 flex items-center">
+                  <span className="w-6 h-6 bg-orange-100 rounded-lg flex items-center justify-center mr-3">
+                    <span className="text-xs text-orange-600">📊</span>
+                  </span>
+                  Tỷ lệ hoa hồng (%)
+                  <span className="text-red-500 ml-1">*</span>
+                </label>
+                <div className="relative">
+                  <input
+                    type="number"
+                    required
+                    min="0"
+                    max="100"
+                    step="0.1"
+                    value={formData.ty_le}
+                    onChange={(e) => setFormData({...formData, ty_le: e.target.value})}
+                    className="w-full pl-5 pr-12 py-4 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 bg-white text-gray-900 placeholder-gray-500 text-lg"
+                    placeholder="5"
+                  />
+                  <div className="absolute right-4 top-4 text-gray-400">
+                    <Calculator className="w-6 h-6" />
+                  </div>
+                </div>
+                <p className="text-sm text-gray-900 mt-2 flex items-center">
+                  <span className="w-4 h-4 bg-gray-100 rounded-full flex items-center justify-center mr-2">
+                    <span className="text-xs">💡</span>
+                  </span>
+                  Tỷ lệ hoa hồng tính trên giá thành (%)
                 </p>
               </div>
 
@@ -2203,19 +2241,17 @@ function ProductsTab() {
                 </label>
                 <div className="relative">
                   <div className="w-full pl-5 pr-12 py-4 border border-gray-300 rounded-xl bg-gray-50 text-gray-900 text-lg font-semibold">
-                    {formData.so_luong_san_pham && formData.don_gia_san_pham
-                      ? ((parseInt(formData.so_luong_san_pham) || 0) * (parseFloat(formData.don_gia_san_pham) || 0)).toLocaleString('vi-VN')
-                      : '0'} VND
+                    {formData.gia_thanh ? (parseFloat(formData.gia_thanh) || 0).toLocaleString('vi-VN') : '0'} VND
                   </div>
                   <div className="absolute right-4 top-4 text-gray-400">
                     <Calculator className="w-6 h-6" />
                   </div>
                 </div>
-                <p className="text-sm text-gray-600 mt-2 flex items-center">
+                <p className="text-sm text-gray-900 mt-2 flex items-center">
                   <span className="w-4 h-4 bg-gray-100 rounded-full flex items-center justify-center mr-2">
                     <span className="text-xs">💡</span>
                   </span>
-                  Tự động tính từ số lượng x đơn giá
+                  Hoa hồng đã được tính từ số lượng × giá thành × tỷ lệ (%)
                 </p>
               </div>
             </div>
@@ -2240,7 +2276,7 @@ function ProductsTab() {
                   <FileText className="w-6 h-6" />
                 </div>
               </div>
-              <p className="text-sm text-gray-600 mt-2 flex items-center">
+              <p className="text-sm text-gray-900 mt-2 flex items-center">
                 <span className="w-4 h-4 bg-gray-100 rounded-full flex items-center justify-center mr-2">
                   <span className="text-xs">💡</span>
                 </span>
@@ -2273,6 +2309,318 @@ function ProductsTab() {
           </form>
         </div>
       )}
+    </div>
+  );
+}
+
+function TaxTab() {
+  const [taxSettings, setTaxSettings] = useState({
+    thue_thu_nhap_ca_nhan: 5, // Thuế thu nhập cá nhân (%)
+    bao_hiem_xa_hoi: 8, // Bảo hiểm xã hội (%)
+    bao_hiem_y_te: 1.5, // Bảo hiểm y tế (%)
+    bao_hiem_that_nghiep: 1, // Bảo hiểm thất nghiệp (%)
+    bao_hiem_tai_nan: 0.5, // Bảo hiểm tai nạn lao động (%)
+    muc_giam_tru_ban_than: 11000000, // Mức giảm trừ bản thân (VND)
+    muc_giam_tru_nguoi_phu_thuoc: 4400000, // Mức giảm trừ người phụ thuộc (VND)
+  });
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    fetchTaxSettings();
+  }, []);
+
+  const fetchTaxSettings = async () => {
+    try {
+      const response = await fetch('/api/v1/payroll/thue-cai-dat');
+      if (response.ok) {
+        const data = await response.json();
+        setTaxSettings(data);
+      }
+    } catch (error) {
+      console.error('Error fetching tax settings:', error);
+    }
+  };
+
+  const handleSave = async () => {
+    setLoading(true);
+    try {
+      const response = await fetch('/api/v1/payroll/thue-cai-dat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(taxSettings),
+      });
+
+      if (response.ok) {
+        alert('Cập nhật cài đặt thuế thành công!');
+      } else {
+        alert('Có lỗi xảy ra khi cập nhật cài đặt thuế');
+      }
+    } catch (error) {
+      console.error('Error saving tax settings:', error);
+      alert('Có lỗi xảy ra khi cập nhật cài đặt thuế');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleInputChange = (field, value) => {
+    setTaxSettings(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+
+  const formatCurrency = (amount) => {
+    return new Intl.NumberFormat('vi-VN', {
+      style: 'currency',
+      currency: 'VND'
+    }).format(amount);
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex justify-between items-center">
+        <div>
+          <h2 className="text-2xl font-bold text-gray-900">Cài đặt thuế</h2>
+          <p className="text-gray-900 mt-1">Điều chỉnh tỷ lệ và mức thuế áp dụng cho tính lương</p>
+        </div>
+        <button
+          onClick={handleSave}
+          disabled={loading}
+          className="bg-purple-600 text-white px-6 py-2 rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+        >
+          {loading ? (
+            <>
+              <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              Đang lưu...
+            </>
+          ) : (
+            <>
+              <Calculator className="w-4 h-4" />
+              <span>Lưu cài đặt</span>
+            </>
+          )}
+        </button>
+      </div>
+
+      {/* Tax Settings */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Bảo hiểm xã hội */}
+        <div className="bg-white rounded-lg shadow-sm border p-6">
+          <div className="flex items-center mb-4">
+            <div className="p-3 bg-blue-100 rounded-lg">
+              <Calculator className="w-6 h-6 text-blue-600" />
+            </div>
+            <div className="ml-4">
+              <h3 className="text-lg font-semibold text-gray-900">Bảo hiểm xã hội</h3>
+              <p className="text-sm text-gray-900">Tỷ lệ đóng BHXH</p>
+            </div>
+          </div>
+          <div className="space-y-3">
+            <div>
+              <label className="block text-sm font-medium text-gray-900 mb-1">Tỷ lệ (%)</label>
+              <input
+                type="number"
+                step="0.1"
+                min="0"
+                max="20"
+                value={taxSettings.bao_hiem_xa_hoi}
+                onChange={(e) => handleInputChange('bao_hiem_xa_hoi', parseFloat(e.target.value) || 0)}
+                className="block w-full border-gray-300 rounded-md shadow-sm focus:ring-purple-500 focus:border-purple-500 sm:text-sm text-gray-900"
+              />
+            </div>
+            <p className="text-xs text-gray-900">Mức đóng hiện tại: {taxSettings.bao_hiem_xa_hoi}% trên lương BHXH</p>
+          </div>
+        </div>
+
+        {/* Bảo hiểm y tế */}
+        <div className="bg-white rounded-lg shadow-sm border p-6">
+          <div className="flex items-center mb-4">
+            <div className="p-3 bg-green-100 rounded-lg">
+              <Calculator className="w-6 h-6 text-green-600" />
+            </div>
+            <div className="ml-4">
+              <h3 className="text-lg font-semibold text-gray-900">Bảo hiểm y tế</h3>
+              <p className="text-sm text-gray-900">Tỷ lệ đóng BHYT</p>
+            </div>
+          </div>
+          <div className="space-y-3">
+            <div>
+              <label className="block text-sm font-medium text-gray-900 mb-1">Tỷ lệ (%)</label>
+              <input
+                type="number"
+                step="0.1"
+                min="0"
+                max="10"
+                value={taxSettings.bao_hiem_y_te}
+                onChange={(e) => handleInputChange('bao_hiem_y_te', parseFloat(e.target.value) || 0)}
+                className="block w-full border-gray-300 rounded-md shadow-sm focus:ring-purple-500 focus:border-purple-500 sm:text-sm text-gray-900"
+              />
+            </div>
+            <p className="text-xs text-gray-900">Mức đóng hiện tại: {taxSettings.bao_hiem_y_te}% trên lương BHXH</p>
+          </div>
+        </div>
+
+        {/* Bảo hiểm thất nghiệp */}
+        <div className="bg-white rounded-lg shadow-sm border p-6">
+          <div className="flex items-center mb-4">
+            <div className="p-3 bg-yellow-100 rounded-lg">
+              <Calculator className="w-6 h-6 text-yellow-600" />
+            </div>
+            <div className="ml-4">
+              <h3 className="text-lg font-semibold text-gray-900">Bảo hiểm thất nghiệp</h3>
+              <p className="text-sm text-gray-900">Tỷ lệ đóng BHTN</p>
+            </div>
+          </div>
+          <div className="space-y-3">
+            <div>
+              <label className="block text-sm font-medium text-gray-900 mb-1">Tỷ lệ (%)</label>
+              <input
+                type="number"
+                step="0.1"
+                min="0"
+                max="5"
+                value={taxSettings.bao_hiem_that_nghiep}
+                onChange={(e) => handleInputChange('bao_hiem_that_nghiep', parseFloat(e.target.value) || 0)}
+                className="block w-full border-gray-300 rounded-md shadow-sm focus:ring-purple-500 focus:border-purple-500 sm:text-sm text-gray-900"
+              />
+            </div>
+            <p className="text-xs text-gray-900">Mức đóng hiện tại: {taxSettings.bao_hiem_that_nghiep}% trên lương BHXH</p>
+          </div>
+        </div>
+
+        {/* Bảo hiểm tai nạn */}
+        <div className="bg-white rounded-lg shadow-sm border p-6">
+          <div className="flex items-center mb-4">
+            <div className="p-3 bg-red-100 rounded-lg">
+              <Calculator className="w-6 h-6 text-red-600" />
+            </div>
+            <div className="ml-4">
+              <h3 className="text-lg font-semibold text-gray-900">Bảo hiểm tai nạn</h3>
+              <p className="text-sm text-gray-900">Tỷ lệ đóng BHTNLĐ</p>
+            </div>
+          </div>
+          <div className="space-y-3">
+            <div>
+              <label className="block text-sm font-medium text-gray-900 mb-1">Tỷ lệ (%)</label>
+              <input
+                type="number"
+                step="0.1"
+                min="0"
+                max="2"
+                value={taxSettings.bao_hiem_tai_nan}
+                onChange={(e) => handleInputChange('bao_hiem_tai_nan', parseFloat(e.target.value) || 0)}
+                className="block w-full border-gray-300 rounded-md shadow-sm focus:ring-purple-500 focus:border-purple-500 sm:text-sm text-gray-900"
+              />
+            </div>
+            <p className="text-xs text-gray-900">Mức đóng hiện tại: {taxSettings.bao_hiem_tai_nan}% trên lương BHXH</p>
+          </div>
+        </div>
+
+        {/* Thuế thu nhập cá nhân */}
+        <div className="bg-white rounded-lg shadow-sm border p-6">
+          <div className="flex items-center mb-4">
+            <div className="p-3 bg-purple-100 rounded-lg">
+              <Calculator className="w-6 h-6 text-purple-600" />
+            </div>
+            <div className="ml-4">
+              <h3 className="text-lg font-semibold text-gray-900">Thuế thu nhập cá nhân</h3>
+              <p className="text-sm text-gray-900">Tỷ lệ thuế TNCN</p>
+            </div>
+          </div>
+          <div className="space-y-3">
+            <div>
+              <label className="block text-sm font-medium text-gray-900 mb-1">Tỷ lệ (%)</label>
+              <input
+                type="number"
+                step="0.1"
+                min="0"
+                max="45"
+                value={taxSettings.thue_thu_nhap_ca_nhan}
+                onChange={(e) => handleInputChange('thue_thu_nhap_ca_nhan', parseFloat(e.target.value) || 0)}
+                className="block w-full border-gray-300 rounded-md shadow-sm focus:ring-purple-500 focus:border-purple-500 sm:text-sm text-gray-900"
+              />
+            </div>
+            <p className="text-xs text-gray-900">Mức thuế hiện tại: {taxSettings.thue_thu_nhap_ca_nhan}% trên thu nhập tính thuế</p>
+          </div>
+        </div>
+
+        {/* Mức giảm trừ */}
+        <div className="bg-white rounded-lg shadow-sm border p-6">
+          <div className="flex items-center mb-4">
+            <div className="p-3 bg-indigo-100 rounded-lg">
+              <Calculator className="w-6 h-6 text-indigo-600" />
+            </div>
+            <div className="ml-4">
+              <h3 className="text-lg font-semibold text-gray-900">Mức giảm trừ</h3>
+              <p className="text-sm text-gray-900">Giảm trừ thuế TNCN</p>
+            </div>
+          </div>
+          <div className="space-y-3">
+            <div>
+              <label className="block text-sm font-medium text-gray-900 mb-1">Giảm trừ bản thân (VND)</label>
+              <input
+                type="text"
+                value={taxSettings.muc_giam_tru_ban_than ? taxSettings.muc_giam_tru_ban_than.toLocaleString('vi-VN') : ''}
+                onChange={(e) => {
+                  const value = e.target.value.replace(/[.,\s]/g, '');
+                  handleInputChange('muc_giam_tru_ban_than', parseFloat(value) || 0);
+                }}
+                className="block w-full border-gray-300 rounded-md shadow-sm focus:ring-purple-500 focus:border-purple-500 sm:text-sm text-gray-900"
+                placeholder="11,000,000"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-900 mb-1">Giảm trừ người phụ thuộc (VND)</label>
+              <input
+                type="text"
+                value={taxSettings.muc_giam_tru_nguoi_phu_thuoc ? taxSettings.muc_giam_tru_nguoi_phu_thuoc.toLocaleString('vi-VN') : ''}
+                onChange={(e) => {
+                  const value = e.target.value.replace(/[.,\s]/g, '');
+                  handleInputChange('muc_giam_tru_nguoi_phu_thuoc', parseFloat(value) || 0);
+                }}
+                className="block w-full border-gray-300 rounded-md shadow-sm focus:ring-purple-500 focus:border-purple-500 sm:text-sm text-gray-900"
+                placeholder="4,400,000"
+              />
+            </div>
+            <p className="text-xs text-gray-900">
+              Giảm trừ bản thân: {formatCurrency(taxSettings.muc_giam_tru_ban_than)}<br />
+              Giảm trừ người phụ thuộc: {formatCurrency(taxSettings.muc_giam_tru_nguoi_phu_thuoc)}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Summary */}
+      <div className="bg-white rounded-lg shadow-sm border p-6">
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">Tóm tắt cài đặt thuế</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <h4 className="font-medium text-gray-900 mb-2">Tổng tỷ lệ bảo hiểm:</h4>
+            <p className="text-lg font-bold text-blue-600">
+              {(taxSettings.bao_hiem_xa_hoi + taxSettings.bao_hiem_y_te + taxSettings.bao_hiem_that_nghiep + taxSettings.bao_hiem_tai_nan).toFixed(1)}%
+            </p>
+          </div>
+          <div>
+            <h4 className="font-medium text-gray-900 mb-2">Thuế thu nhập cá nhân:</h4>
+            <p className="text-lg font-bold text-purple-600">
+              {taxSettings.thue_thu_nhap_ca_nhan}%
+            </p>
+          </div>
+        </div>
+        <div className="mt-4 p-4 bg-gray-50 rounded-lg">
+          <p className="text-sm text-gray-900">
+            <strong>Lưu ý:</strong> Các thay đổi sẽ có hiệu lực ngay lập tức cho các tính toán lương mới.
+            Hãy kiểm tra kỹ các tỷ lệ trước khi lưu để đảm bảo tính chính xác.
+          </p>
+        </div>
+      </div>
     </div>
   );
 }
@@ -2331,6 +2679,8 @@ export default function SalaryPage() {
         return <TimesheetsTab selectedMonth={selectedMonth} />;
       case 'products':
         return <ProductsTab />;
+      case 'taxes':
+        return <TaxTab />;
       case 'calculation':
         return <SalaryCalculationTab selectedMonth={selectedMonth} onSalaryUpdate={handleSalaryUpdate} />;
       case 'reports':

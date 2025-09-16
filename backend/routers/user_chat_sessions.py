@@ -303,7 +303,7 @@ def get_all_users_chat_history(limit: int = 100):
         # Lấy tất cả user chat sessions với thông tin user và chatflow
         result = supabase.table('user_chat_sessions').select('''
             *,
-            users!fk_user(id, username, full_name, email),
+            employees!fk_user(id, username, full_name, email),
             chatflows!fk_chatflow(id, name, description)
         ''').order('last_accessed', desc=True).limit(limit).execute()
 

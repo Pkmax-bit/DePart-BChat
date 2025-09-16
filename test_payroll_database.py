@@ -16,7 +16,7 @@ try:
     print('=' * 50)
 
     # Test tables
-    tables = ['nhan_vien', 'bang_cham_cong', 'luong_san_pham', 'phieu_luong']
+    tables = ['employees', 'bang_cham_cong', 'luong_san_pham', 'phieu_luong']
 
     for table in tables:
         try:
@@ -37,7 +37,7 @@ try:
 
     # Employee stats
     try:
-        employees = supabase.table('nhan_vien').select('*').execute()
+        employees = supabase.table('employees').select('*').execute()
         active_employees = [e for e in employees.data if e.get('is_active', True)]
         print(f'👥 Tổng nhân viên: {len(employees.data)}')
         print(f'✅ Nhân viên active: {len(active_employees)}')

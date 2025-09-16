@@ -5,6 +5,7 @@ from models import UserCreate, ActivityLogCreate
 from dependencies import get_current_admin_user
 from pydantic import BaseModel, EmailStr
 import hashlib
+import bcrypt
 from fastapi import UploadFile, File
 import pandas as pd
 import io
@@ -48,18 +49,29 @@ def login_user(login: LoginRequest):
         if not SUPABASE_AVAILABLE or supabase is None:
             raise HTTPException(status_code=503, detail="Database service unavailable")
 
-        # Tìm user trong bảng users
-        result = supabase.table('users').select('*').eq('email', login.email).execute()
+        # Tìm user trong bảng employees
+        result = supabase.table('employees').select('*').eq('email', login.email).execute()
 
         if not result.data or len(result.data) == 0:
+            print(f"User not found: {login.email}")
             raise HTTPException(status_code=401, detail="Email không tồn tại")
 
         user = result.data[0]
+        print(f"User found: {user}")
+        print(f"User keys: {list(user.keys())}")
+        print(f"User id: {user.get('id')}")
 
-        # Hash password và so sánh
-        hashed_input = hashlib.sha256(login.password.encode()).hexdigest()
+        # Verify password using bcrypt
+        try:
+            password_valid = bcrypt.checkpw(login.password.encode('utf-8'), user['hashed_password'].encode('utf-8'))
+            print(f"Password verification for {login.email}: {'valid' if password_valid else 'invalid'}")
+        except Exception as e:
+            print(f"Password verification error for {login.email}: {e}")
+            print(f"Stored hash: {user['hashed_password'][:20]}...")
+            raise HTTPException(status_code=401, detail="Mật khẩu không đúng")
 
-        if hashed_input != user['hashed_password']:
+        if not password_valid:
+            print(f"Invalid password for {login.email}")
             raise HTTPException(status_code=401, detail="Mật khẩu không đúng")
 
         # Lấy thông tin role
@@ -70,32 +82,17 @@ def login_user(login: LoginRequest):
 
         # Log activity khi đăng nhập với online = true
         try:
-            # Sử dụng raw SQL để tránh vấn đề schema cache
-            activity_data = {
-                "user_id": user['id'],
-                "chatflow_id": None,  # None for login activity (no specific chatflow)
+            print(f"Attempting to log login activity for user {user['ma_nv']}")
+            # Sử dụng table API thay vì raw SQL để tránh vấn đề formatting
+            activity_result = supabase.table('activity_logs').insert({
+                "user_id": user['ma_nv'],
+                "chatflow_id": None,
                 "online": True
-            }
-
-            # Thử insert bằng RPC trước
-            try:
-                supabase.rpc('exec_sql', {
-                    'sql': f'''
-                    INSERT INTO activity_logs (user_id, chatflow_id, online)
-                    VALUES ({activity_data['user_id']}, NULL, {activity_data['online']})
-                    '''
-                })
-            except:
-                # Fallback: sử dụng table API
-                supabase.table('activity_logs').insert({
-                    "user_id": user['id'],
-                    "chatflow_id": None,
-                    "online": True
-                }).execute()
-
-            print(f"Login activity logged for user {user['id']}")
+            }).execute()
+            print(f"Login activity logged successfully for user {user['ma_nv']}")
         except Exception as e:
             print(f"Failed to log login activity: {e}")
+            # Không raise error để không làm gián đoạn login
 
         # Đồng bộ conversation IDs từ Dify khi đăng nhập
         # TEMPORARILY DISABLED for testing
@@ -111,7 +108,7 @@ def login_user(login: LoginRequest):
         return {
             "message": "Đăng nhập thành công",
             "user": {
-                "id": user['id'],
+                "id": user['ma_nv'],
                 "username": user['username'],
                 "email": user['email'],
                 "full_name": user['full_name'],
@@ -132,7 +129,7 @@ def login_user(login: LoginRequest):
         raise HTTPException(status_code=500, detail="Lỗi server")
 
 @router.post("/auth/logout/{user_id}")
-def logout_user(user_id: int):
+def logout_user(user_id: str):
     """
     Đăng xuất user và cập nhật trạng thái online
     """
@@ -143,7 +140,7 @@ def logout_user(user_id: int):
         try:
             sql = f'''
             INSERT INTO activity_logs (user_id, chatflow_id, online)
-            VALUES ({user_id}, NULL, false)
+            VALUES ('{user_id}', NULL, false)
             '''
             supabase.rpc('exec_sql', {'sql': sql})
         except:
@@ -191,7 +188,7 @@ def create_new_user(user: UserCreate):
         else:
             print(f"Creating {user.role_id == 2 and 'User' or 'Manager'} in database only (no Auth)")
 
-        # Thêm vào bảng users
+        # Thêm vào bảng employees
         user_data = {
             "username": user.username,
             "email": user.email,
@@ -202,11 +199,11 @@ def create_new_user(user: UserCreate):
         }
 
         # Hash password cho tất cả users (bao gồm cả User/Manager)
-        hashed_password = hashlib.sha256(user.password.encode()).hexdigest()
+        hashed_password = bcrypt.hashpw(user.password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
         user_data["hashed_password"] = hashed_password
-        print(f"Password hashed for {user.username}: {hashed_password[:10]}...")  # Debug log (chỉ hiển thị 10 ký tự đầu)
+        print(f"Password hashed for {user.username}: {hashed_password[:20]}...")  # Debug log (chỉ hiển thị 20 ký tự đầu)
 
-        user_result = supabase.table('users').insert(user_data).execute()
+        user_result = supabase.table('employees').insert(user_data).execute()
         print(f"User created in database: {user_result.data}")
 
         return {
@@ -226,7 +223,7 @@ def list_all_users(department_id: int = None, search: str = None):
     """
     try:
         # Lấy danh sách users với filter từ database
-        users_query = supabase.table('users').select('*').order('id')
+        users_query = supabase.table('employees').select('*').order('ma_nv')
 
         # Áp dụng department filter
         if department_id:
@@ -236,7 +233,7 @@ def list_all_users(department_id: int = None, search: str = None):
         if search and search.strip():
             search_term = search.strip()
             # Lấy tất cả users và filter trong Python để tránh vấn đề với Supabase client
-            all_users_query = supabase.table('users').select('*').order('id')
+            all_users_query = supabase.table('employees').select('*').order('ma_nv')
             if department_id:
                 all_users_query = all_users_query.eq('department_id', department_id)
             all_users_result = all_users_query.execute()
@@ -278,12 +275,12 @@ def list_all_users(department_id: int = None, search: str = None):
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.put("/{user_id}")
-def update_user(user_id: int, user_data: dict):
+def update_user(user_id: str, user_data: dict):
     """
     Cập nhật thông tin nhân viên trong database.
     """
     try:
-        # Cập nhật thông tin user trong bảng users
+        # Cập nhật thông tin user trong bảng employees
         update_data = {}
         if 'username' in user_data:
             update_data['username'] = user_data['username']
@@ -299,7 +296,7 @@ def update_user(user_id: int, user_data: dict):
             update_data['role_id'] = user_data['role_id']
 
         if update_data:
-            result = supabase.table('users').update(update_data).eq('id', user_id).execute()
+            result = supabase.table('employees').update(update_data).eq('ma_nv', user_id).execute()
             return {"message": "User updated successfully", "user": result.data}
         else:
             raise HTTPException(status_code=400, detail="No valid fields to update")
@@ -308,13 +305,13 @@ def update_user(user_id: int, user_data: dict):
         raise HTTPException(status_code=400, detail=str(e))
 
 @router.delete("/{user_id}", status_code=204)
-def delete_user(user_id: int):
+def delete_user(user_id: str):
     """
     Xóa tài khoản nhân viên khỏi database.
     """
     try:
-        # Xóa user khỏi bảng users
-        result = supabase.table('users').delete().eq('id', user_id).execute()
+        # Xóa user khỏi bảng employees
+        result = supabase.table('employees').delete().eq('ma_nv', user_id).execute()
         return {"message": "User deleted successfully"}
     except Exception as e:
         print(f"Error deleting user: {str(e)}")
@@ -349,10 +346,10 @@ def get_activity_logs(current_user = Depends(get_current_admin_user)):
     Chỉ admin mới có thể truy cập.
     """
     try:
-        # Join với bảng users và chatflows để lấy thông tin chi tiết
+        # Join với bảng employees và chatflows để lấy thông tin chi tiết
         result = supabase.table('activity_logs').select('''
             *,
-            users!fk_user(username, full_name, email),
+            employees!fk_user(username, full_name, email),
             chatflows!fk_chatflow(name)
         ''').order('access_time', desc=True).execute()
 
@@ -368,7 +365,7 @@ def get_activity_logs_test():
     """
     try:
         # Test database connection trước
-        test_result = supabase.table('users').select('count').limit(1).execute()
+        test_result = supabase.table('employees').select('count').limit(1).execute()
         print(f"Database connection test: {test_result}")
 
         # Thử query activity logs với fallback
@@ -429,7 +426,7 @@ def send_password_reset_code(request: SendCodeRequest):
             raise HTTPException(status_code=503, detail="Database service unavailable")
 
         # Check if user exists
-        result = supabase.table('users').select('*').eq('email', request.email).execute()
+        result = supabase.table('employees').select('*').eq('email', request.email).execute()
 
         if not result.data or len(result.data) == 0:
             raise HTTPException(status_code=404, detail="Email không tồn tại")
@@ -482,9 +479,9 @@ def verify_code_and_reset_password(request: VerifyCodeRequest):
             raise HTTPException(status_code=400, detail="Mã xác thực không đúng")
 
         # Update password
-        hashed_password = hashlib.sha256(request.new_password.encode()).hexdigest()
+        hashed_password = bcrypt.hashpw(request.new_password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
 
-        result = supabase.table('users').update({
+        result = supabase.table('employees').update({
             'hashed_password': hashed_password
         }).eq('email', request.email).execute()
 
@@ -516,7 +513,7 @@ def get_current_user_info():
         supabase_user = user_response.user
 
         # Tìm user trong database dựa trên email
-        result = supabase.table('users').select('*').eq('email', supabase_user.email).execute()
+        result = supabase.table('employees').select('*').eq('email', supabase_user.email).execute()
 
         if not result.data or len(result.data) == 0:
             raise HTTPException(status_code=404, detail="User không tồn tại trong database")
@@ -524,7 +521,7 @@ def get_current_user_info():
         user = result.data[0]
 
         return {
-            "id": user['id'],
+            "id": user['ma_nv'],
             "username": user['username'],
             "email": user['email'],
             "full_name": user['full_name'],

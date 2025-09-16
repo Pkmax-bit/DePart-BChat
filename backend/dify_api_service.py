@@ -98,7 +98,7 @@ class DifyAPIService:
         try:
             # Get user info for API call
             from supabase_client import supabase
-            user_result = supabase.table('users').select('username').eq('id', user_id).execute()
+            user_result = supabase.table('employees').select('username').eq('id', user_id).execute()
 
             if not user_result.data:
                 print(f"User {user_id} not found")
@@ -145,7 +145,7 @@ class DifyAPIService:
         try:
             # Get user info
             from supabase_client import supabase
-            user_result = supabase.table('users').select('username, email').eq('id', user_id).execute()
+            user_result = supabase.table('employees').select('username, email').eq('id', user_id).execute()
 
             if not user_result.data:
                 print(f"User {user_id} not found")

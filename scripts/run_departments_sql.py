@@ -22,9 +22,9 @@ def run_departments_sql():
             );
             """,
 
-            # Thêm cột department_id vào users
+            # Thêm cột department_id vào employees
             """
-            ALTER TABLE users
+            ALTER TABLE employees
             ADD COLUMN IF NOT EXISTS department_id INTEGER;
             """,
 

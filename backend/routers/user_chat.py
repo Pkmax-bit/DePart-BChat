@@ -81,7 +81,7 @@ def get_all_users_chat_history():
             user_id = record['user_id']
             if user_id not in user_groups:
                 # Lấy thông tin user
-                user_result = supabase.table('users').select('*').eq('id', user_id).execute()
+                user_result = supabase.table('employees').select('*').eq('id', user_id).execute()
                 user_info = user_result.data[0] if user_result.data else None
 
                 user_groups[user_id] = {

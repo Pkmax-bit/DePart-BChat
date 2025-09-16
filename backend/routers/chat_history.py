@@ -11,7 +11,7 @@ def _is_admin_user(current_user):
         return False
     try:
         # Kiểm tra vai trò admin từ database users table
-        result = supabase.table('users').select('role_id').eq('email', current_user.email).execute()
+        result = supabase.table('employees').select('role_id').eq('email', current_user.email).execute()
         if result.data and len(result.data) > 0:
             user_data = result.data[0]
             return user_data['role_id'] == 1
@@ -72,7 +72,7 @@ def _auto_sync_email_to_user_chat(record):
         print(f"Processing sync for email: {email}, conversation: {conversation_id}")
 
         # Tìm user theo email
-        user_result = supabase.table('users').select('*').eq('email', email).execute()
+        user_result = supabase.table('employees').select('*').eq('email', email).execute()
 
         if not user_result.data or len(user_result.data) == 0:
             print(f"Skip sync: No user found for email {email}")
@@ -291,7 +291,7 @@ def get_chat_history_by_app(name_app: str, current_user = Depends(get_current_us
                 if matched_app:
                     result = supabase.table('chat_history').select('''
                         *,
-                        users!fk_user(username, full_name)
+                        employees!fk_user(username, full_name)
                     ''').eq('name_app', matched_app).order('created_at', desc=True).execute()
                 else:
                     result = {"data": []}
@@ -331,7 +331,7 @@ def get_all_chat_history(limit: int = 100, current_user = Depends(get_current_us
             try:
                 result = supabase.table('chat_history').select('''
                     *,
-                    users!fk_user(username, full_name)
+                    employees!fk_user(username, full_name)
                 ''').order('created_at', desc=True).limit(limit).execute()
             except:
                 # Nếu join thất bại, query không join
@@ -440,7 +440,7 @@ def parse_email_from_chat_history(conversation_id: str):
             return {"message": "Không tìm thấy email trong chat history"}
 
         # Tìm user theo email
-        user_result = supabase.table('users').select('*').eq('email', email).execute()
+        user_result = supabase.table('employees').select('*').eq('email', email).execute()
 
         if not user_result.data or len(user_result.data) == 0:
             return {
@@ -476,7 +476,7 @@ def get_user_chat_history(user_id: int, limit: int = 50, current_user = Depends(
         # Nếu không phải admin và user_id không phải của chính mình
         if not is_admin and current_user:
             # Lấy user_id của current_user
-            user_result = supabase.table('users').select('id').eq('email', current_user.email).execute()
+            user_result = supabase.table('employees').select('id').eq('email', current_user.email).execute()
             if user_result.data and len(user_result.data) > 0:
                 current_user_id = user_result.data[0]['id']
                 if current_user_id != user_id:
@@ -488,7 +488,7 @@ def get_user_chat_history(user_id: int, limit: int = 50, current_user = Depends(
             pass
 
         # Lấy thông tin user
-        user_result = supabase.table('users').select('*').eq('id', user_id).execute()
+        user_result = supabase.table('employees').select('*').eq('id', user_id).execute()
         user = user_result.data[0] if user_result.data else None
 
         if not user:
@@ -584,7 +584,7 @@ def sync_email_to_user_chat():
                 continue
                 
             # Tìm user theo email
-            user_result = supabase.table('users').select('*').eq('email', email).execute()
+            user_result = supabase.table('employees').select('*').eq('email', email).execute()
             
             if not user_result.data or len(user_result.data) == 0:
                 skipped_count += 1
@@ -668,7 +668,7 @@ def check_and_sync_email():
                 continue
                 
             # Tìm user theo email
-            user_result = supabase.table('users').select('*').eq('email', email).execute()
+            user_result = supabase.table('employees').select('*').eq('email', email).execute()
             
             if not user_result.data or len(user_result.data) == 0:
                 skipped_count += 1
@@ -737,7 +737,7 @@ def sync_all_pending_emails():
                 continue
                 
             # Tìm user theo email
-            user_result = supabase.table('users').select('*').eq('email', email).execute()
+            user_result = supabase.table('employees').select('*').eq('email', email).execute()
             
             if not user_result.data or len(user_result.data) == 0:
                 skipped_count += 1
@@ -809,7 +809,7 @@ def detect_new_emails():
             email = record.get('email').strip()
             
             # Tìm user theo email
-            user_result = supabase.table('users').select('*').eq('email', email).execute()
+            user_result = supabase.table('employees').select('*').eq('email', email).execute()
             
             if not user_result.data or len(user_result.data) == 0:
                 skipped_count += 1

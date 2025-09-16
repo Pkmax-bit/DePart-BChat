@@ -45,7 +45,7 @@ def list_chatflows_for_user(user_id: int):
     """
     try:
         # Lấy thông tin department của user
-        user_result = supabase.table('users').select('department_id').eq('id', user_id).execute()
+        user_result = supabase.table('employees').select('department_id').eq('id', user_id).execute()
         if not user_result.data:
             raise HTTPException(status_code=404, detail="User not found")
 

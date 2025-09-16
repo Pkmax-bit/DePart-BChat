@@ -11,7 +11,7 @@ class UserCreate(BaseModel):
     role_id: int = 2
     department_id: Optional[int] = None
 
-# Model cho bảng users (database)
+# Model cho bảng employees (database)
 class UserResponse(BaseModel):
     id: int
     username: str
@@ -244,13 +244,13 @@ class LuongSanPhamCreate(BaseModel):
     san_pham_id: str
     ten_san_pham: Optional[str] = None
     so_luong: float
-    don_gia: float
+    gia_thanh: float
     ty_le: float
 
 class LuongSanPhamUpdate(BaseModel):
     ten_san_pham: Optional[str] = None
     so_luong: Optional[float] = None
-    don_gia: Optional[float] = None
+    gia_thanh: Optional[float] = None
     ty_le: Optional[float] = None
 
 class LuongSanPhamResponse(BaseModel):
@@ -260,7 +260,7 @@ class LuongSanPhamResponse(BaseModel):
     san_pham_id: str
     ten_san_pham: Optional[str]
     so_luong: float
-    don_gia: float
+    gia_thanh: float
     ty_le: float
     thanh_tien: float
     created_at: Optional[str]

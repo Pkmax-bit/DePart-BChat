@@ -13,11 +13,11 @@ CREATE TABLE IF NOT EXISTS public.departments (
     CONSTRAINT departments_pkey PRIMARY KEY (id),
     CONSTRAINT departments_name_key UNIQUE (name),
     CONSTRAINT departments_manager_id_fkey FOREIGN KEY (manager_id)
-        REFERENCES public.users(id) ON DELETE SET NULL
+        REFERENCES public.employees(id) ON DELETE SET NULL
 );
 
--- Thêm cột department_id vào bảng users
-ALTER TABLE users
+-- Thêm cột department_id vào bảng employees
+ALTER TABLE employees
 ADD COLUMN IF NOT EXISTS department_id INTEGER;
 
 -- Thêm cột department_id vào bảng chatflows
@@ -25,8 +25,8 @@ ALTER TABLE chatflows
 ADD COLUMN IF NOT EXISTS department_id INTEGER;
 
 -- Thêm foreign key constraints
-ALTER TABLE users
-ADD CONSTRAINT users_department_id_fkey
+ALTER TABLE employees
+ADD CONSTRAINT employees_department_id_fkey
 FOREIGN KEY (department_id) REFERENCES public.departments(id) ON DELETE SET NULL;
 
 ALTER TABLE chatflows
@@ -44,13 +44,13 @@ CREATE TABLE IF NOT EXISTS public.department_members (
     CONSTRAINT department_members_department_id_fkey FOREIGN KEY (department_id)
         REFERENCES public.departments(id) ON DELETE CASCADE,
     CONSTRAINT department_members_user_id_fkey FOREIGN KEY (user_id)
-        REFERENCES public.users(id) ON DELETE CASCADE,
+        REFERENCES public.employees(id) ON DELETE CASCADE,
     CONSTRAINT department_members_unique UNIQUE (department_id, user_id)
 );
 
 -- Tạo indexes để tối ưu query
 CREATE INDEX IF NOT EXISTS idx_departments_manager_id ON departments(manager_id);
-CREATE INDEX IF NOT EXISTS idx_users_department_id ON users(department_id);
+CREATE INDEX IF NOT EXISTS idx_employees_department_id ON employees(department_id);
 CREATE INDEX IF NOT EXISTS idx_chatflows_department_id ON chatflows(department_id);
 CREATE INDEX IF NOT EXISTS idx_department_members_department_id ON department_members(department_id);
 CREATE INDEX IF NOT EXISTS idx_department_members_user_id ON department_members(user_id);
