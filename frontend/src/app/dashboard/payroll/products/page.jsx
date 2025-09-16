@@ -15,6 +15,7 @@ export default function ProductsPage() {
     nam: '',
     so_luong_san_pham: '',
     don_gia_san_pham: '',
+    ty_le: '',
     ghi_chu: ''
   });
 
@@ -62,7 +63,8 @@ export default function ProductsPage() {
           thang: parseInt(formData.thang),
           nam: parseInt(formData.nam),
           so_luong_san_pham: parseInt(formData.so_luong_san_pham),
-          don_gia_san_pham: parseFloat(formData.don_gia_san_pham)
+          don_gia_san_pham: parseFloat(formData.don_gia_san_pham),
+          ty_le: parseFloat(formData.ty_le)
         }),
       });
 
@@ -74,6 +76,7 @@ export default function ProductsPage() {
           nam: '',
           so_luong_san_pham: '',
           don_gia_san_pham: '',
+          ty_le: '',
           ghi_chu: ''
         });
         fetchProducts();
@@ -111,9 +114,10 @@ export default function ProductsPage() {
     return employee ? employee.ho_ten : ma_nv;
   };
 
-  const calculateTotal = (so_luong, don_gia) => {
+  const calculateCommission = (so_luong, don_gia, ty_le) => {
     const total = (so_luong || 0) * (don_gia || 0);
-    return total.toLocaleString();
+    const commission = total * ((ty_le || 0) / 100);
+    return commission.toLocaleString();
   };
 
   const filteredProducts = products.filter(product =>
@@ -193,6 +197,9 @@ export default function ProductsPage() {
                         </div>
                         <div className="text-sm text-gray-500">
                           Số lượng: {product.so_luong_san_pham} | Đơn giá: {product.don_gia_san_pham ? product.don_gia_san_pham.toLocaleString() : '0'} VND
+                        </div>
+                        <div className="text-sm text-gray-500">
+                          Tỉ lệ: {product.ty_le}% | Hoa hồng: {calculateCommission(product.so_luong_san_pham, product.don_gia_san_pham, product.ty_le)} VND
                         </div>
                         <div className="text-sm font-medium text-green-600">
                           Tổng: {calculateTotal(product.so_luong_san_pham, product.don_gia_san_pham)} VND
@@ -318,10 +325,34 @@ export default function ProductsPage() {
                     />
                   </div>
                   <div>
+                    <label className="block text-sm font-medium text-gray-700">Tỉ lệ hoa hồng (%)*</label>
+                    <input
+                      type="number"
+                      required
+                      min="0"
+                      max="100"
+                      step="0.01"
+                      value={formData.ty_le}
+                      onChange={(e) => setFormData({...formData, ty_le: e.target.value})}
+                      className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
                     <label className="block text-sm font-medium text-gray-700">Tổng tiền</label>
                     <div className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm bg-gray-50 text-gray-500 sm:text-sm">
                       {formData.so_luong_san_pham && formData.don_gia_san_pham
                         ? (parseInt(formData.so_luong_san_pham) * parseFloat(formData.don_gia_san_pham)).toLocaleString()
+                        : '0'} VND
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Tiền hoa hồng</label>
+                    <div className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm bg-gray-50 text-gray-500 sm:text-sm">
+                      {formData.so_luong_san_pham && formData.don_gia_san_pham && formData.ty_le
+                        ? ((parseInt(formData.so_luong_san_pham) * parseFloat(formData.don_gia_san_pham) * parseFloat(formData.ty_le) / 100)).toLocaleString()
                         : '0'} VND
                     </div>
                   </div>

@@ -181,6 +181,8 @@ function InvoicesTab() {
   const [customerName, setCustomerName] = useState('');
   const [invoiceDate, setInvoiceDate] = useState(new Date().toISOString().split('T')[0]);
   const [invoiceTime, setInvoiceTime] = useState(new Date().toTimeString().split(' ')[0]);
+  const [salesEmployee, setSalesEmployee] = useState('');
+  const [employees, setEmployees] = useState([]);
   const [invoiceItems, setInvoiceItems] = useState([]);
   const [globalNhom, setGlobalNhom] = useState('');
   const [globalKinh, setGlobalKinh] = useState('');
@@ -193,7 +195,20 @@ function InvoicesTab() {
 
   useEffect(() => {
     fetchData();
+    fetchEmployees();
   }, []);
+
+  const fetchEmployees = async () => {
+    try {
+      const response = await fetch('/api/v1/payroll/nhan-vien');
+      if (response.ok) {
+        const data = await response.json();
+        setEmployees(data);
+      }
+    } catch (error) {
+      console.error('Error fetching employees:', error);
+    }
+  };
 
   const fetchData = async () => {
     try {
@@ -668,6 +683,11 @@ function InvoicesTab() {
       return;
     }
     
+    if (!salesEmployee) {
+      alert('Vui lòng chọn nhân viên bán hàng');
+      return;
+    }
+    
     if (invoiceItems.length === 0) {
       alert('Vui lòng thêm ít nhất một sản phẩm');
       return;
@@ -700,6 +720,7 @@ function InvoicesTab() {
     try {
       const invoiceData = {
         customer_name: customerName,
+        sales_employee_id: salesEmployee,
         invoice_date: `${invoiceDate}T${invoiceTime}`,
         items: invoiceItems.map(item => {
           if (item.loai_san_pham === 'phu_kien_bep') {
@@ -746,6 +767,7 @@ function InvoicesTab() {
         alert('Hóa đơn đã được lưu thành công!');
         // Reset form
         setCustomerName('');
+        setSalesEmployee('');
         setInvoiceItems([]);
         setInvoiceDate(new Date().toISOString().split('T')[0]);
         setInvoiceTime(new Date().toTimeString().split(' ')[0]);
@@ -791,7 +813,7 @@ function InvoicesTab() {
       {/* Invoice Info */}
       <div className="bg-white rounded-lg shadow-sm border p-6">
         <h3 className="text-lg font-semibold text-gray-900 mb-4">Thông tin hóa đơn</h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Tên khách hàng</label>
             <input
@@ -802,6 +824,22 @@ function InvoicesTab() {
               placeholder="Nhập tên khách hàng"
               required
             />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Nhân viên bán hàng *</label>
+            <select
+              value={salesEmployee}
+              onChange={(e) => setSalesEmployee(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-green-100 text-black"
+              required
+            >
+              <option value="">Chọn nhân viên bán hàng</option>
+              {employees.map(employee => (
+                <option key={employee.ma_nv} value={employee.ma_nv}>
+                  {employee.ho_ten} ({employee.ma_nv})
+                </option>
+              ))}
+            </select>
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Ngày hóa đơn</label>

@@ -343,6 +343,7 @@ async def create_invoice(invoice_data: dict):
         # Tạo hóa đơn chính
         invoice_result = supabase.table('invoices').insert({
             'customer_name': invoice_data['customer_name'],
+            'sales_employee_id': invoice_data.get('sales_employee_id'),
             'invoice_date': invoice_data['invoice_date'],
             'total_amount': invoice_data['total_amount']
         }).execute()
@@ -384,6 +385,28 @@ async def create_invoice(invoice_data: dict):
                     'ti_le': item['ti_le'],
                     'thanh_tien': item['thanh_tien']
                 }).execute()
+
+        # Tự động tạo hoa hồng cho nhân viên bán hàng (5%)
+        if invoice_data.get('sales_employee_id'):
+            sales_employee_id = invoice_data['sales_employee_id']
+            total_amount = invoice_data['total_amount']
+            commission_amount = total_amount * 0.05  # 5% hoa hồng
+            
+            # Lấy tháng từ invoice_date
+            from datetime import datetime
+            invoice_date = datetime.fromisoformat(invoice_data['invoice_date'].replace('Z', '+00:00'))
+            ky_tinh_luong = f"{invoice_date.year}-{invoice_date.month:02d}"
+            
+            # Tạo bản ghi lương sản phẩm cho hoa hồng
+            supabase.table('luong_san_pham').insert({
+                'ma_nv': sales_employee_id,
+                'ky_tinh_luong': ky_tinh_luong,
+                'san_pham_id': f"INV-{invoice_id}",  # Sử dụng invoice ID làm product ID
+                'ten_san_pham': f'Hoa hồng hóa đơn {invoice_id}',
+                'so_luong': 1,
+                'don_gia': commission_amount,
+                'ty_le': 5.0  # 5% hoa hồng
+            }).execute()
 
         return {"message": "Invoice created successfully", "invoice_id": invoice_id}
     except Exception as e:

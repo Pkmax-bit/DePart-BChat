@@ -245,11 +245,13 @@ class LuongSanPhamCreate(BaseModel):
     ten_san_pham: Optional[str] = None
     so_luong: float
     don_gia: float
+    ty_le: float
 
 class LuongSanPhamUpdate(BaseModel):
     ten_san_pham: Optional[str] = None
     so_luong: Optional[float] = None
     don_gia: Optional[float] = None
+    ty_le: Optional[float] = None
 
 class LuongSanPhamResponse(BaseModel):
     id: int
@@ -259,6 +261,7 @@ class LuongSanPhamResponse(BaseModel):
     ten_san_pham: Optional[str]
     so_luong: float
     don_gia: float
+    ty_le: float
     thanh_tien: float
     created_at: Optional[str]
     updated_at: Optional[str]

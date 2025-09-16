@@ -28,6 +28,7 @@ class LuongSanPham:
     san_pham_id: str
     so_luong: float
     don_gia: float
+    ty_le: float
 
 @dataclass
 class PhieuLuong:

@@ -234,7 +234,8 @@ def create_luong_san_pham(luong_sp: LuongSanPhamCreate):
 
         # Insert
         insert_data = luong_sp.dict()
-        insert_data['thanh_tien'] = insert_data['so_luong'] * insert_data['don_gia']
+        # Remove thanh_tien from insert data since it's a generated column
+        insert_data.pop('thanh_tien', None)
 
         result = supabase.table('luong_san_pham').insert(insert_data).execute()
 
@@ -353,7 +354,7 @@ def tinh_luong_endpoint(request: TinhLuongRequest):
         cham_cong = PayrollBangChamCong(**cc_result.data[0])
 
         # Lấy dữ liệu lương sản phẩm
-        sp_results = supabase.table('luong_san_pham').select('ma_nv, ky_tinh_luong, san_pham_id, so_luong, don_gia').eq('ma_nv', request.ma_nv).eq('ky_tinh_luong', request.ky_tinh_luong).execute()
+        sp_results = supabase.table('luong_san_pham').select('ma_nv, ky_tinh_luong, san_pham_id, so_luong, don_gia, ty_le').eq('ma_nv', request.ma_nv).eq('ky_tinh_luong', request.ky_tinh_luong).execute()
         luong_san_pham = [PayrollLuongSanPham(**row) for row in sp_results.data]
 
         # Tính lương
