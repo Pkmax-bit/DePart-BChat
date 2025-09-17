@@ -10,6 +10,7 @@ export default function TimesheetsPage() {
   const [loading, setLoading] = useState(true);
   const [timesheets, setTimesheets] = useState([]);
   const [employees, setEmployees] = useState([]);
+  const [employeesLoaded, setEmployeesLoaded] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedPeriod, setSelectedPeriod] = useState(new Date().toISOString().slice(0, 7));
   const [showAddModal, setShowAddModal] = useState(false);
@@ -45,7 +46,8 @@ export default function TimesheetsPage() {
   }, [selectedPeriod]);
 
   const loadData = async () => {
-    await Promise.all([loadEmployees(), loadTimesheets()]);
+    await loadEmployees(); // Load employees first
+    await loadTimesheets(); // Then load timesheets
   };
 
   const loadEmployees = async () => {
@@ -57,6 +59,7 @@ export default function TimesheetsPage() {
       if (response.ok) {
         const data = await response.json();
         setEmployees(data);
+        setEmployeesLoaded(true);
       }
     } catch (error) {
       console.error('Error loading employees:', error);
@@ -158,23 +161,41 @@ export default function TimesheetsPage() {
   };
 
   const getEmployeeName = (ma_nv) => {
-    const employee = employees.find(emp => emp.ma_nv === ma_nv);
+    if (!employeesLoaded || employees.length === 0) {
+      return ma_nv; // Return ma_nv if employees not loaded yet
+    }
+
+    // Try different comparison methods
+    let employee = employees.find(emp => emp.ma_nv == ma_nv); // Loose equality
+    if (!employee) {
+      employee = employees.find(emp => String(emp.ma_nv) === String(ma_nv)); // String comparison
+    }
+    if (!employee) {
+      employee = employees.find(emp => Number(emp.ma_nv) === Number(ma_nv)); // Number comparison
+    }
+
     return employee ? employee.ho_ten : ma_nv;
+  };
+
+  const getEmployeeDepartment = (ma_nv) => {
+    const employee = employees.find(emp => String(emp.ma_nv) === String(ma_nv));
+    return employee ? employee.phong_ban : 'N/A';
   };
 
   const filteredTimesheets = timesheets.filter(timesheet => {
     const employeeName = getEmployeeName(timesheet.ma_nv).toLowerCase();
-    const maNV = timesheet.ma_nv.toLowerCase();
+    const department = getEmployeeDepartment(timesheet.ma_nv).toLowerCase();
+    const maNV = String(timesheet.ma_nv).toLowerCase();
     const search = searchTerm.toLowerCase();
-    return employeeName.includes(search) || maNV.includes(search);
+    return employeeName.includes(search) || department.includes(search) || maNV.includes(search);
   });
 
-  if (loading) {
+  if (loading || !employeesLoaded) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gray-50">
         <div className="flex items-center space-x-3">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-          <p className="text-lg text-gray-700">Đang tải...</p>
+          <p className="text-lg text-gray-700">Đang tải dữ liệu...</p>
         </div>
       </div>
     );
@@ -232,7 +253,7 @@ export default function TimesheetsPage() {
                 <Search className="w-5 h-5 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
                 <input
                   type="text"
-                  placeholder="Tìm kiếm theo tên hoặc mã NV..."
+                  placeholder="Tìm kiếm theo tên, mã NV hoặc phòng ban..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -251,6 +272,9 @@ export default function TimesheetsPage() {
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Họ tên
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Phòng ban
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Kỳ lương
@@ -283,6 +307,9 @@ export default function TimesheetsPage() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                       {getEmployeeName(timesheet.ma_nv)}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {getEmployeeDepartment(timesheet.ma_nv)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {timesheet.ky_tinh_luong}

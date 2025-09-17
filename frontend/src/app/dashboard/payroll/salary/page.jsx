@@ -111,6 +111,38 @@ function SalaryLayout({ user, activeTab, onTabChange, selectedMonth, onMonthChan
 }
 
 function SalaryOverviewTab({ salaryData, selectedMonth }) {
+  const [employees, setEmployees] = useState([]);
+
+  useEffect(() => {
+    fetchEmployees();
+  }, []);
+
+  const fetchEmployees = async () => {
+    try {
+      const response = await fetch('/api/v1/payroll/employees/', {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setEmployees(data);
+      }
+    } catch (error) {
+      console.error('Error loading employees:', error);
+    }
+  };
+
+  const getEmployeeInfo = (ma_nv) => {
+    const employee = employees.find(emp => emp.ma_nv === ma_nv);
+    return employee ? {
+      ho_ten: employee.ho_ten,
+      phong_ban: employee.phong_ban
+    } : {
+      ho_ten: ma_nv,
+      phong_ban: 'N/A'
+    };
+  };
+
   // Tính tổng lương
   const totalSalary = salaryData.reduce((sum, salary) => sum + (salary.luong_thuc_nhan || 0), 0);
   const employeeCount = salaryData.length;
@@ -183,25 +215,30 @@ function SalaryOverviewTab({ salaryData, selectedMonth }) {
           </div>
         ) : (
           <div className="divide-y divide-gray-200">
-            {salaryData.map((salary) => (
-              <div key={salary.id} className="p-6 hover:bg-gray-50">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-4">
-                    <div className="p-3 bg-purple-100 rounded-lg">
-                      <User className="w-5 h-5 text-purple-600" />
+            {salaryData.map((salary) => {
+              const employeeInfo = getEmployeeInfo(salary.ma_nv);
+              return (
+                <div key={salary.id} className="p-6 hover:bg-gray-50">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-4">
+                      <div className="p-3 bg-purple-100 rounded-lg">
+                        <User className="w-5 h-5 text-purple-600" />
+                      </div>
+                      <div>
+                        <h4 className="font-medium text-gray-900">{employeeInfo.ho_ten}</h4>
+                        <p className="text-sm text-gray-600">Mã NV: {salary.ma_nv}</p>
+                        <p className="text-sm text-gray-600">Phòng ban: {employeeInfo.phong_ban}</p>
+                        <p className="text-sm text-gray-600">Kỳ: {salary.ky_tinh_luong}</p>
+                      </div>
                     </div>
-                    <div>
-                      <h4 className="font-medium text-gray-900">{salary.ma_nv}</h4>
-                      <p className="text-sm text-gray-900">Kỳ: {salary.ky_tinh_luong}</p>
+                    <div className="text-right">
+                      <p className="font-bold text-purple-600">{(salary.luong_thuc_nhan || 0).toLocaleString('vi-VN')} VND</p>
+                      <p className="text-sm text-gray-900">Thực nhận</p>
                     </div>
-                  </div>
-                  <div className="text-right">
-                    <p className="font-bold text-purple-600">{(salary.luong_thuc_nhan || 0).toLocaleString('vi-VN')} VND</p>
-                    <p className="text-sm text-gray-900">Thực nhận</p>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
@@ -210,9 +247,12 @@ function SalaryOverviewTab({ salaryData, selectedMonth }) {
       <div className="bg-white rounded-lg shadow-sm border p-6">
         <h3 className="text-lg font-semibold text-gray-900 mb-4">Biểu đồ lương theo nhân viên</h3>
         <ResponsiveContainer width="100%" height={300}>
-          <BarChart data={salaryData}>
+          <BarChart data={salaryData.map(salary => ({
+            ...salary,
+            ten_nv: getEmployeeInfo(salary.ma_nv).ho_ten
+          }))}>
             <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="ma_nv" />
+            <XAxis dataKey="ten_nv" />
             <YAxis />
             <Tooltip formatter={(value) => [value.toLocaleString('vi-VN'), 'Lương']} />
             <Bar dataKey="luong_thuc_nhan" fill="#9333EA" name="Lương thực nhận" />
@@ -450,15 +490,52 @@ function SalaryCalculationTab({ selectedMonth, onSalaryUpdate }) {
 }
 
 function SalaryReportsTab({ salaryData, selectedMonth }) {
+  const [employees, setEmployees] = useState([]);
+
+  useEffect(() => {
+    fetchEmployees();
+  }, []);
+
+  const fetchEmployees = async () => {
+    try {
+      const response = await fetch('/api/v1/payroll/employees/', {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setEmployees(data);
+      }
+    } catch (error) {
+      console.error('Error loading employees:', error);
+    }
+  };
+
+  const getEmployeeInfo = (ma_nv) => {
+    const employee = employees.find(emp => emp.ma_nv === ma_nv);
+    return employee ? {
+      ho_ten: employee.ho_ten,
+      phong_ban: employee.phong_ban
+    } : {
+      ho_ten: ma_nv,
+      phong_ban: 'N/A'
+    };
+  };
+
   const exportToExcel = () => {
-    const exportData = salaryData.map(salary => ({
-      'Mã NV': salary.ma_nv,
-      'Kỳ tính lương': salary.ky_tinh_luong,
-      'Tổng thu nhập': salary.tong_thu_nhap || 0,
-      'Tổng khấu trừ': salary.tong_khau_tru || 0,
-      'Lương thực nhận': salary.luong_thuc_nhan || 0,
-      'Ngày tạo': salary.ngay_tao ? new Date(salary.ngay_tao).toLocaleDateString('vi-VN') : ''
-    }));
+    const exportData = salaryData.map(salary => {
+      const employeeInfo = getEmployeeInfo(salary.ma_nv);
+      return {
+        'Mã NV': salary.ma_nv,
+        'Họ tên': employeeInfo.ho_ten,
+        'Phòng ban': employeeInfo.phong_ban,
+        'Kỳ tính lương': salary.ky_tinh_luong,
+        'Tổng thu nhập': salary.tong_thu_nhap || 0,
+        'Tổng khấu trừ': salary.tong_khau_tru || 0,
+        'Lương thực nhận': salary.luong_thuc_nhan || 0,
+        'Ngày tạo': salary.ngay_tao ? new Date(salary.ngay_tao).toLocaleDateString('vi-VN') : ''
+      };
+    });
 
     const ws = XLSX.utils.json_to_sheet(exportData);
     const wb = XLSX.utils.book_new();
@@ -496,6 +573,9 @@ function SalaryReportsTab({ salaryData, selectedMonth }) {
                   Nhân viên
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-900 uppercase tracking-wider">
+                  Phòng ban
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-900 uppercase tracking-wider">
                   Kỳ tính lương
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-900 uppercase tracking-wider">
@@ -510,25 +590,34 @@ function SalaryReportsTab({ salaryData, selectedMonth }) {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {salaryData.map((salary) => (
-                <tr key={salary.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                    {salary.ma_nv}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {salary.ky_tinh_luong}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {(salary.tong_thu_nhap || 0).toLocaleString('vi-VN')} VND
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-red-600">
-                    {(salary.tong_khau_tru || 0).toLocaleString('vi-VN')} VND
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-purple-600">
-                    {(salary.luong_thuc_nhan || 0).toLocaleString('vi-VN')} VND
-                  </td>
-                </tr>
-              ))}
+              {salaryData.map((salary) => {
+                const employeeInfo = getEmployeeInfo(salary.ma_nv);
+                return (
+                  <tr key={salary.id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                      <div>
+                        <div className="font-medium">{employeeInfo.ho_ten}</div>
+                        <div className="text-gray-500">({salary.ma_nv})</div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {employeeInfo.phong_ban}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {salary.ky_tinh_luong}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {(salary.tong_thu_nhap || 0).toLocaleString('vi-VN')} VND
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-red-600">
+                      {(salary.tong_khau_tru || 0).toLocaleString('vi-VN')} VND
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-purple-600">
+                      {(salary.luong_thuc_nhan || 0).toLocaleString('vi-VN')} VND
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
@@ -1193,6 +1282,7 @@ function EmployeesTab() {
 function TimesheetsTab({ selectedMonth }) {
   const [timesheets, setTimesheets] = useState([]);
   const [employees, setEmployees] = useState([]);
+  const [employeesLoaded, setEmployeesLoaded] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedPeriod, setSelectedPeriod] = useState(selectedMonth);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -1225,6 +1315,7 @@ function TimesheetsTab({ selectedMonth }) {
       if (response.ok) {
         const data = await response.json();
         setEmployees(data);
+        setEmployeesLoaded(true);
       }
     } catch (error) {
       console.error('Error loading employees:', error);
@@ -1326,7 +1417,19 @@ function TimesheetsTab({ selectedMonth }) {
   };
 
   const getEmployeeName = (ma_nv) => {
-    const employee = employees.find(emp => emp.ma_nv === ma_nv);
+    if (!employeesLoaded || employees.length === 0) {
+      return ma_nv; // Return ma_nv if employees not loaded yet
+    }
+
+    // Try different comparison methods
+    let employee = employees.find(emp => emp.ma_nv == ma_nv); // Loose equality
+    if (!employee) {
+      employee = employees.find(emp => String(emp.ma_nv) === String(ma_nv)); // String comparison
+    }
+    if (!employee) {
+      employee = employees.find(emp => Number(emp.ma_nv) === Number(ma_nv)); // Number comparison
+    }
+
     return employee ? employee.ho_ten : ma_nv;
   };
 
@@ -1336,6 +1439,17 @@ function TimesheetsTab({ selectedMonth }) {
     const search = searchTerm.toLowerCase();
     return employeeName.includes(search) || maNV.includes(search);
   });
+
+  if (!employeesLoaded) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto"></div>
+          <p className="mt-4 text-gray-900">Đang tải dữ liệu nhân viên...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -1793,7 +1907,7 @@ function TimesheetsTab({ selectedMonth }) {
   );
 }
 
-function ProductsTab() {
+function ProductsTab({ selectedMonth }) {
   const [products, setProducts] = useState([]);
   const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -1910,11 +2024,19 @@ function ProductsTab() {
     return total.toLocaleString();
   };
 
-  const filteredProducts = products.filter(product =>
-    String(getEmployeeName(product.ma_nv) || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-    String(product.ma_nv || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-    `${product.thang}/${product.nam}`.includes(searchTerm)
-  );
+  const filteredProducts = products.filter(product => {
+    // Filter by month using ky_tinh_luong field
+    const productMonth = product.ky_tinh_luong;
+    const matchesMonth = productMonth === selectedMonth;
+
+    // Filter by search term
+    const employeeName = String(getEmployeeName(product.ma_nv) || '').toLowerCase();
+    const maNV = String(product.ma_nv || '').toLowerCase();
+    const search = searchTerm.toLowerCase();
+    const matchesSearch = employeeName.includes(search) || maNV.includes(search) || `${product.thang || ''}/${product.nam || ''}`.includes(search);
+
+    return matchesMonth && matchesSearch;
+  });
 
   if (loading) {
     return (
@@ -1946,14 +2068,17 @@ function ProductsTab() {
 
       {/* Search */}
       <div className="bg-white rounded-lg shadow-sm p-6">
-        <div className="max-w-md">
-          <input
-            type="text"
-            placeholder="Tìm kiếm theo tên, mã NV hoặc tháng/năm..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="block w-full border-gray-300 rounded-md shadow-sm focus:ring-purple-500 focus:border-purple-500 sm:text-sm"
-          />
+        <div className="flex-1">
+          <div className="relative">
+            <Search className="w-5 h-5 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Tìm kiếm theo tên, mã NV hoặc tháng/năm..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+            />
+          </div>
         </div>
       </div>
 
@@ -2683,7 +2808,7 @@ export default function SalaryPage() {
       case 'timesheets':
         return <TimesheetsTab selectedMonth={selectedMonth} />;
       case 'products':
-        return <ProductsTab />;
+        return <ProductsTab selectedMonth={selectedMonth} />;
       case 'taxes':
         return <TaxTab />;
       case 'calculation':

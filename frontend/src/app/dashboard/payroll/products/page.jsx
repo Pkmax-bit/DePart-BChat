@@ -8,6 +8,7 @@ export default function ProductsPage() {
   const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedPeriod, setSelectedPeriod] = useState(new Date().toISOString().slice(0, 7));
   const [showForm, setShowForm] = useState(false);
   const [formData, setFormData] = useState({
     ma_nv: '',
@@ -22,14 +23,22 @@ export default function ProductsPage() {
   useEffect(() => {
     fetchProducts();
     fetchEmployees();
-  }, []);
+  }, [selectedPeriod]);
 
   const fetchProducts = async () => {
     try {
-      const response = await fetch('/api/v1/payroll/luong-san-pham');
+      const [year, month] = selectedPeriod.split('-');
+      const response = await fetch(`http://localhost:8001/api/v1/payroll/luong-san-pham/?thang=${month}&nam=${year}`);
       if (response.ok) {
         const data = await response.json();
         setProducts(data);
+      } else {
+        // Fallback to all products if filtered request fails
+        const fallbackResponse = await fetch('http://localhost:8001/api/v1/payroll/luong-san-pham/');
+        if (fallbackResponse.ok) {
+          const data = await fallbackResponse.json();
+          setProducts(data);
+        }
       }
     } catch (error) {
       console.error('Error fetching products:', error);
@@ -40,7 +49,7 @@ export default function ProductsPage() {
 
   const fetchEmployees = async () => {
     try {
-      const response = await fetch('/api/v1/payroll/employees');
+      const response = await fetch('http://localhost:8001/api/v1/payroll/employees/');
       if (response.ok) {
         const data = await response.json();
         setEmployees(data);
@@ -53,7 +62,7 @@ export default function ProductsPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const response = await fetch('/api/v1/payroll/luong-san-pham', {
+      const response = await fetch('http://localhost:8001/api/v1/payroll/luong-san-pham/', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -94,7 +103,7 @@ export default function ProductsPage() {
     if (!confirm('Bạn có chắc chắn muốn xóa lương sản phẩm này?')) return;
 
     try {
-      const response = await fetch(`/api/v1/payroll/luong-san-pham/${id}`, {
+      const response = await fetch(`http://localhost:8001/api/v1/payroll/luong-san-pham/${id}`, {
         method: 'DELETE',
       });
 
@@ -114,17 +123,33 @@ export default function ProductsPage() {
     return employee ? employee.ho_ten : ma_nv;
   };
 
+  const getEmployeeDepartment = (ma_nv) => {
+    const employee = employees.find(emp => emp.ma_nv === ma_nv);
+    return employee ? employee.phong_ban : 'N/A';
+  };
+
   const calculateCommission = (so_luong, don_gia, ty_le) => {
     const total = (so_luong || 0) * (don_gia || 0);
     const commission = total * ((ty_le || 0) / 100);
     return commission.toLocaleString();
   };
 
-  const filteredProducts = products.filter(product =>
-    getEmployeeName(product.ma_nv).toLowerCase().includes(searchTerm.toLowerCase()) ||
-    product.ma_nv.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    `${product.thang}/${product.nam}`.includes(searchTerm)
-  );
+  const calculateTotal = (so_luong, don_gia) => {
+    const total = (so_luong || 0) * (don_gia || 0);
+    return total.toLocaleString();
+  };
+
+  const filteredProducts = products.filter(product => {
+    const [year, month] = selectedPeriod.split('-');
+    const matchesPeriod = product.thang == parseInt(month) && product.nam == parseInt(year);
+    const employeeName = getEmployeeName(product.ma_nv).toLowerCase();
+    const employeeCode = product.ma_nv.toLowerCase();
+    const periodString = `${product.thang}/${product.nam}`;
+    const matchesSearch = employeeName.includes(searchTerm.toLowerCase()) ||
+                         employeeCode.includes(searchTerm.toLowerCase()) ||
+                         periodString.includes(searchTerm);
+    return matchesPeriod && matchesSearch;
+  });
 
   if (loading) {
     return (
@@ -155,6 +180,40 @@ export default function ProductsPage() {
             </svg>
             Thêm lương sản phẩm
           </button>
+        </div>
+
+        {/* Controls */}
+        <div className="bg-white p-4 rounded-lg shadow-sm border mb-6">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
+            <div className="flex items-center space-x-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Chọn tháng</label>
+                <input
+                  type="month"
+                  value={selectedPeriod}
+                  onChange={(e) => setSelectedPeriod(e.target.value)}
+                  className="px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                />
+              </div>
+              <div className="flex items-end">
+                <button
+                  onClick={() => {
+                    setLoading(true);
+                    fetchProducts();
+                  }}
+                  className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 flex items-center space-x-2"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                  <span>Tải lại</span>
+                </button>
+              </div>
+            </div>
+            <div className="text-sm text-gray-600">
+              Hiển thị {filteredProducts.length} bản ghi lương sản phẩm
+            </div>
+          </div>
         </div>
 
         {/* Search */}
@@ -188,9 +247,12 @@ export default function ProductsPage() {
                       <div className="ml-4">
                         <div className="flex items-center">
                           <h3 className="text-sm font-medium text-gray-900">{getEmployeeName(product.ma_nv)}</h3>
-                          <span className="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                          <span className="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                             {product.ma_nv}
                           </span>
+                        </div>
+                        <div className="text-sm text-gray-500">
+                          Phòng ban: {getEmployeeDepartment(product.ma_nv)}
                         </div>
                         <div className="text-sm text-gray-500">
                           Tháng {product.thang}/{product.nam}
