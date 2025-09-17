@@ -200,145 +200,149 @@ function PasswordChangeModal({ isOpen, onClose, userEmail }) {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-semibold text-gray-900">
-            {step === 'email' && 'Đổi mật khẩu'}
-            {step === 'code' && 'Nhập mã xác thực'}
-            {step === 'success' && 'Thành công'}
-          </h2>
-          <button
-            onClick={handleClose}
-            className="text-gray-400 hover:text-gray-600"
-          >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
-
-        {error && (
-          <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
-            {error}
-          </div>
-        )}
-
-        {step === 'email' && (
-          <div>
-            <p className="text-gray-600 mb-4">
-              Chúng tôi sẽ gửi mã xác thực đến email của bạn để đổi mật khẩu.
-            </p>
-            <div className="mb-6">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Email của bạn
-              </label>
-              <div className="flex items-center p-3 bg-gray-50 border border-gray-200 rounded-md">
-                <svg className="w-5 h-5 text-gray-400 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207" />
-                </svg>
-                <span className="text-gray-900 font-medium">{email}</span>
-              </div>
-            </div>
-            <div className="flex justify-end space-x-3">
-              <button
-                onClick={handleClose}
-                className="px-4 py-2 text-gray-600 border border-gray-300 rounded-md hover:bg-gray-50"
-              >
-                Hủy
-              </button>
-              <button
-                onClick={handleSendCode}
-                disabled={loading}
-                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
-              >
-                {loading ? 'Đang gửi...' : 'Gửi mã xác thực'}
-              </button>
-            </div>
-          </div>
-        )}
-
-        {step === 'code' && (
-          <div>
-            <p className="text-gray-600 mb-4">
-              Nhập mã xác thực đã được gửi đến email {email}
-            </p>
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Mã xác thực
-              </label>
-              <input
-                type="text"
-                value={code}
-                onChange={(e) => setCode(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="Nhập mã 6 chữ số"
-                maxLength={6}
-              />
-            </div>
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Mật khẩu mới
-              </label>
-              <input
-                type="password"
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="Nhập mật khẩu mới"
-              />
-            </div>
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Xác nhận mật khẩu
-              </label>
-              <input
-                type="password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="Nhập lại mật khẩu mới"
-              />
-            </div>
-            <div className="flex justify-end space-x-3">
-              <button
-                onClick={() => setStep('email')}
-                className="px-4 py-2 text-gray-600 border border-gray-300 rounded-md hover:bg-gray-50"
-              >
-                Quay lại
-              </button>
-              <button
-                onClick={handleVerifyCode}
-                disabled={loading}
-                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
-              >
-                {loading ? 'Đang xử lý...' : 'Đổi mật khẩu'}
-              </button>
-            </div>
-          </div>
-        )}
-
-        {step === 'success' && (
-          <div className="text-center">
-            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-              </svg>
-            </div>
-            <h3 className="text-lg font-medium text-gray-900 mb-2">
-              Mật khẩu đã được đổi thành công!
-            </h3>
-            <p className="text-gray-600 mb-4">
-              Bạn có thể sử dụng mật khẩu mới để đăng nhập.
-            </p>
+    <div className="fixed inset-0 bg-gray-900 bg-opacity-30 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-xl shadow-2xl w-full max-w-md mx-auto transform transition-all duration-300 ease-out scale-100 opacity-100">
+        <div className="p-6">
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-xl font-bold text-gray-900">
+              {step === 'email' && 'Đổi mật khẩu'}
+              {step === 'code' && 'Nhập mã xác thực'}
+              {step === 'success' && 'Thành công'}
+            </h2>
             <button
               onClick={handleClose}
-              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+              className="text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full p-1 transition-colors duration-200"
             >
-              Đóng
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
             </button>
           </div>
-        )}
+
+          {error && (
+            <div className="mb-6 p-4 bg-red-50 border border-red-200 text-red-700 rounded-lg">
+              {error}
+            </div>
+          )}
+
+          {step === 'email' && (
+            <div className="space-y-6">
+              <p className="text-gray-600 leading-relaxed">
+                Chúng tôi sẽ gửi mã xác thực đến email của bạn để đổi mật khẩu.
+              </p>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-3">
+                  Email của bạn
+                </label>
+                <div className="flex items-center p-4 bg-gray-50 border border-gray-200 rounded-lg">
+                  <svg className="w-5 h-5 text-gray-400 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207" />
+                  </svg>
+                  <span className="text-gray-900 font-medium">{email}</span>
+                </div>
+              </div>
+              <div className="flex justify-end space-x-3 pt-4">
+                <button
+                  onClick={handleClose}
+                  className="px-6 py-2.5 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 hover:border-gray-400 transition-all duration-200 font-medium"
+                >
+                  Hủy
+                </button>
+                <button
+                  onClick={handleSendCode}
+                  disabled={loading}
+                  className="px-6 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 font-medium shadow-sm hover:shadow-md"
+                >
+                  {loading ? 'Đang gửi...' : 'Gửi mã xác thực'}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {step === 'code' && (
+            <div className="space-y-6">
+              <p className="text-gray-600 leading-relaxed">
+                Nhập mã xác thực đã được gửi đến email <span className="font-medium text-gray-900">{email}</span>
+              </p>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-3">
+                  Mã xác thực
+                </label>
+                <input
+                  type="text"
+                  value={code}
+                  onChange={(e) => setCode(e.target.value)}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                  placeholder="Nhập mã 6 chữ số"
+                  maxLength={6}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-3">
+                  Mật khẩu mới
+                </label>
+                <input
+                  type="password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                  placeholder="Nhập mật khẩu mới"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-3">
+                  Xác nhận mật khẩu
+                </label>
+                <input
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                  placeholder="Nhập lại mật khẩu mới"
+                />
+              </div>
+              <div className="flex justify-end space-x-3 pt-4">
+                <button
+                  onClick={() => setStep('email')}
+                  className="px-6 py-2.5 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 hover:border-gray-400 transition-all duration-200 font-medium"
+                >
+                  Quay lại
+                </button>
+                <button
+                  onClick={handleVerifyCode}
+                  disabled={loading}
+                  className="px-6 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 font-medium shadow-sm hover:shadow-md"
+                >
+                  {loading ? 'Đang xử lý...' : 'Đổi mật khẩu'}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {step === 'success' && (
+            <div className="text-center space-y-6">
+              <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto">
+                <svg className="w-10 h-10 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+              <div>
+                <h3 className="text-xl font-bold text-gray-900 mb-2">
+                  Mật khẩu đã được đổi thành công!
+                </h3>
+                <p className="text-gray-600 leading-relaxed">
+                  Bạn có thể sử dụng mật khẩu mới để đăng nhập.
+                </p>
+              </div>
+              <button
+                onClick={handleClose}
+                className="px-8 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all duration-200 font-medium shadow-sm hover:shadow-md"
+              >
+                Đóng
+              </button>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -871,6 +875,13 @@ export default function DashboardPage() {
         user={user}
         sidebarWidth={sidebarWidth}
         onSidebarWidthChange={setSidebarWidth}
+      />
+
+      {/* Password Change Modal */}
+      <PasswordChangeModal
+        isOpen={showPasswordModal}
+        onClose={() => setShowPasswordModal(false)}
+        userEmail={user?.email}
       />
     </DashboardLayout>
   );
