@@ -1911,8 +1911,8 @@ function ProductsTab() {
   };
 
   const filteredProducts = products.filter(product =>
-    getEmployeeName(product.ma_nv).toLowerCase().includes(searchTerm.toLowerCase()) ||
-    product.ma_nv.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    String(getEmployeeName(product.ma_nv) || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+    String(product.ma_nv || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
     `${product.thang}/${product.nam}`.includes(searchTerm)
   );
 
@@ -1981,10 +1981,15 @@ function ProductsTab() {
                         Tháng {product.thang}/{product.nam}
                       </div>
                       <div className="text-sm text-gray-900">
-                        Số lượng: {product.so_luong || 0} | Hoa hồng: {(product.gia_thanh || 0).toLocaleString()} VND | Tỷ lệ: {product.ty_le || 0}%
+                        Số lượng: {product.so_luong || 0} | Tỷ lệ: {product.ty_le || 0}%
                       </div>
-                      <div className="text-sm font-medium text-purple-600">
-                        Hoa hồng: {(product.gia_thanh || 0).toLocaleString()} VND
+                      <div className="flex items-center justify-between mt-2 p-3 bg-purple-50 rounded-lg border border-purple-200">
+                        <div className="flex items-center">
+                          <span className="text-sm font-medium text-purple-800">💰 Thành tiền hoa hồng:</span>
+                        </div>
+                        <div className="text-lg font-bold text-purple-600">
+                          {(product.thanh_tien || 0).toLocaleString('vi-VN')} VND
+                        </div>
                       </div>
                     </div>
                   </div>
