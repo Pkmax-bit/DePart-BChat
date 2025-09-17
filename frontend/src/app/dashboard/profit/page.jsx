@@ -75,6 +75,8 @@ export default function ProfitPage() {
           setProfitData([{
             month: selectedPeriod,
             revenue: selectedMonthData.total_revenue,
+            operatingExpenses: (selectedMonthData.total_expenses || 0) - (selectedMonthData.total_payroll_expenses || 0),
+            payrollExpenses: selectedMonthData.total_payroll_expenses || 0,
             expenses: selectedMonthData.total_expenses,
             profit: selectedMonthData.total_profit,
             profitMargin: selectedMonthData.profit_margin
@@ -82,10 +84,12 @@ export default function ProfitPage() {
           setSummaryStats({
             totalRevenue: selectedMonthData.total_revenue,
             totalExpenses: selectedMonthData.total_expenses,
+            totalPayrollExpenses: selectedMonthData.total_payroll_expenses || 0,
             totalProfit: selectedMonthData.total_profit,
             profitMargin: selectedMonthData.profit_margin,
             invoiceCount: selectedMonthData.invoice_count,
             expenseCount: selectedMonthData.expense_count,
+            payrollCount: selectedMonthData.payroll_count || 0,
             productCount: selectedMonthData.product_count,
             revenueGrowth: 0,
             expenseGrowth: 0
@@ -123,6 +127,8 @@ export default function ProfitPage() {
         setProfitData([{
           month: selectedPeriod,
           revenue: profitData.summary.total_revenue,
+          operatingExpenses: profitData.summary.total_expenses - (profitData.summary.total_payroll_expenses || 0),
+          payrollExpenses: profitData.summary.total_payroll_expenses || 0,
           expenses: profitData.summary.total_expenses,
           profit: profitData.summary.total_profit,
           profitMargin: profitData.summary.profit_margin
@@ -130,10 +136,12 @@ export default function ProfitPage() {
         setSummaryStats({
           totalRevenue: profitData.summary.total_revenue,
           totalExpenses: profitData.summary.total_expenses,
+          totalPayrollExpenses: profitData.summary.total_payroll_expenses || 0,
           totalProfit: profitData.summary.total_profit,
           profitMargin: profitData.summary.profit_margin,
           invoiceCount: profitData.summary.revenue_count || 0,
           expenseCount: profitData.summary.expense_count || 0,
+          payrollCount: profitData.summary.payroll_count || 0,
           productCount: 0, // This might not be available in detailed data
           revenueGrowth: 0,
           expenseGrowth: 0
@@ -270,6 +278,14 @@ export default function ProfitPage() {
               <div>Tổng doanh thu</div>
             </div>
             <div class="stat-box">
+              <div class="stat-value expense">${(summaryStats.totalExpenses - (summaryStats.totalPayrollExpenses || 0)).toLocaleString('vi-VN')} VND</div>
+              <div>Chi phí</div>
+            </div>
+            <div class="stat-box">
+              <div class="stat-value expense">${(summaryStats.totalPayrollExpenses || 0).toLocaleString('vi-VN')} VND</div>
+              <div>Chi phí nhân sự</div>
+            </div>
+            <div class="stat-box">
               <div class="stat-value expense">${summaryStats.totalExpenses.toLocaleString('vi-VN')} VND</div>
               <div>Tổng chi phí</div>
             </div>
@@ -283,6 +299,7 @@ export default function ProfitPage() {
             <p><strong>Tỷ suất lợi nhuận:</strong> ${summaryStats.profitMargin.toFixed(2)}%</p>
             <p><strong>Số hóa đơn:</strong> ${summaryStats.invoiceCount}</p>
             <p><strong>Số chi phí:</strong> ${summaryStats.expenseCount}</p>
+            <p><strong>Số nhân viên có lương:</strong> ${summaryStats.payrollCount || 0}</p>
             <p><strong>Số sản phẩm:</strong> ${summaryStats.productCount}</p>
             <p><strong>Lợi nhuận/Hóa đơn:</strong> ${summaryStats.invoiceCount > 0 ? (summaryStats.totalProfit / summaryStats.invoiceCount).toLocaleString('vi-VN') : 0} VND</p>
             <p><strong>Trạng thái:</strong> ${summaryStats.totalProfit >= 0 ? 'LỢI NHUẬN' : 'LỖ'}</p>
@@ -294,10 +311,13 @@ export default function ProfitPage() {
                 <th>Tháng</th>
                 <th>Doanh thu</th>
                 <th>Chi phí</th>
+                <th>Chi phí nhân sự</th>
+                <th>Tổng chi phí</th>
                 <th>Lợi nhuận</th>
                 <th>Tỷ suất (%)</th>
                 <th>Hóa đơn</th>
                 <th>Chi phí</th>
+                <th>Nhân viên</th>
                 <th>Sản phẩm</th>
                 <th>Trạng thái</th>
               </tr>
@@ -307,11 +327,14 @@ export default function ProfitPage() {
                 <tr>
                   <td>${report.report_month}</td>
                   <td>${report.total_revenue.toLocaleString('vi-VN')} VND</td>
+                  <td>${((report.total_expenses || 0) - (report.total_payroll_expenses || 0)).toLocaleString('vi-VN')} VND</td>
+                  <td>${(report.total_payroll_expenses || 0).toLocaleString('vi-VN')} VND</td>
                   <td>${report.total_expenses.toLocaleString('vi-VN')} VND</td>
                   <td>${report.total_profit.toLocaleString('vi-VN')} VND</td>
                   <td>${report.profit_margin.toFixed(2)}%</td>
                   <td>${report.invoice_count}</td>
                   <td>${report.expense_count}</td>
+                  <td>${report.payroll_count || 0}</td>
                   <td>${report.product_count}</td>
                   <td>${report.total_profit >= 0 ? 'Lợi nhuận' : 'Lỗ'}</td>
                 </tr>

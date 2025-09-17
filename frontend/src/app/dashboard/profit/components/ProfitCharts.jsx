@@ -17,7 +17,8 @@ export default function ProfitCharts({ profitData, summaryStats, selectedPeriod 
             <Tooltip formatter={(value) => [value.toLocaleString('vi-VN'), '']} />
             <Legend />
             <Bar dataKey="revenue" fill="#10B981" name="Doanh thu" />
-            <Bar dataKey="expenses" fill="#EF4444" name="Chi phí" />
+            <Bar dataKey="operatingExpenses" fill="#EF4444" name="Chi phí" />
+            <Bar dataKey="payrollExpenses" fill="#F97316" name="Chi phí nhân sự" />
             <Bar dataKey="profit" fill="#3B82F6" name="Lợi nhuận" />
           </BarChart>
         </ResponsiveContainer>
@@ -33,7 +34,8 @@ export default function ProfitCharts({ profitData, summaryStats, selectedPeriod 
             <Pie
               data={[
                 { name: 'Doanh thu', value: summaryStats.totalRevenue, color: '#10B981' },
-                { name: 'Chi phí', value: summaryStats.totalExpenses, color: '#EF4444' }
+                { name: 'Chi phí', value: (summaryStats.totalExpenses - (summaryStats.totalPayrollExpenses || 0)), color: '#EF4444' },
+                { name: 'Chi phí nhân sự', value: (summaryStats.totalPayrollExpenses || 0), color: '#F97316' }
               ]}
               cx="50%"
               cy="50%"
@@ -44,6 +46,7 @@ export default function ProfitCharts({ profitData, summaryStats, selectedPeriod 
             >
               <Cell fill="#10B981" />
               <Cell fill="#EF4444" />
+              <Cell fill="#F97316" />
             </Pie>
             <Tooltip formatter={(value) => [value.toLocaleString('vi-VN'), '']} />
             <Legend />

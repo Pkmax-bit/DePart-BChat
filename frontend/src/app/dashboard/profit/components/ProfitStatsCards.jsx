@@ -1,8 +1,8 @@
-import { TrendingUp, TrendingDown, DollarSign, Target } from 'lucide-react';
+import { TrendingUp, TrendingDown, DollarSign, Target, Users } from 'lucide-react';
 
 export default function ProfitStatsCards({ summaryStats, selectedPeriod }) {
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
       <div className="bg-white rounded-xl shadow-sm border p-6">
         <div className="flex items-center">
           <div className="p-3 bg-green-100 rounded-lg">
@@ -22,9 +22,22 @@ export default function ProfitStatsCards({ summaryStats, selectedPeriod }) {
             <TrendingDown className="w-6 h-6 text-red-600" />
           </div>
           <div className="ml-4">
-            <p className="text-sm font-medium text-gray-600">Tổng chi phí</p>
-            <p className="text-2xl font-bold text-red-600">{summaryStats.totalExpenses.toLocaleString('vi-VN')} VND</p>
+            <p className="text-sm font-medium text-gray-600">Chi phí</p>
+            <p className="text-2xl font-bold text-red-600">{(summaryStats.totalExpenses - (summaryStats.totalPayrollExpenses || 0)).toLocaleString('vi-VN')} VND</p>
             <p className="text-xs text-gray-500 mt-1">{summaryStats.expenseCount || 0} khoản chi</p>
+          </div>
+        </div>
+      </div>
+
+      <div className="bg-white rounded-xl shadow-sm border p-6">
+        <div className="flex items-center">
+          <div className="p-3 bg-orange-100 rounded-lg">
+            <Users className="w-6 h-6 text-orange-600" />
+          </div>
+          <div className="ml-4">
+            <p className="text-sm font-medium text-gray-600">Chi phí nhân sự</p>
+            <p className="text-2xl font-bold text-orange-600">{(summaryStats.totalPayrollExpenses || 0).toLocaleString('vi-VN')} VND</p>
+            <p className="text-xs text-gray-500 mt-1">{summaryStats.payrollCount || 0} nhân viên</p>
           </div>
         </div>
       </div>

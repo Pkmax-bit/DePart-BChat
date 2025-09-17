@@ -18,10 +18,13 @@ export default function ProfitReportsTable({ allProfitData, selectedPeriod }) {
               <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Tháng</th>
               <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Doanh thu</th>
               <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Chi phí</th>
+              <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Chi phí nhân sự</th>
+              <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Tổng chi phí</th>
               <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Lợi nhuận</th>
               <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Tỷ suất (%)</th>
               <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Hóa đơn</th>
               <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Chi phí</th>
+              <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Nhân viên</th>
               <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Sản phẩm</th>
               <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Trạng thái</th>
             </tr>
@@ -34,6 +37,12 @@ export default function ProfitReportsTable({ allProfitData, selectedPeriod }) {
                 </td>
                 <td className="px-4 py-2 whitespace-nowrap text-sm text-green-600">
                   {report.total_revenue.toLocaleString('vi-VN')}
+                </td>
+                <td className="px-4 py-2 whitespace-nowrap text-sm text-red-600">
+                  {((report.total_expenses || 0) - (report.total_payroll_expenses || 0)).toLocaleString('vi-VN')}
+                </td>
+                <td className="px-4 py-2 whitespace-nowrap text-sm text-orange-600">
+                  {(report.total_payroll_expenses || 0).toLocaleString('vi-VN')}
                 </td>
                 <td className="px-4 py-2 whitespace-nowrap text-sm text-red-600">
                   {report.total_expenses.toLocaleString('vi-VN')}
@@ -49,6 +58,9 @@ export default function ProfitReportsTable({ allProfitData, selectedPeriod }) {
                 </td>
                 <td className="px-4 py-2 whitespace-nowrap text-sm text-center text-gray-500">
                   {report.expense_count}
+                </td>
+                <td className="px-4 py-2 whitespace-nowrap text-sm text-center text-gray-500">
+                  {report.payroll_count || 0}
                 </td>
                 <td className="px-4 py-2 whitespace-nowrap text-sm text-center text-gray-500">
                   {report.product_count}

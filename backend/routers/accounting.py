@@ -1109,6 +1109,17 @@ async def get_profit_report(month: str = None):
         expense_result = expense_query.execute()
         total_expenses = sum(expense['giathanh'] or 0 for expense in expense_result.data if not expense.get('parent_id'))
 
+        # Lấy dữ liệu chi phí nhân sự (lương)
+        payroll_query = supabase.table('phieu_luong').select('luong_thuc_nhan')
+        if month:
+            payroll_query = payroll_query.eq('ky_tinh_luong', month)
+
+        payroll_result = payroll_query.execute()
+        total_payroll_expenses = sum(payroll['luong_thuc_nhan'] or 0 for payroll in payroll_result.data)
+
+        # Tổng chi phí = chi phí từ quanly_chiphi + chi phí nhân sự
+        total_expenses += total_payroll_expenses
+
         # Tính lợi nhuận
         total_profit = total_revenue - total_expenses
         if total_revenue > 0:
@@ -1147,19 +1158,27 @@ async def get_profit_report(month: str = None):
                 except Exception as e:
                     print(f"Error fetching loaichiphi data: {e}")
 
+        # Thêm chi phí nhân sự vào phân tích chi phí
+        if total_payroll_expenses > 0:
+            expense_by_category['Chi phí nhân sự'] = total_payroll_expenses
+            expense_by_type['định phí'] += total_payroll_expenses  # Giả sử lương là chi phí định phí
+
         return {
             "period": month or "all",
             "summary": {
                 "total_revenue": total_revenue,
                 "total_expenses": total_expenses,
+                "total_payroll_expenses": total_payroll_expenses,
                 "total_profit": total_profit,
                 "profit_margin": profit_margin,
                 "revenue_count": len(revenue_result.data),
-                "expense_count": len(expense_result.data)
+                "expense_count": len(expense_result.data),
+                "payroll_count": len(payroll_result.data)
             },
             "details": {
                 "revenue": revenue_result.data,
                 "expenses": expense_result.data,
+                "payroll_expenses": payroll_result.data,
                 "expense_by_category": expense_by_category,
                 "expense_by_type": expense_by_type
             },
@@ -1199,10 +1218,12 @@ async def create_profit_report(report_data: dict):
             'report_month': report_data['report_month'],
             'total_revenue': report_data.get('total_revenue', 0),
             'total_expenses': report_data.get('total_expenses', 0),
+            'total_payroll_expenses': report_data.get('total_payroll_expenses', 0),
             'total_profit': report_data.get('total_profit', 0),
             'profit_margin': report_data.get('profit_margin', 0),
             'invoice_count': report_data.get('invoice_count', 0),
             'expense_count': report_data.get('expense_count', 0),
+            'payroll_count': report_data.get('payroll_count', 0),
             'product_count': report_data.get('product_count', 0),
             'updated_at': 'now()'
         }).execute()
@@ -1217,10 +1238,12 @@ async def update_profit_report(report_id: int, report_data: dict):
         result = supabase.table('profits').update({
             'total_revenue': report_data.get('total_revenue'),
             'total_expenses': report_data.get('total_expenses'),
+            'total_payroll_expenses': report_data.get('total_payroll_expenses'),
             'total_profit': report_data.get('total_profit'),
             'profit_margin': report_data.get('profit_margin'),
             'invoice_count': report_data.get('invoice_count'),
             'expense_count': report_data.get('expense_count'),
+            'payroll_count': report_data.get('payroll_count'),
             'product_count': report_data.get('product_count'),
             'updated_at': 'now()'
         }).eq('id', report_id).execute()
@@ -1261,6 +1284,13 @@ async def generate_profit_report(month: str):
         expense_result = supabase.table('quanly_chiphi').select('*').gte('created_at', start_date).lt('created_at', end_date).execute()
         total_expenses = sum(expense['giathanh'] or 0 for expense in expense_result.data if not expense.get('parent_id'))
 
+        # Lấy dữ liệu chi phí nhân sự (lương)
+        payroll_result = supabase.table('phieu_luong').select('luong_thuc_nhan').eq('ky_tinh_luong', month).execute()
+        total_payroll_expenses = sum(payroll['luong_thuc_nhan'] or 0 for payroll in payroll_result.data)
+
+        # Tổng chi phí = chi phí từ quanly_chiphi + chi phí nhân sự
+        total_expenses += total_payroll_expenses
+
         # Lấy số lượng sản phẩm
         product_result = supabase.table('sanpham').select('id', count='exact').execute()
         product_count = product_result.count or 0
@@ -1274,10 +1304,12 @@ async def generate_profit_report(month: str):
             'report_month': month,
             'total_revenue': total_revenue,
             'total_expenses': total_expenses,
+            'total_payroll_expenses': total_payroll_expenses,
             'total_profit': total_profit,
             'profit_margin': profit_margin,
             'invoice_count': len(revenue_result.data),
             'expense_count': len([e for e in expense_result.data if not e.get('parent_id')]),  # Only count parent expenses
+            'payroll_count': len(payroll_result.data),
             'product_count': product_count,
             'updated_at': 'now()'
         }).execute()
@@ -1307,6 +1339,13 @@ async def sync_profit_report(month: str):
         expense_result = supabase.table('quanly_chiphi').select('*').gte('created_at', start_date).lt('created_at', end_date).execute()
         total_expenses = sum(expense['giathanh'] or 0 for expense in expense_result.data if not expense.get('parent_id'))
 
+        # Lấy dữ liệu chi phí nhân sự (lương)
+        payroll_result = supabase.table('phieu_luong').select('luong_thuc_nhan').eq('ky_tinh_luong', month).execute()
+        total_payroll_expenses = sum(payroll['luong_thuc_nhan'] or 0 for payroll in payroll_result.data)
+
+        # Tổng chi phí = chi phí từ quanly_chiphi + chi phí nhân sự
+        total_expenses += total_payroll_expenses
+
         # Lấy số lượng sản phẩm
         product_result = supabase.table('sanpham').select('id', count='exact').execute()
         product_count = product_result.count or 0
@@ -1322,10 +1361,12 @@ async def sync_profit_report(month: str):
             result = supabase.table('profits').update({
                 'total_revenue': total_revenue,
                 'total_expenses': total_expenses,
+                'total_payroll_expenses': total_payroll_expenses,
                 'total_profit': total_profit,
                 'profit_margin': profit_margin,
                 'invoice_count': len(revenue_result.data),
                 'expense_count': len([e for e in expense_result.data if not e.get('parent_id')]),  # Only count parent expenses
+                'payroll_count': len(payroll_result.data),
                 'product_count': product_count,
                 'updated_at': 'now()'
             }).eq('report_month', month).execute()
@@ -1335,10 +1376,12 @@ async def sync_profit_report(month: str):
                 'report_month': month,
                 'total_revenue': total_revenue,
                 'total_expenses': total_expenses,
+                'total_payroll_expenses': total_payroll_expenses,
                 'total_profit': total_profit,
                 'profit_margin': profit_margin,
                 'invoice_count': len(revenue_result.data),
                 'expense_count': len([e for e in expense_result.data if not e.get('parent_id')]),  # Only count parent expenses
+                'payroll_count': len(payroll_result.data),
                 'product_count': product_count,
                 'updated_at': 'now()'
             }).execute()
