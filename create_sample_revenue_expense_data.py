@@ -56,7 +56,12 @@ def create_expense_types():
         {'loaichiphi': 'định phí', 'tenchiphi': 'Chi phí điện nước'},
         {'loaichiphi': 'định phí', 'tenchiphi': 'Chi phí thuê mặt bằng'},
         {'loaichiphi': 'biến phí', 'tenchiphi': 'Chi phí đóng gói'},
-        {'loaichiphi': 'định phí', 'tenchiphi': 'Chi phí bảo hiểm'}
+        {'loaichiphi': 'định phí', 'tenchiphi': 'Chi phí bảo hiểm'},
+        {'loaichiphi': 'định phí', 'tenchiphi': 'Thuế thu nhập doanh nghiệp'},
+        {'loaichiphi': 'biến phí', 'tenchiphi': 'Thuế giá trị gia tăng (VAT)'},
+        {'loaichiphi': 'định phí', 'tenchiphi': 'Thuế môn bài'},
+        {'loaichiphi': 'định phí', 'tenchiphi': 'Thuế thu nhập cá nhân'},
+        {'loaichiphi': 'biến phí', 'tenchiphi': 'Thuế tiêu thụ đặc biệt'}
     ]
 
     created_count = 0

@@ -403,7 +403,6 @@ export default function ProfitPage() {
         <ProfitCharts profitData={profitData} summaryStats={summaryStats} selectedPeriod={selectedPeriod} />
         <ProfitMetrics summaryStats={summaryStats} selectedPeriod={selectedPeriod} allProfitData={allProfitData} />
         <ProfitStatus summaryStats={summaryStats} selectedPeriod={selectedPeriod} />
-        <ProfitTables revenueData={revenueData} expenseData={expenseData} />
         <ProfitReportsTable allProfitData={allProfitData} selectedPeriod={selectedPeriod} />
         <ProfitSummary summaryStats={summaryStats} selectedPeriod={selectedPeriod} />
       </div>

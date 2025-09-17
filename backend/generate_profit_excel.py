@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """
-Script de xuat bao cao loi nhuan ra file Excel voi 3 sheet:
+Script de xuat bao cao loi nhuan ra file Excel voi 4 sheet:
 1. Sheet 1: Tong loi nhuan - hien thi tong doanh thu va chi phi
 2. Sheet 2: Doanh thu - chi tiet tung hoa don, san pham, khach hang
 3. Sheet 3: Chi phi - chi tiet tung khoan phi
+4. Sheet 4: Chi phi nhan su - chi tiet luong tung nhan vien
 
 Tat ca duoc xuat theo thoi gian da chon
 """
@@ -111,9 +112,29 @@ def get_profit_data(month=None):
             bophan_map = {}
             sanpham_map = {}
 
+        # Lay du lieu chi phi nhan su (phieu luong)
+        payroll_query = supabase.table('phieu_luong').select('*')
+        if month:
+            payroll_query = payroll_query.eq('ky_tinh_luong', month)
+
+        payroll_result = payroll_query.execute()
+        payroll_data = payroll_result.data
+
+        # Lay thong tin nhan vien cho phieu luong
+        employee_ids = list(set(item.get('ma_nv') for item in payroll_data if item.get('ma_nv')))
+        employees = {}
+        if employee_ids:
+            try:
+                employees_result = supabase.table('employees').select('*').in_('ma_nv', employee_ids).execute()
+                employees = {emp['ma_nv']: emp for emp in employees_result.data}
+            except Exception as e:
+                print(f"Error getting employee data: {e}")
+
         return {
             'revenue': revenue_data,
             'expenses': expense_data,
+            'payroll': payroll_data,
+            'employees': employees,
             'expense_categories': expense_categories,
             'invoice_items': invoice_items,
             'month': month,
@@ -137,10 +158,11 @@ def create_excel_file(data, output_path):
     # Xoa sheet mac dinh
     wb.remove(wb.active)
 
-    # Tao 3 sheet
+    # Tao 4 sheet
     sheet1 = wb.create_sheet("Tong loi nhuan")
     sheet2 = wb.create_sheet("Doanh thu chi tiet")
     sheet3 = wb.create_sheet("Chi phi chi tiet")
+    sheet4 = wb.create_sheet("Chi phi nhan su")
 
     # Dinh dang chung
     header_font = Font(bold=True, color="FFFFFF")
@@ -161,6 +183,9 @@ def create_excel_file(data, output_path):
     # ===== SHEET 3: CHI PHI CHI TIET =====
     create_expense_detail_sheet(sheet3, data, header_font, header_fill, border)
 
+    # ===== SHEET 4: CHI PHI NHAN SU =====
+    create_payroll_detail_sheet(sheet4, data, header_font, header_fill, border)
+
     # Luu file
     wb.save(output_path)
     return output_path
@@ -177,7 +202,9 @@ def create_profit_summary_sheet(sheet, data, header_font, header_fill, border):
     # Tinh tong
     total_revenue = sum(inv.get('total_amount', 0) for inv in data['revenue'])
     total_expenses = sum(exp.get('giathanh', 0) for exp in data['expenses'])
-    total_profit = total_revenue - total_expenses
+    total_payroll = sum(p.get('luong_thuc_nhan', 0) for p in data['payroll'])
+    total_all_expenses = total_expenses + total_payroll
+    total_profit = total_revenue - total_all_expenses
     profit_margin = (total_profit / total_revenue * 100) if total_revenue > 0 else 0
 
     # Header
@@ -193,7 +220,9 @@ def create_profit_summary_sheet(sheet, data, header_font, header_fill, border):
     # Du lieu
     summary_data = [
         ['Tong doanh thu', total_revenue, '100.00'],
-        ['Tong chi phi', total_expenses, f"{(total_expenses/total_revenue*100):.2f}" if total_revenue > 0 else '0.00'],
+        ['Tong chi phi van hanh', total_expenses, f"{(total_expenses/total_revenue*100):.2f}" if total_revenue > 0 else '0.00'],
+        ['Tong chi phi nhan su', total_payroll, f"{(total_payroll/total_revenue*100):.2f}" if total_revenue > 0 else '0.00'],
+        ['Tong chi phi', total_all_expenses, f"{(total_all_expenses/total_revenue*100):.2f}" if total_revenue > 0 else '0.00'],
         ['Loi nhuan', total_profit, f"{profit_margin:.2f}"],
     ]
 
@@ -216,8 +245,9 @@ def create_profit_summary_sheet(sheet, data, header_font, header_fill, border):
 
     stats_data = [
         ['So luong hoa don', len(data['revenue'])],
-        ['So luong chi phi', len(data['expenses'])],
-        ['Trung binh/don', total_revenue / len(data['revenue']) if data['revenue'] else 0],
+        ['So luong chi phi van hanh', len(data['expenses'])],
+        ['So luong nhan vien co luong', len(data['payroll'])],
+        ['Trung binh luong/nhan vien', total_payroll / len(data['payroll']) if data['payroll'] else 0],
         ['Trang thai', 'LOI NHUAN' if total_profit >= 0 else 'LO'],
     ]
 
@@ -408,6 +438,100 @@ def create_expense_detail_sheet(sheet, data, header_font, header_fill, border):
     for col, width in enumerate(column_widths, 1):
         sheet.column_dimensions[get_column_letter(col)].width = width
 
+def create_payroll_detail_sheet(sheet, data, header_font, header_fill, border):
+    """Tao sheet chi phi nhan su chi tiet"""
+
+    # Tieu de
+    sheet['A1'] = "CHI TIET CHI PHI NHAN SU"
+    sheet['A1'].font = Font(bold=True, size=16)
+    sheet['A2'] = f"Thang: {data['month'] or 'Tat ca'}"
+    sheet['A2'].font = Font(bold=True, size=12)
+
+    # Header
+    headers = ['STT', 'Ma NV', 'Ho ten', 'Ky tinh luong', 'Tong thu nhap', 'Tong khau tru', 'Luong thuc nhan', 'Trang thai']
+    for col, header in enumerate(headers, 1):
+        cell = sheet.cell(row=4, column=col)
+        cell.value = header
+        cell.font = header_font
+        cell.fill = header_fill
+        cell.alignment = Alignment(horizontal='center')
+        cell.border = border
+
+    # Du lieu
+    row_idx = 5
+    total_payroll = 0
+
+    for idx, payroll in enumerate(data['payroll'], 1):
+        ma_nv = payroll.get('ma_nv', '')
+        employee = data['employees'].get(ma_nv, {})
+        ho_ten = employee.get('ho_ten', f'NV {ma_nv}')
+
+        ky_tinh_luong = payroll.get('ky_tinh_luong', '')
+        tong_thu_nhap = payroll.get('tong_thu_nhap', 0)
+        tong_khau_tru = payroll.get('tong_khau_tru', 0)
+        luong_thuc_nhan = payroll.get('luong_thuc_nhan', 0)
+        trang_thai = payroll.get('trang_thai', 'draft')
+
+        total_payroll += luong_thuc_nhan
+
+        row_data = [
+            idx,
+            ma_nv,
+            ho_ten,
+            ky_tinh_luong,
+            tong_thu_nhap,
+            tong_khau_tru,
+            luong_thuc_nhan,
+            trang_thai
+        ]
+
+        for col_idx, value in enumerate(row_data, 1):
+            cell = sheet.cell(row=row_idx, column=col_idx)
+            cell.value = value
+            cell.border = border
+
+            if col_idx in [5, 6, 7]:  # Cac cot tien
+                cell.alignment = Alignment(horizontal='right')
+                if isinstance(value, (int, float)):
+                    cell.number_format = '#,##0'
+
+        row_idx += 1
+
+    # Tong ket
+    total_row = row_idx + 1
+    sheet.cell(row=total_row, column=6).value = "TONG CHI PHI NHAN SU:"
+    sheet.cell(row=total_row, column=6).font = Font(bold=True)
+    sheet.cell(row=total_row, column=7).value = total_payroll
+    sheet.cell(row=total_row, column=7).font = Font(bold=True)
+    sheet.cell(row=total_row, column=7).number_format = '#,##0'
+
+    # Thong ke them
+    stats_row = total_row + 2
+    sheet.cell(row=stats_row, column=1).value = "THONG KE:"
+    sheet.cell(row=stats_row, column=1).font = Font(bold=True, size=12)
+
+    stats_data = [
+        ['Tong so nhan vien co luong', len(data['payroll'])],
+        ['Luong trung binh', total_payroll / len(data['payroll']) if data['payroll'] else 0],
+        ['Luong cao nhat', max((p.get('luong_thuc_nhan', 0) for p in data['payroll']), default=0)],
+        ['Luong thap nhat', min((p.get('luong_thuc_nhan', 0) for p in data['payroll']), default=0)],
+    ]
+
+    for row_idx, (label, value) in enumerate(stats_data, stats_row + 1):
+        sheet.cell(row=row_idx, column=1).value = label
+        sheet.cell(row=row_idx, column=1).border = border
+
+        cell = sheet.cell(row=row_idx, column=2)
+        cell.value = value
+        cell.border = border
+        if isinstance(value, (int, float)):
+            cell.number_format = '#,##0'
+
+    # Dieu chinh do rong cot
+    column_widths = [8, 12, 25, 15, 18, 18, 18, 12]
+    for col, width in enumerate(column_widths, 1):
+        sheet.column_dimensions[get_column_letter(col)].width = width
+
 def main():
     parser = argparse.ArgumentParser(description='Xuat bao cao loi nhuan ra Excel')
     parser.add_argument('--month', type=str, help='Thang can xuat (YYYY-MM)', default=None)
@@ -436,14 +560,19 @@ def main():
         # Thong ke
         total_revenue = sum(inv.get('total_amount', 0) for inv in data['revenue'])
         total_expenses = sum(exp.get('giathanh', 0) for exp in data['expenses'])
-        total_profit = total_revenue - total_expenses
+        total_payroll = sum(p.get('luong_thuc_nhan', 0) for p in data['payroll'])
+        total_all_expenses = total_expenses + total_payroll
+        total_profit = total_revenue - total_all_expenses
 
         print("Thong ke:")
         print(f"   - Tong doanh thu: {total_revenue:,.0f} VND")
-        print(f"   - Tong chi phi: {total_expenses:,.0f} VND")
+        print(f"   - Tong chi phi van hanh: {total_expenses:,.0f} VND")
+        print(f"   - Tong chi phi nhan su: {total_payroll:,.0f} VND")
+        print(f"   - Tong chi phi: {total_all_expenses:,.0f} VND")
         print(f"   - Loi nhuan: {total_profit:,.0f} VND")
         print(f"   - So hoa don: {len(data['revenue'])}")
         print(f"   - So chi phi: {len(data['expenses'])}")
+        print(f"   - So nhan vien co luong: {len(data['payroll'])}")
 
     except Exception as e:
         print(f"Loi khi tao file Excel: {e}")
