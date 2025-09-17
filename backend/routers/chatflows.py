@@ -24,10 +24,7 @@ def list_all_chatflows(department_id: int = None):
     Lấy danh sách tất cả chatflows, có thể filter theo department
     """
     try:
-        query = supabase.table('chatflows').select('''
-            *,
-            departments!chatflows_department_id_fkey(name, description)
-        ''').order('id')
+        query = supabase.table('chatflows').select('*').order('id')
 
         if department_id:
             query = query.eq('department_id', department_id)
@@ -37,30 +34,15 @@ def list_all_chatflows(department_id: int = None):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.get("/user/{user_id}")
+@router.get("/employees/{user_id}")
 def list_chatflows_for_user(user_id: int):
     """
-    Lấy danh sách chatflows cho một user cụ thể dựa trên department của họ.
-    Nếu user không thuộc department nào, trả về tất cả chatflows.
+    Lấy danh sách chatflows cho một user cụ thể.
+    Hiện tại trả về tất cả chatflows enabled.
     """
     try:
-        # Lấy thông tin department của user
-        user_result = supabase.table('employees').select('department_id').eq('id', user_id).execute()
-        if not user_result.data:
-            raise HTTPException(status_code=404, detail="User not found")
-
-        user_department_id = user_result.data[0].get('department_id')
-
-        # Query chatflows
-        query = supabase.table('chatflows').select('''
-            *,
-            departments!chatflows_department_id_fkey(name, description)
-        ''').eq('is_enabled', True).order('id')
-
-        if user_department_id is not None:
-            # Nếu user thuộc department, chỉ lấy chatflows của department đó
-            query = query.eq('department_id', user_department_id)
-        # Nếu user không thuộc department nào (department_id is None), lấy tất cả chatflows
+        # Query chatflows - tạm thời bỏ qua logic department
+        query = supabase.table('chatflows').select('*').eq('is_enabled', True).order('id')
 
         data, count = query.execute()
         return data[1]

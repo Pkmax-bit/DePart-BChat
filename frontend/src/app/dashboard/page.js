@@ -529,7 +529,7 @@ export default function DashboardPage() {
         // Nếu có departmentId, fetch chatflows theo department của user
         // Nếu không có departmentId, fetch tất cả chatflows
         const endpoint = departmentId
-          ? `http://localhost:8001/api/v1/chatflows/user/${userId}`
+          ? `http://localhost:8001/api/v1/chatflows/employees/${userId}`
           : 'http://localhost:8001/api/v1/chatflows/';
 
         const response = await fetch(endpoint);
