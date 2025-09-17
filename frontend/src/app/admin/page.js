@@ -383,6 +383,9 @@ function UserManagement() {
       ngay_vao_lam: user.ngay_vao_lam ? user.ngay_vao_lam.split('T')[0] : ''
     });
     setShowEditForm(true);
+    setShowAddForm(false);
+    // Scroll to top to show the form
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   // Filter handlers
@@ -487,7 +490,13 @@ function UserManagement() {
             <span className="sm:hidden">Upload</span>
           </label>
           <button
-            onClick={() => setShowAddForm(true)}
+            onClick={() => {
+              setShowAddForm(true);
+              setShowEditForm(false);
+              setEditingUser(null);
+              // Scroll to top to show the form
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+            }}
             className="bg-blue-600 text-white px-3 sm:px-4 py-2 rounded hover:bg-blue-700 text-sm sm:text-base"
           >
             <span className="hidden sm:inline">Thêm Nhân viên</span>
@@ -496,210 +505,63 @@ function UserManagement() {
         </div>
       </div>
 
+      {/* Add/Edit Form - hiển thị trực tiếp thay vì modal */}
       {showAddForm && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white p-4 sm:p-6 rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <h3 className="text-lg sm:text-xl font-semibold mb-4">Thêm Nhân viên Mới</h3>
-            <form onSubmit={handleAddUser} className="space-y-4">
-              {/* User Information Section */}
-              <div className="border-b border-gray-200 pb-4 mb-4">
-                <h4 className="text-md font-semibold text-gray-800 mb-3">Thông tin tài khoản</h4>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                    <input
-                      type="email"
-                      value={newUser.email}
-                      onChange={(e) => setNewUser({...newUser, email: e.target.value})}
-                      className="w-full border border-gray-300 rounded-md shadow-sm p-2 text-black focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      required
-                    />
-                  </div>
+        <div className="bg-white rounded-lg shadow-sm border p-6 mb-6">
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-lg sm:text-xl font-semibold text-gray-900">Thêm Nhân viên Mới</h3>
+            <button
+              onClick={() => setShowAddForm(false)}
+              className="text-gray-400 hover:text-gray-600 p-1"
+              title="Đóng form"
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+          <form onSubmit={handleAddUser} className="space-y-6">
+            {/* User Information Section */}
+            <div className="border-b border-gray-200 pb-6 mb-6">
+              <h4 className="text-md font-semibold text-gray-800 mb-4">Thông tin tài khoản</h4>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
+                  <input
+                    type="email"
+                    value={newUser.email}
+                    onChange={(e) => setNewUser({...newUser, email: e.target.value})}
+                    className="w-full border border-gray-300 rounded-md shadow-sm p-3 text-black focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    required
+                  />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Mật khẩu</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Mật khẩu</label>
                   <input
                     type="password"
                     value={newUser.password}
                     onChange={(e) => setNewUser({...newUser, password: e.target.value})}
-                    className="w-full border border-gray-300 rounded-md shadow-sm p-2 text-black focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Họ và tên</label>
-                  <input
-                    type="text"
-                    value={newUser.full_name}
-                    onChange={(e) => setNewUser({...newUser, full_name: e.target.value})}
-                    className="w-full border border-gray-300 rounded-md shadow-sm p-2 text-black focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Phòng ban</label>
-                  <select
-                    value={newUser.department_id || ''}
-                    onChange={(e) => setNewUser({...newUser, department_id: e.target.value ? parseInt(e.target.value) : null})}
-                    className="w-full border border-gray-300 rounded-md shadow-sm p-2 text-black focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  >
-                    <option value="">Không thuộc phòng ban nào</option>
-                    {departments.map((dept) => (
-                      <option key={dept.id} value={dept.id}>
-                        {dept.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              {/* Employee Information Section */}
-              <div>
-                <h4 className="text-md font-semibold text-gray-800 mb-3">Thông tin nhân viên</h4>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Mã nhân viên <span className="text-xs text-gray-500">(tự động tạo số nếu để trống)</span></label>
-                    <input
-                      type="text"
-                      value={newUser.ma_nv}
-                      onChange={(e) => setNewUser({...newUser, ma_nv: e.target.value})}
-                      className="w-full border border-gray-300 rounded-md shadow-sm p-2 text-black focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Chức vụ</label>
-                    <input
-                      type="text"
-                      value={newUser.chuc_vu}
-                      onChange={(e) => setNewUser({...newUser, chuc_vu: e.target.value})}
-                      className="w-full border border-gray-300 rounded-md shadow-sm p-2 text-black focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    />
-                  </div>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Phòng ban (nhân viên)</label>
-                    <input
-                      type="text"
-                      value={newUser.phong_ban}
-                      onChange={(e) => setNewUser({...newUser, phong_ban: e.target.value})}
-                      className="w-full border border-gray-300 rounded-md shadow-sm p-2 text-black focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Số người phụ thuộc</label>
-                    <input
-                      type="number"
-                      value={newUser.so_nguoi_phu_thuoc}
-                      onChange={(e) => setNewUser({...newUser, so_nguoi_phu_thuoc: parseInt(e.target.value) || 0})}
-                      className="w-full border border-gray-300 rounded-md shadow-sm p-2 text-black focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      min="0"
-                    />
-                  </div>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Lương hợp đồng</label>
-                    <input
-                      type="number"
-                      value={newUser.luong_hop_dong}
-                      onChange={(e) => setNewUser({...newUser, luong_hop_dong: e.target.value})}
-                      className="w-full border border-gray-300 rounded-md shadow-sm p-2 text-black focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      step="0.01"
-                      min="0"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Mức lương đóng BHXH</label>
-                    <input
-                      type="number"
-                      value={newUser.muc_luong_dong_bhxh}
-                      onChange={(e) => setNewUser({...newUser, muc_luong_dong_bhxh: e.target.value})}
-                      className="w-full border border-gray-300 rounded-md shadow-sm p-2 text-black focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      step="0.01"
-                      min="0"
-                      required
-                    />
-                  </div>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Điện thoại</label>
-                    <input
-                      type="tel"
-                      value={newUser.dien_thoai}
-                      onChange={(e) => setNewUser({...newUser, dien_thoai: e.target.value})}
-                      className="w-full border border-gray-300 rounded-md shadow-sm p-2 text-black focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Ngày vào làm</label>
-                    <input
-                      type="date"
-                      value={newUser.ngay_vao_lam}
-                      onChange={(e) => setNewUser({...newUser, ngay_vao_lam: e.target.value})}
-                      className="w-full border border-gray-300 rounded-md shadow-sm p-2 text-black focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    />
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Địa chỉ</label>
-                  <textarea
-                    value={newUser.dia_chi}
-                    onChange={(e) => setNewUser({...newUser, dia_chi: e.target.value})}
-                    className="w-full border border-gray-300 rounded-md shadow-sm p-2 text-black focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    rows="2"
-                  />
-                </div>
-              </div>
-
-              <div className="flex flex-col sm:flex-row gap-2 sm:justify-end pt-4">
-                <button type="submit" className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 order-2 sm:order-1">
-                  Thêm Nhân viên
-                </button>
-                <button type="button" onClick={() => setShowAddForm(false)} className="bg-gray-600 text-white px-4 py-2 rounded hover:bg-gray-700 order-1 sm:order-2">
-                  Hủy
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {showEditForm && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white p-4 sm:p-6 rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <h3 className="text-lg sm:text-xl font-semibold mb-4">Sửa Nhân viên</h3>
-            <form onSubmit={handleEditUser} className="space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                  <input
-                    type="email"
-                    value={editUser.email}
-                    onChange={(e) => setEditUser({...editUser, email: e.target.value})}
-                    className="w-full border border-gray-300 rounded-md shadow-sm p-2 text-black focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full border border-gray-300 rounded-md shadow-sm p-3 text-black focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     required
                   />
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Họ và tên</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Họ và tên</label>
                 <input
                   type="text"
-                  value={editUser.full_name}
-                  onChange={(e) => setEditUser({...editUser, full_name: e.target.value})}
-                  className="w-full border border-gray-300 rounded-md shadow-sm p-2 text-black focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  value={newUser.full_name}
+                  onChange={(e) => setNewUser({...newUser, full_name: e.target.value})}
+                  className="w-full border border-gray-300 rounded-md shadow-sm p-3 text-black focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   required
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Phòng ban</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Phòng ban</label>
                 <select
-                  value={editUser.department_id || ''}
-                  onChange={(e) => setEditUser({...editUser, department_id: e.target.value ? parseInt(e.target.value) : null})}
-                  className="w-full border border-gray-300 rounded-md shadow-sm p-2 text-black focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  value={newUser.department_id || ''}
+                  onChange={(e) => setNewUser({...newUser, department_id: e.target.value ? parseInt(e.target.value) : null})}
+                  className="w-full border border-gray-300 rounded-md shadow-sm p-3 text-black focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
                   <option value="">Không thuộc phòng ban nào</option>
                   {departments.map((dept) => (
@@ -709,114 +571,288 @@ function UserManagement() {
                   ))}
                 </select>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Trạng thái</label>
-                <select
-                  value={editUser.is_active}
-                  onChange={(e) => setEditUser({...editUser, is_active: e.target.value === 'true'})}
-                  className="w-full border border-gray-300 rounded-md shadow-sm p-2 text-black focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                >
-                  <option value={true}>Hoạt động</option>
-                  <option value={false}>Không hoạt động</option>
-                </select>
+            </div>
+
+            {/* Employee Information Section */}
+            <div>
+              <h4 className="text-md font-semibold text-gray-800 mb-4">Thông tin nhân viên</h4>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Mã nhân viên <span className="text-xs text-gray-500">(tự động tạo số nếu để trống)</span></label>
+                  <input
+                    type="text"
+                    value={newUser.ma_nv}
+                    onChange={(e) => setNewUser({...newUser, ma_nv: e.target.value})}
+                    className="w-full border border-gray-300 rounded-md shadow-sm p-3 text-black focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Chức vụ</label>
+                  <input
+                    type="text"
+                    value={newUser.chuc_vu}
+                    onChange={(e) => setNewUser({...newUser, chuc_vu: e.target.value})}
+                    className="w-full border border-gray-300 rounded-md shadow-sm p-3 text-black focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Phòng ban (nhân viên)</label>
+                  <input
+                    type="text"
+                    value={newUser.phong_ban}
+                    onChange={(e) => setNewUser({...newUser, phong_ban: e.target.value})}
+                    className="w-full border border-gray-300 rounded-md shadow-sm p-3 text-black focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Số người phụ thuộc</label>
+                  <input
+                    type="number"
+                    value={newUser.so_nguoi_phu_thuoc}
+                    onChange={(e) => setNewUser({...newUser, so_nguoi_phu_thuoc: parseInt(e.target.value) || 0})}
+                    className="w-full border border-gray-300 rounded-md shadow-sm p-3 text-black focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    min="0"
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Lương hợp đồng</label>
+                  <input
+                    type="number"
+                    value={newUser.luong_hop_dong}
+                    onChange={(e) => setNewUser({...newUser, luong_hop_dong: e.target.value})}
+                    className="w-full border border-gray-300 rounded-md shadow-sm p-3 text-black focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    step="0.01"
+                    min="0"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Mức lương đóng BHXH</label>
+                  <input
+                    type="number"
+                    value={newUser.muc_luong_dong_bhxh}
+                    onChange={(e) => setNewUser({...newUser, muc_luong_dong_bhxh: e.target.value})}
+                    className="w-full border border-gray-300 rounded-md shadow-sm p-3 text-black focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    step="0.01"
+                    min="0"
+                    required
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Điện thoại</label>
+                  <input
+                    type="tel"
+                    value={newUser.dien_thoai}
+                    onChange={(e) => setNewUser({...newUser, dien_thoai: e.target.value})}
+                    className="w-full border border-gray-300 rounded-md shadow-sm p-3 text-black focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Ngày vào làm</label>
+                  <input
+                    type="date"
+                    value={newUser.ngay_vao_lam}
+                    onChange={(e) => setNewUser({...newUser, ngay_vao_lam: e.target.value})}
+                    className="w-full border border-gray-300 rounded-md shadow-sm p-3 text-black focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Mã nhân viên</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Địa chỉ</label>
+                <textarea
+                  value={newUser.dia_chi}
+                  onChange={(e) => setNewUser({...newUser, dia_chi: e.target.value})}
+                  className="w-full border border-gray-300 rounded-md shadow-sm p-3 text-black focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  rows="3"
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end pt-6 border-t border-gray-200">
+              <button type="submit" className="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 font-medium flex items-center justify-center">
+                <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                </svg>
+                Thêm Nhân viên
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {showEditForm && (
+        <div className="bg-white rounded-lg shadow-sm border p-6 mb-6">
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-lg sm:text-xl font-semibold text-gray-900">Sửa Nhân viên</h3>
+            <button
+              onClick={() => {setShowEditForm(false); setEditingUser(null);}}
+              className="text-gray-400 hover:text-gray-600 p-1"
+              title="Đóng form"
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+          <form onSubmit={handleEditUser} className="space-y-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
                 <input
-                  type="text"
-                  value={editUser.ma_nv}
-                  onChange={(e) => setEditUser({...editUser, ma_nv: e.target.value})}
-                  className="w-full border border-gray-300 rounded-md shadow-sm p-2 text-black focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  type="email"
+                  value={editUser.email}
+                  onChange={(e) => setEditUser({...editUser, email: e.target.value})}
+                  className="w-full border border-gray-300 rounded-md shadow-sm p-3 text-black focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   required
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Chức vụ</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Mã nhân viên</label>
+                <input
+                  type="text"
+                  value={editUser.ma_nv}
+                  onChange={(e) => setEditUser({...editUser, ma_nv: e.target.value})}
+                  className="w-full border border-gray-300 rounded-md shadow-sm p-3 text-black focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  required
+                />
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Họ và tên</label>
+              <input
+                type="text"
+                value={editUser.full_name}
+                onChange={(e) => setEditUser({...editUser, full_name: e.target.value})}
+                className="w-full border border-gray-300 rounded-md shadow-sm p-3 text-black focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Phòng ban</label>
+              <select
+                value={editUser.department_id || ''}
+                onChange={(e) => setEditUser({...editUser, department_id: e.target.value ? parseInt(e.target.value) : null})}
+                className="w-full border border-gray-300 rounded-md shadow-sm p-3 text-black focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                <option value="">Không thuộc phòng ban nào</option>
+                {departments.map((dept) => (
+                  <option key={dept.id} value={dept.id}>
+                    {dept.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Trạng thái</label>
+              <select
+                value={editUser.is_active}
+                onChange={(e) => setEditUser({...editUser, is_active: e.target.value === 'true'})}
+                className="w-full border border-gray-300 rounded-md shadow-sm p-3 text-black focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                <option value={true}>Hoạt động</option>
+                <option value={false}>Không hoạt động</option>
+              </select>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Chức vụ</label>
                 <input
                   type="text"
                   value={editUser.chuc_vu}
                   onChange={(e) => setEditUser({...editUser, chuc_vu: e.target.value})}
-                  className="w-full border border-gray-300 rounded-md shadow-sm p-2 text-black focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full border border-gray-300 rounded-md shadow-sm p-3 text-black focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Phòng ban (nhân viên)</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Phòng ban (nhân viên)</label>
                 <input
                   type="text"
                   value={editUser.phong_ban}
                   onChange={(e) => setEditUser({...editUser, phong_ban: e.target.value})}
-                  className="w-full border border-gray-300 rounded-md shadow-sm p-2 text-black focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full border border-gray-300 rounded-md shadow-sm p-3 text-black focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
               </div>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Số người phụ thuộc</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Số người phụ thuộc</label>
                 <input
                   type="number"
                   value={editUser.so_nguoi_phu_thuoc}
                   onChange={(e) => setEditUser({...editUser, so_nguoi_phu_thuoc: parseInt(e.target.value) || 0})}
-                  className="w-full border border-gray-300 rounded-md shadow-sm p-2 text-black focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full border border-gray-300 rounded-md shadow-sm p-3 text-black focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   min="0"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Lương hợp đồng</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Lương hợp đồng</label>
                 <input
                   type="number"
                   value={editUser.luong_hop_dong}
                   onChange={(e) => setEditUser({...editUser, luong_hop_dong: e.target.value})}
-                  className="w-full border border-gray-300 rounded-md shadow-sm p-2 text-black focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full border border-gray-300 rounded-md shadow-sm p-3 text-black focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   step="0.01"
                   min="0"
                 />
               </div>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Mức lương đóng BHXH</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Mức lương đóng BHXH</label>
                 <input
                   type="number"
                   value={editUser.muc_luong_dong_bhxh}
                   onChange={(e) => setEditUser({...editUser, muc_luong_dong_bhxh: e.target.value})}
-                  className="w-full border border-gray-300 rounded-md shadow-sm p-2 text-black focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full border border-gray-300 rounded-md shadow-sm p-3 text-black focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   step="0.01"
                   min="0"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Điện thoại</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Điện thoại</label>
                 <input
                   type="tel"
                   value={editUser.dien_thoai}
                   onChange={(e) => setEditUser({...editUser, dien_thoai: e.target.value})}
-                  className="w-full border border-gray-300 rounded-md shadow-sm p-2 text-black focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full border border-gray-300 rounded-md shadow-sm p-3 text-black focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
               </div>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Ngày vào làm</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Ngày vào làm</label>
                 <input
                   type="date"
                   value={editUser.ngay_vao_lam}
                   onChange={(e) => setEditUser({...editUser, ngay_vao_lam: e.target.value})}
-                  className="w-full border border-gray-300 rounded-md shadow-sm p-2 text-black focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full border border-gray-300 rounded-md shadow-sm p-3 text-black focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Địa chỉ</label>
-                <textarea
-                  value={editUser.dia_chi}
-                  onChange={(e) => setEditUser({...editUser, dia_chi: e.target.value})}
-                  className="w-full border border-gray-300 rounded-md shadow-sm p-2 text-black focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  rows="2"
-                />
-              </div>
-              <div className="flex flex-col sm:flex-row gap-2 sm:justify-end pt-4">
-                <button type="submit" className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 order-2 sm:order-1">
-                  Cập nhật
-                </button>
-                <button type="button" onClick={() => {setShowEditForm(false); setEditingUser(null);}} className="bg-gray-600 text-white px-4 py-2 rounded hover:bg-gray-700 order-1 sm:order-2">
-                  Hủy
-                </button>
-              </div>
-            </form>
-          </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Địa chỉ</label>
+              <textarea
+                value={editUser.dia_chi}
+                onChange={(e) => setEditUser({...editUser, dia_chi: e.target.value})}
+                className="w-full border border-gray-300 rounded-md shadow-sm p-3 text-black focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                rows="3"
+              />
+            </div>
+            <div className="flex justify-end pt-6 border-t border-gray-200">
+              <button type="submit" className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 font-medium flex items-center justify-center">
+                <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                </svg>
+                Cập nhật
+              </button>
+            </div>
+          </form>
         </div>
       )}
 
