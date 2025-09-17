@@ -8,16 +8,25 @@ import json
 
 router = APIRouter(prefix="/payroll", tags=["payroll"])
 
+def normalize_ma_nv(ma_nv):
+    """Convert ma_nv to the correct type for database queries"""
+    if isinstance(ma_nv, str) and ma_nv.isdigit():
+        return int(ma_nv)
+    elif isinstance(ma_nv, int):
+        return ma_nv
+    else:
+        return ma_nv
+
 # ===== NHÂN VIÊN ENDPOINTS =====
 
-@router.post("/nhan-vien", response_model=NhanVienResponse)
+@router.post("/employees", response_model=NhanVienResponse)
 def create_nhan_vien(nhan_vien: NhanVienCreate):
     if not SUPABASE_AVAILABLE:
         raise HTTPException(status_code=503, detail="Database service unavailable")
 
     try:
         # Kiểm tra mã NV đã tồn tại
-        existing = supabase.table('employees').select('ma_nv').eq('ma_nv', nhan_vien.ma_nv).execute()
+        existing = supabase.table('employees').select('ma_nv').eq('ma_nv', normalize_ma_nv(nhan_vien.ma_nv)).execute()
         if existing.data:
             raise HTTPException(status_code=400, detail="Mã nhân viên đã tồn tại")
 
@@ -29,7 +38,7 @@ def create_nhan_vien(nhan_vien: NhanVienCreate):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Lỗi tạo nhân viên: {str(e)}")
 
-@router.get("/nhan-vien", response_model=List[NhanVienResponse])
+@router.get("/employees", response_model=List[NhanVienResponse])
 def get_nhan_vien_list(
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=1000),
@@ -54,13 +63,13 @@ def get_nhan_vien_list(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Lỗi lấy danh sách nhân viên: {str(e)}")
 
-@router.get("/nhan-vien/{ma_nv}", response_model=NhanVienResponse)
+@router.get("/employees/{ma_nv}", response_model=NhanVienResponse)
 def get_nhan_vien(ma_nv: str):
     if not SUPABASE_AVAILABLE:
         raise HTTPException(status_code=503, detail="Database service unavailable")
 
     try:
-        result = supabase.table('employees').select('*').eq('ma_nv', ma_nv).execute()
+        result = supabase.table('employees').select('*').eq('ma_nv', normalize_ma_nv(ma_nv)).execute()
 
         if not result.data:
             raise HTTPException(status_code=404, detail="Nhân viên không tồn tại")
@@ -69,34 +78,34 @@ def get_nhan_vien(ma_nv: str):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Lỗi lấy thông tin nhân viên: {str(e)}")
 
-@router.put("/nhan-vien/{ma_nv}", response_model=NhanVienResponse)
+@router.put("/employees/{ma_nv}", response_model=NhanVienResponse)
 def update_nhan_vien(ma_nv: str, update_data: NhanVienUpdate):
     if not SUPABASE_AVAILABLE:
         raise HTTPException(status_code=503, detail="Database service unavailable")
 
     try:
         # Kiểm tra tồn tại
-        existing = supabase.table('employees').select('ma_nv').eq('ma_nv', ma_nv).execute()
+        existing = supabase.table('employees').select('ma_nv').eq('ma_nv', normalize_ma_nv(ma_nv)).execute()
         if not existing.data:
             raise HTTPException(status_code=404, detail="Nhân viên không tồn tại")
 
         # Cập nhật
         update_dict = {k: v for k, v in update_data.dict().items() if v is not None}
         if update_dict:
-            result = supabase.table('employees').update(update_dict).eq('ma_nv', ma_nv).execute()
+            result = supabase.table('employees').update(update_dict).eq('ma_nv', normalize_ma_nv(ma_nv)).execute()
             return NhanVienResponse(**result.data[0])
         else:
             return get_nhan_vien(ma_nv)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Lỗi cập nhật nhân viên: {str(e)}")
 
-@router.delete("/nhan-vien/{ma_nv}")
+@router.delete("/employees/{ma_nv}")
 def delete_nhan_vien(ma_nv: str):
     if not SUPABASE_AVAILABLE:
         raise HTTPException(status_code=503, detail="Database service unavailable")
 
     try:
-        result = supabase.table('employees').delete().eq('ma_nv', ma_nv).execute()
+        result = supabase.table('employees').delete().eq('ma_nv', normalize_ma_nv(ma_nv)).execute()
 
         if not result.data:
             raise HTTPException(status_code=404, detail="Nhân viên không tồn tại")
@@ -114,12 +123,12 @@ def create_cham_cong(cham_cong: BangChamCongCreate):
 
     try:
         # Kiểm tra nhân viên tồn tại
-        nv = supabase.table('employees').select('ma_nv').eq('ma_nv', cham_cong.ma_nv).execute()
+        nv = supabase.table('employees').select('ma_nv').eq('ma_nv', normalize_ma_nv(cham_cong.ma_nv)).execute()
         if not nv.data:
             raise HTTPException(status_code=404, detail="Nhân viên không tồn tại")
 
         # Kiểm tra đã có dữ liệu cho kỳ này chưa
-        existing = supabase.table('bang_cham_cong').select('id').eq('ma_nv', cham_cong.ma_nv).eq('ky_tinh_luong', cham_cong.ky_tinh_luong).execute()
+        existing = supabase.table('bang_cham_cong').select('id').eq('ma_nv', normalize_ma_nv(cham_cong.ma_nv)).eq('ky_tinh_luong', cham_cong.ky_tinh_luong).execute()
         if existing.data:
             raise HTTPException(status_code=400, detail="Đã có dữ liệu chấm công cho kỳ này")
 
@@ -150,7 +159,7 @@ def get_cham_cong_list(
         query = supabase.table('bang_cham_cong').select('*')
 
         if ma_nv:
-            query = query.eq('ma_nv', ma_nv)
+            query = query.eq('ma_nv', normalize_ma_nv(ma_nv))
 
         if ky_tinh_luong:
             query = query.eq('ky_tinh_luong', ky_tinh_luong)
@@ -228,7 +237,7 @@ def create_luong_san_pham(luong_sp: LuongSanPhamCreate):
 
     try:
         # Kiểm tra nhân viên tồn tại
-        nv = supabase.table('employees').select('ma_nv').eq('ma_nv', luong_sp.ma_nv).execute()
+        nv = supabase.table('employees').select('ma_nv').eq('ma_nv', normalize_ma_nv(luong_sp.ma_nv)).execute()
         if not nv.data:
             raise HTTPException(status_code=404, detail="Nhân viên không tồn tại")
 
@@ -263,7 +272,7 @@ def get_luong_san_pham_list(
         query = supabase.table('luong_san_pham').select('*')
 
         if ma_nv:
-            query = query.eq('ma_nv', ma_nv)
+            query = query.eq('ma_nv', normalize_ma_nv(ma_nv))
 
         if ky_tinh_luong:
             query = query.eq('ky_tinh_luong', ky_tinh_luong)
@@ -340,21 +349,21 @@ def tinh_luong_endpoint(request: TinhLuongRequest):
 
     try:
         # Lấy dữ liệu nhân viên
-        nv_result = supabase.table('employees').select('ma_nv, ho_ten, chuc_vu, phong_ban, luong_hop_dong, muc_luong_dong_bhxh, so_nguoi_phu_thuoc').eq('ma_nv', request.ma_nv).execute()
+        nv_result = supabase.table('employees').select('ma_nv, ho_ten, chuc_vu, phong_ban, luong_hop_dong, muc_luong_dong_bhxh, so_nguoi_phu_thuoc').eq('ma_nv', normalize_ma_nv(request.ma_nv)).execute()
         if not nv_result.data:
             raise HTTPException(status_code=404, detail="Nhân viên không tồn tại")
 
         nhan_vien = PayrollNhanVien(**nv_result.data[0])
 
         # Lấy dữ liệu chấm công
-        cc_result = supabase.table('bang_cham_cong').select('ma_nv, ky_tinh_luong, ngay_cong_chuan, ngay_cong_thuc_te, gio_ot_ngay_thuong, gio_ot_cuoi_tuan, gio_ot_le_tet').eq('ma_nv', request.ma_nv).eq('ky_tinh_luong', request.ky_tinh_luong).execute()
+        cc_result = supabase.table('bang_cham_cong').select('ma_nv, ky_tinh_luong, ngay_cong_chuan, ngay_cong_thuc_te, gio_ot_ngay_thuong, gio_ot_cuoi_tuan, gio_ot_le_tet').eq('ma_nv', normalize_ma_nv(request.ma_nv)).eq('ky_tinh_luong', request.ky_tinh_luong).execute()
         if not cc_result.data:
             raise HTTPException(status_code=404, detail="Không có dữ liệu chấm công cho kỳ này")
 
         cham_cong = PayrollBangChamCong(**cc_result.data[0])
 
         # Lấy dữ liệu lương sản phẩm
-        sp_results = supabase.table('luong_san_pham').select('ma_nv, ky_tinh_luong, san_pham_id, so_luong, don_gia, ty_le').eq('ma_nv', request.ma_nv).eq('ky_tinh_luong', request.ky_tinh_luong).execute()
+        sp_results = supabase.table('luong_san_pham').select('ma_nv, ky_tinh_luong, san_pham_id, so_luong, don_gia, ty_le').eq('ma_nv', normalize_ma_nv(request.ma_nv)).eq('ky_tinh_luong', request.ky_tinh_luong).execute()
         luong_san_pham = [PayrollLuongSanPham(**row) for row in sp_results.data]
 
         # Tính lương
@@ -411,7 +420,7 @@ def get_phieu_luong_list(
         query = supabase.table('phieu_luong').select('*')
 
         if ma_nv:
-            query = query.eq('ma_nv', ma_nv)
+            query = query.eq('ma_nv', normalize_ma_nv(ma_nv))
 
         if ky_tinh_luong:
             query = query.eq('ky_tinh_luong', ky_tinh_luong)

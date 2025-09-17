@@ -26,7 +26,7 @@ export default function TimesheetDetailPage() {
         setTimesheet(data);
         setFormData(data);
         // Fetch employee info
-        const empResponse = await fetch(`/api/v1/payroll/nhan-vien/${data.ma_nv}`);
+        const empResponse = await fetch(`/api/v1/payroll/employees/${data.ma_nv}`);
         if (empResponse.ok) {
           const empData = await empResponse.json();
           setEmployee(empData);

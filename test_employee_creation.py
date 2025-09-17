@@ -34,7 +34,7 @@ def test_employee_creation():
 
         # Make the API call
         response = requests.post(
-            "http://localhost:8001/api/v1/payroll/nhan-vien",
+            "http://localhost:8001/api/v1/payroll/employees",
             json=employee_data,
             headers={"Content-Type": "application/json"}
         )

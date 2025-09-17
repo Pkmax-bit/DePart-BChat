@@ -236,7 +236,7 @@ function SalaryCalculationTab({ selectedMonth, onSalaryUpdate }) {
 
   const fetchEmployees = async () => {
     try {
-      const response = await fetch('/api/v1/payroll/nhan-vien');
+      const response = await fetch('/api/v1/payroll/employees');
       if (response.ok) {
         const data = await response.json();
         setEmployees(data);
@@ -569,7 +569,7 @@ function EmployeesTab() {
 
   const loadEmployees = async () => {
     try {
-      const response = await fetch('/api/v1/payroll/nhan-vien/', {
+      const response = await fetch('/api/v1/payroll/employees/', {
         method: 'GET',
         headers: { 'Content-Type': 'application/json' }
       });
@@ -586,8 +586,8 @@ function EmployeesTab() {
     e.preventDefault();
     try {
       const url = editingEmployee
-        ? `/api/v1/payroll/nhan-vien/${editingEmployee.ma_nv}`
-        : '/api/v1/payroll/nhan-vien/';
+        ? `/api/v1/payroll/employees/${editingEmployee.ma_nv}`
+        : '/api/v1/payroll/employees/';
 
       const method = editingEmployee ? 'PUT' : 'POST';
 
@@ -635,7 +635,7 @@ function EmployeesTab() {
     if (!confirm('Bạn có chắc muốn xóa nhân viên này?')) return;
 
     try {
-      const response = await fetch(`/api/v1/payroll/nhan-vien/${ma_nv}`, {
+      const response = await fetch(`/api/v1/payroll/employees/${ma_nv}`, {
         method: 'DELETE'
       });
 
@@ -1218,7 +1218,7 @@ function TimesheetsTab({ selectedMonth }) {
 
   const loadEmployees = async () => {
     try {
-      const response = await fetch('/api/v1/payroll/nhan-vien/', {
+      const response = await fetch('/api/v1/payroll/employees/', {
         method: 'GET',
         headers: { 'Content-Type': 'application/json' }
       });
@@ -1830,7 +1830,7 @@ function ProductsTab() {
 
   const fetchEmployees = async () => {
     try {
-      const response = await fetch('/api/v1/payroll/nhan-vien');
+      const response = await fetch('/api/v1/payroll/employees');
       if (response.ok) {
         const data = await response.json();
         setEmployees(data);

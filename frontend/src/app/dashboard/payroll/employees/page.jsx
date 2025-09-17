@@ -47,7 +47,7 @@ export default function EmployeesPage() {
 
   const loadEmployees = async () => {
     try {
-      const response = await fetch('http://localhost:8001/api/v1/payroll/nhan-vien/', {
+      const response = await fetch('http://localhost:8001/api/v1/payroll/employees/', {
         method: 'GET',
         headers: { 'Content-Type': 'application/json' }
       });
@@ -64,8 +64,8 @@ export default function EmployeesPage() {
     e.preventDefault();
     try {
       const url = editingEmployee
-        ? `http://localhost:8001/api/v1/payroll/nhan-vien/${editingEmployee.ma_nv}`
-        : 'http://localhost:8001/api/v1/payroll/nhan-vien/';
+        ? `http://localhost:8001/api/v1/payroll/employees/${editingEmployee.ma_nv}`
+        : 'http://localhost:8001/api/v1/payroll/employees/';
 
       const method = editingEmployee ? 'PUT' : 'POST';
 
@@ -113,7 +113,7 @@ export default function EmployeesPage() {
     if (!confirm('Bạn có chắc muốn xóa nhân viên này?')) return;
 
     try {
-      const response = await fetch(`http://localhost:8001/api/v1/payroll/nhan-vien/${ma_nv}`, {
+      const response = await fetch(`http://localhost:8001/api/v1/payroll/employees/${ma_nv}`, {
         method: 'DELETE'
       });
 

@@ -201,7 +201,7 @@ function InvoicesTab() {
 
   const fetchEmployees = async () => {
     try {
-      const response = await fetch('/api/v1/payroll/nhan-vien');
+      const response = await fetch('/api/v1/payroll/employees');
       if (response.ok) {
         const data = await response.json();
         setEmployees(data);

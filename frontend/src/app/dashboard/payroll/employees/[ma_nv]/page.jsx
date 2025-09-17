@@ -19,7 +19,7 @@ export default function EmployeeDetailPage() {
 
   const fetchEmployee = async () => {
     try {
-      const response = await fetch(`/api/v1/payroll/nhan-vien/${params.ma_nv}`);
+      const response = await fetch(`/api/v1/payroll/employees/${params.ma_nv}`);
       if (response.ok) {
         const data = await response.json();
         setEmployee(data);
@@ -37,7 +37,7 @@ export default function EmployeeDetailPage() {
   const handleUpdate = async (e) => {
     e.preventDefault();
     try {
-      const response = await fetch(`/api/v1/payroll/nhan-vien/${params.ma_nv}`, {
+      const response = await fetch(`/api/v1/payroll/employees/${params.ma_nv}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

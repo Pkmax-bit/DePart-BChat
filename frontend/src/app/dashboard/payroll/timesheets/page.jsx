@@ -50,7 +50,7 @@ export default function TimesheetsPage() {
 
   const loadEmployees = async () => {
     try {
-      const response = await fetch('http://localhost:8001/api/v1/payroll/nhan-vien/', {
+      const response = await fetch('http://localhost:8001/api/v1/payroll/employees/', {
         method: 'GET',
         headers: { 'Content-Type': 'application/json' }
       });

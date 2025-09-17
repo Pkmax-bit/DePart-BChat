@@ -31,7 +31,7 @@ def main():
     print("=" * 50)
 
     # Test employees
-    employees = test_endpoint("Employees", f"{BASE_URL}/nhan-vien/", 4)
+    employees = test_endpoint("Employees", f"{BASE_URL}/employees/", 4)
 
     # Test timesheets for current month
     timesheets = test_endpoint("Timesheets", f"{BASE_URL}/bang-cham-cong/?ky_tinh_luong=2025-09", 4)

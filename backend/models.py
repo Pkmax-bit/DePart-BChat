@@ -1,6 +1,6 @@
 # models.py
 from pydantic import BaseModel, EmailStr
-from typing import Optional
+from typing import Optional, Union
 
 # Model cho việc tạo người dùng mới
 class UserCreate(BaseModel):
@@ -164,7 +164,7 @@ class UserChatResponse(BaseModel):
 
 # Model cho Nhân viên
 class NhanVienCreate(BaseModel):
-    ma_nv: str
+    ma_nv: Union[str, int]
     ho_ten: str
     chuc_vu: Optional[str] = None
     phong_ban: Optional[str] = None
@@ -190,7 +190,7 @@ class NhanVienUpdate(BaseModel):
     is_active: Optional[bool] = None
 
 class NhanVienResponse(BaseModel):
-    ma_nv: str
+    ma_nv: Union[str, int]
     ho_ten: str
     chuc_vu: Optional[str]
     phong_ban: Optional[str]
@@ -207,7 +207,7 @@ class NhanVienResponse(BaseModel):
 
 # Model cho Bảng chấm công
 class BangChamCongCreate(BaseModel):
-    ma_nv: str
+    ma_nv: Union[str, int]
     ky_tinh_luong: str
     ngay_cong_chuan: float
     ngay_cong_thuc_te: float
@@ -226,7 +226,7 @@ class BangChamCongUpdate(BaseModel):
 
 class BangChamCongResponse(BaseModel):
     id: int
-    ma_nv: str
+    ma_nv: Optional[Union[str, int]]
     ky_tinh_luong: str
     ngay_cong_chuan: float
     ngay_cong_thuc_te: float
@@ -239,29 +239,29 @@ class BangChamCongResponse(BaseModel):
 
 # Model cho Lương sản phẩm
 class LuongSanPhamCreate(BaseModel):
-    ma_nv: str
+    ma_nv: Union[str, int]
     ky_tinh_luong: str
     san_pham_id: str
     ten_san_pham: Optional[str] = None
     so_luong: float
-    gia_thanh: float
-    ty_le: float
+    don_gia: float
+    ty_le: Optional[float] = None
 
 class LuongSanPhamUpdate(BaseModel):
     ten_san_pham: Optional[str] = None
     so_luong: Optional[float] = None
-    gia_thanh: Optional[float] = None
+    don_gia: Optional[float] = None
     ty_le: Optional[float] = None
 
 class LuongSanPhamResponse(BaseModel):
     id: int
-    ma_nv: str
+    ma_nv: Optional[Union[str, int]]
     ky_tinh_luong: str
     san_pham_id: str
     ten_san_pham: Optional[str]
     so_luong: float
-    gia_thanh: float
-    ty_le: float
+    don_gia: float
+    ty_le: Optional[float]
     thanh_tien: float
     created_at: Optional[str]
     updated_at: Optional[str]
@@ -269,7 +269,7 @@ class LuongSanPhamResponse(BaseModel):
 # Model cho Phiếu lương
 class PhieuLuongResponse(BaseModel):
     id: int
-    ma_nv: str
+    ma_nv: Union[str, int]
     ky_tinh_luong: str
     tong_thu_nhap: float
     tong_khau_tru: float
@@ -283,7 +283,7 @@ class PhieuLuongResponse(BaseModel):
 
 # Model cho tính lương
 class TinhLuongRequest(BaseModel):
-    ma_nv: str
+    ma_nv: Union[str, int]
     ky_tinh_luong: str
     phu_cap_khac: float = 0
     thuong_kpi: float = 0

@@ -27,7 +27,7 @@ class LuongSanPham:
     ky_tinh_luong: str
     san_pham_id: str
     so_luong: float
-    gia_thanh: float
+    don_gia: float
     ty_le: float
 
 @dataclass

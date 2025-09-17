@@ -53,7 +53,7 @@ def test_create_employees():
             print(f"\nCreating employee {i}: {employee['ho_ten']}")
 
             # Create employee
-            response = requests.post(f"{base_url}/payroll/nhan-vien/", json=employee)
+            response = requests.post(f"{base_url}/payroll/employees/", json=employee)
 
             if response.status_code == 200:
                 print(f"✅ Employee {i} created successfully")
@@ -69,7 +69,7 @@ def test_create_employees():
     # Verify employees were created
     print("\nVerifying created employees...")
     try:
-        response = requests.get(f"{base_url}/payroll/nhan-vien/")
+        response = requests.get(f"{base_url}/payroll/employees/")
         if response.status_code == 200:
             all_employees = response.json()
             test_employees = [emp for emp in all_employees if emp['ma_nv'].startswith('NV_TEST_')]
