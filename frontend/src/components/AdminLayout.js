@@ -132,23 +132,6 @@ export default function AdminLayout({ user, activeTab, onTabChange, children }) 
 
           <button
             onClick={() => {
-              onTabChange('payroll');
-              setSidebarOpen(false);
-            }}
-            className={`w-full text-left px-3 py-2 rounded-md text-sm font-medium mb-2 flex items-center ${
-              activeTab === 'payroll'
-                ? 'bg-blue-100 text-blue-700'
-                : 'text-gray-900 hover:bg-gray-100'
-            }`}
-          >
-            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-            </svg>
-            Quản lý Lương
-          </button>
-
-          <button
-            onClick={() => {
               onTabChange('chat-history');
               setSidebarOpen(false);
             }}
@@ -204,8 +187,7 @@ export default function AdminLayout({ user, activeTab, onTabChange, children }) 
                  activeTab === 'departments' ? 'Quản lý Phòng ban' :
                  activeTab === 'feedback' ? 'Quản lý Góp Ý' :
                  activeTab === 'user-chat-history' ? 'User Chat History' :
-                 activeTab === 'chat-history' ? 'Lịch sử Trò chuyện' :
-                 activeTab === 'payroll' ? 'Quản lý Lương' : 'Admin Panel'}
+                 activeTab === 'chat-history' ? 'Lịch sử Trò chuyện' : 'Admin Panel'}
               </h1>
             </div>
             <div className="flex items-center space-x-4">

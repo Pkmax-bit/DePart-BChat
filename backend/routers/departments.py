@@ -27,10 +27,7 @@ def list_departments():
     Lấy danh sách tất cả phòng ban
     """
     try:
-        data, count = supabase.table('departments').select('''
-            *,
-            employees!departments_manager_id_fkey(username, full_name, email)
-        ''').order('name').execute()
+        data, count = supabase.table('departments').select('*').order('name').execute()
         return data[1]
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -43,7 +40,6 @@ def get_department(department_id: int):
     try:
         data, count = supabase.table('departments').select('''
             *,
-            employees!departments_manager_id_fkey(username, full_name, email),
             department_members(
                 id,
                 role_in_department,
