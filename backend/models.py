@@ -4,17 +4,25 @@ from typing import Optional, Union
 
 # Model cho việc tạo người dùng mới
 class UserCreate(BaseModel):
-    username: str
     email: EmailStr
     password: str
     full_name: str
     role_id: int = 2
     department_id: Optional[int] = None
+    # Employee-specific fields
+    ma_nv: Optional[str] = None  # Tự động tạo nếu không cung cấp
+    chuc_vu: Optional[str] = None
+    phong_ban: Optional[str] = None
+    luong_hop_dong: float
+    muc_luong_dong_bhxh: float
+    so_nguoi_phu_thuoc: int = 0
+    dien_thoai: Optional[str] = None
+    dia_chi: Optional[str] = None
+    ngay_vao_lam: Optional[str] = None
 
 # Model cho bảng employees (database)
 class UserResponse(BaseModel):
     id: int
-    username: str
     full_name: str
     email: str
     role_id: int

@@ -21,6 +21,8 @@ def remove_file(path: str):
 def download_bulk_upload_template(background_tasks: BackgroundTasks):
     """
     Tải file mẫu Excel cho việc upload nhân viên hàng loạt.
+    Username và ma_nv sẽ được tự động tạo nếu không được cung cấp.
+    ma_nv sẽ được tạo dưới dạng số nguyên tăng dần (ví dụ: 1001, 1002, ...).
     """
     try:
         # Kiểm tra các thư viện cần thiết
@@ -32,13 +34,13 @@ def download_bulk_upload_template(background_tasks: BackgroundTasks):
             raise HTTPException(status_code=500, detail=f"Thiếu thư viện cần thiết: {str(e)}")
 
         # Tạo dữ liệu mẫu với đầy đủ các cột cho nhân viên
+        # Lưu ý: username và ma_nv sẽ được tự động tạo nếu không được cung cấp
+        # ma_nv sẽ được tạo dưới dạng số nguyên tăng dần (ví dụ: 1001, 1002, ...)
         sample_data = {
-            'username': ['nguyenvana', 'tranthib', 'levanc', 'phamthid'],
             'email': ['nguyenvana@company.com', 'tranthib@company.com', 'levanc@company.com', 'phamthid@company.com'],
             'password': ['123456', '123456', '123456', '123456'],
             'full_name': ['Nguyễn Văn A', 'Trần Thị B', 'Lê Văn C', 'Phạm Thị D'],
             'department': ['Kỹ thuật', 'Kinh doanh', 'Nhân sự', 'Tài chính'],
-            'ma_nv': ['NV0001', 'NV0002', 'NV0003', 'NV0004'],
             'chuc_vu': ['Developer', 'Sales Manager', 'HR Specialist', 'Accountant'],
             'phong_ban': ['IT', 'Sales', 'HR', 'Finance'],
             'luong_hop_dong': [15000000, 18000000, 12000000, 14000000],

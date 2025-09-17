@@ -104,7 +104,6 @@ function UserManagement() {
   const [uploading, setUploading] = useState(false);
   const [uploadResult, setUploadResult] = useState(null);
   const [newUser, setNewUser] = useState({
-    username: '',
     email: '',
     password: '',
     full_name: '',
@@ -122,7 +121,6 @@ function UserManagement() {
     ngay_vao_lam: ''
   });
   const [editUser, setEditUser] = useState({
-    username: '',
     email: '',
     full_name: '',
     role_id: 2,
@@ -228,7 +226,6 @@ function UserManagement() {
     try {
       // Create unified employee record
       const employeeData = {
-        username: newUser.username,
         email: newUser.email,
         password: newUser.password,
         full_name: newUser.full_name,
@@ -271,7 +268,6 @@ function UserManagement() {
       // Success - reset form and refresh list
       setShowAddForm(false);
       setNewUser({
-        username: '',
         email: '',
         password: '',
         full_name: '',
@@ -312,7 +308,6 @@ function UserManagement() {
         setShowEditForm(false);
         setEditingUser(null);
         setEditUser({
-          username: '',
           email: '',
           full_name: '',
           role_id: 2,
@@ -371,17 +366,21 @@ function UserManagement() {
   const openEditForm = (user) => {
     setEditingUser(user);
     setEditUser({
-      username: user.username,
       email: user.email,
       full_name: user.full_name,
       role_id: user.role_id || 2,
       department_id: user.department_id,
       is_active: user.is_active,
       // Employee fields
-      employee_code: user.employee_code || '',
-      position: user.position || '',
-      salary: user.salary || null,
-      hire_date: user.hire_date || ''
+      ma_nv: user.ma_nv || '',
+      chuc_vu: user.chuc_vu || '',
+      phong_ban: user.phong_ban || '',
+      luong_hop_dong: user.luong_hop_dong || '',
+      muc_luong_dong_bhxh: user.muc_luong_dong_bhxh || '',
+      so_nguoi_phu_thuoc: user.so_nguoi_phu_thuoc || 0,
+      dien_thoai: user.dien_thoai || '',
+      dia_chi: user.dia_chi || '',
+      ngay_vao_lam: user.ngay_vao_lam ? user.ngay_vao_lam.split('T')[0] : ''
     });
     setShowEditForm(true);
   };
@@ -507,16 +506,6 @@ function UserManagement() {
                 <h4 className="text-md font-semibold text-gray-800 mb-3">Thông tin tài khoản</h4>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Username</label>
-                    <input
-                      type="text"
-                      value={newUser.username}
-                      onChange={(e) => setNewUser({...newUser, username: e.target.value})}
-                      className="w-full border border-gray-300 rounded-md shadow-sm p-2 text-black focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      required
-                    />
-                  </div>
-                  <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
                     <input
                       type="email"
@@ -569,13 +558,12 @@ function UserManagement() {
                 <h4 className="text-md font-semibold text-gray-800 mb-3">Thông tin nhân viên</h4>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Mã nhân viên</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Mã nhân viên <span className="text-xs text-gray-500">(tự động tạo số nếu để trống)</span></label>
                     <input
                       type="text"
                       value={newUser.ma_nv}
                       onChange={(e) => setNewUser({...newUser, ma_nv: e.target.value})}
                       className="w-full border border-gray-300 rounded-md shadow-sm p-2 text-black focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      required
                     />
                   </div>
                   <div>
@@ -686,16 +674,6 @@ function UserManagement() {
             <form onSubmit={handleEditUser} className="space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Username</label>
-                  <input
-                    type="text"
-                    value={editUser.username}
-                    onChange={(e) => setEditUser({...editUser, username: e.target.value})}
-                    className="w-full border border-gray-300 rounded-md shadow-sm p-2 text-black focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    required
-                  />
-                </div>
-                <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
                   <input
                     type="email"
@@ -746,44 +724,88 @@ function UserManagement() {
                 <label className="block text-sm font-medium text-gray-700 mb-1">Mã nhân viên</label>
                 <input
                   type="text"
-                  value={editUser.employee_code || ''}
-                  onChange={(e) => setEditUser({...editUser, employee_code: e.target.value})}
+                  value={editUser.ma_nv}
+                  onChange={(e) => setEditUser({...editUser, ma_nv: e.target.value})}
                   className="w-full border border-gray-300 rounded-md shadow-sm p-2 text-black focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="Nhập mã nhân viên"
+                  required
                 />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Chức vụ</label>
                 <input
                   type="text"
-                  value={editUser.position || ''}
-                  onChange={(e) => setEditUser({...editUser, position: e.target.value})}
+                  value={editUser.chuc_vu}
+                  onChange={(e) => setEditUser({...editUser, chuc_vu: e.target.value})}
                   className="w-full border border-gray-300 rounded-md shadow-sm p-2 text-black focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="Nhập chức vụ"
                 />
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Lương</label>
-                  <input
-                    type="number"
-                    value={editUser.salary || ''}
-                    onChange={(e) => setEditUser({...editUser, salary: e.target.value ? parseFloat(e.target.value) : null})}
-                    className="w-full border border-gray-300 rounded-md shadow-sm p-2 text-black focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="0"
-                    min="0"
-                    step="0.01"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Ngày vào làm</label>
-                  <input
-                    type="date"
-                    value={editUser.hire_date ? editUser.hire_date.split('T')[0] : ''}
-                    onChange={(e) => setEditUser({...editUser, hire_date: e.target.value})}
-                    className="w-full border border-gray-300 rounded-md shadow-sm p-2 text-black focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Phòng ban (nhân viên)</label>
+                <input
+                  type="text"
+                  value={editUser.phong_ban}
+                  onChange={(e) => setEditUser({...editUser, phong_ban: e.target.value})}
+                  className="w-full border border-gray-300 rounded-md shadow-sm p-2 text-black focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Số người phụ thuộc</label>
+                <input
+                  type="number"
+                  value={editUser.so_nguoi_phu_thuoc}
+                  onChange={(e) => setEditUser({...editUser, so_nguoi_phu_thuoc: parseInt(e.target.value) || 0})}
+                  className="w-full border border-gray-300 rounded-md shadow-sm p-2 text-black focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  min="0"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Lương hợp đồng</label>
+                <input
+                  type="number"
+                  value={editUser.luong_hop_dong}
+                  onChange={(e) => setEditUser({...editUser, luong_hop_dong: e.target.value})}
+                  className="w-full border border-gray-300 rounded-md shadow-sm p-2 text-black focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  step="0.01"
+                  min="0"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Mức lương đóng BHXH</label>
+                <input
+                  type="number"
+                  value={editUser.muc_luong_dong_bhxh}
+                  onChange={(e) => setEditUser({...editUser, muc_luong_dong_bhxh: e.target.value})}
+                  className="w-full border border-gray-300 rounded-md shadow-sm p-2 text-black focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  step="0.01"
+                  min="0"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Điện thoại</label>
+                <input
+                  type="tel"
+                  value={editUser.dien_thoai}
+                  onChange={(e) => setEditUser({...editUser, dien_thoai: e.target.value})}
+                  className="w-full border border-gray-300 rounded-md shadow-sm p-2 text-black focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Ngày vào làm</label>
+                <input
+                  type="date"
+                  value={editUser.ngay_vao_lam}
+                  onChange={(e) => setEditUser({...editUser, ngay_vao_lam: e.target.value})}
+                  className="w-full border border-gray-300 rounded-md shadow-sm p-2 text-black focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Địa chỉ</label>
+                <textarea
+                  value={editUser.dia_chi}
+                  onChange={(e) => setEditUser({...editUser, dia_chi: e.target.value})}
+                  className="w-full border border-gray-300 rounded-md shadow-sm p-2 text-black focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  rows="2"
+                />
               </div>
               <div className="flex flex-col sm:flex-row gap-2 sm:justify-end pt-4">
                 <button type="submit" className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 order-2 sm:order-1">
@@ -844,7 +866,7 @@ function UserManagement() {
                           {uploadResult.data.created_users.map((user, index) => (
                             <li key={index} className="flex items-center">
                               <span className="text-green-500 mr-2 flex-shrink-0">✓</span>
-                              <span className="font-medium truncate mr-2">{user.username}</span>
+                              <span className="font-medium truncate mr-2">{user.full_name}</span>
                               <span className="text-gray-600 text-xs truncate">({user.email})</span>
                             </li>
                           ))}
@@ -885,7 +907,7 @@ function UserManagement() {
                   handleSearchClick();
                 }
               }}
-              placeholder="Tìm theo tên, username hoặc email..."
+              placeholder="Tìm theo tên hoặc email..."
               className="w-full border border-gray-300 rounded-md shadow-sm p-2 text-black focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
           </div>
@@ -948,10 +970,6 @@ function UserManagement() {
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
-                  <span className="hidden sm:inline">Username</span>
-                  <span className="sm:hidden">User</span>
-                </th>
-                <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
                   <span className="hidden sm:inline">Họ và tên</span>
                   <span className="sm:hidden">Tên</span>
                 </th>
@@ -975,7 +993,7 @@ function UserManagement() {
             <tbody className="bg-white divide-y divide-gray-200">
               {users.length === 0 && hasSearched ? (
                 <tr>
-                  <td colSpan="6" className="px-6 py-8 text-center text-gray-500">
+                  <td colSpan="5" className="px-6 py-8 text-center text-gray-500">
                     <div className="flex flex-col items-center">
                       <svg className="w-12 h-12 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -988,9 +1006,6 @@ function UserManagement() {
               ) : (
                 users.map((user) => (
                   <tr key={user.id} className="hover:bg-gray-50">
-                    <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {user.username}
-                    </td>
                     <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                       {user.full_name}
                     </td>
@@ -1549,13 +1564,13 @@ function ActivityLogs() {
                       <div className="flex-shrink-0 h-8 w-8">
                         <div className="h-8 w-8 rounded-full bg-gray-300 flex items-center justify-center">
                           <span className="text-sm font-medium text-gray-700">
-                            {(log.users?.full_name || log.users?.username || log.users?.email || 'N/A').charAt(0).toUpperCase()}
+                            {(log.users?.full_name || log.users?.email || 'N/A').charAt(0).toUpperCase()}
                           </span>
                         </div>
                       </div>
                       <div className="ml-3">
                         <div className="text-sm font-medium text-gray-900">
-                          {log.users?.full_name || log.users?.username || 'N/A'}
+                          {log.users?.full_name || 'N/A'}
                         </div>
                         <div className="text-sm text-gray-500">
                           {log.users?.email || 'N/A'}
@@ -1924,7 +1939,7 @@ function ChatHistoryManagement() {
           if (!groups[userId]) {
             groups[userId] = {
               userId: userId,
-              userInfo: chat.users || { full_name: `User ${userId}`, username: `user${userId}` },
+              userInfo: chat.users || { full_name: `User ${userId}` },
               messages: [],
               latestTimestamp: chat.created_at || chat.timestamp
             };
@@ -2118,12 +2133,12 @@ function ChatHistoryManagement() {
                         <div className="flex items-center space-x-3 flex-1 min-w-0">
                           <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
                             <span className="text-sm font-medium text-blue-700">
-                              {(conversation.userInfo.full_name || conversation.userInfo.username || 'U').charAt(0).toUpperCase()}
+                              {(conversation.userInfo.full_name || 'U').charAt(0).toUpperCase()}
                             </span>
                           </div>
                           <div className="flex-1 min-w-0">
                             <h4 className="font-medium text-gray-900 truncate">
-                              {conversation.userInfo.full_name || conversation.userInfo.username || `User ${conversation.userId}`}
+                              {conversation.userInfo.full_name || `User ${conversation.userId}`}
                             </h4>
                             <p className="text-sm text-gray-500">
                               {(conversation.messages && conversation.messages.length) || 0} tin nhắn • Cuộc trò chuyện gần nhất: {formatTimestamp(conversation.latestTimestamp)}
@@ -2322,8 +2337,7 @@ function UserChatHistoryManagement() {
     const user = userData.user || {};
     const matchesSearch = !searchTerm || 
       user.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.username?.toLowerCase().includes(searchTerm.toLowerCase());
+      user.email?.toLowerCase().includes(searchTerm.toLowerCase());
     
     const matchesChatflow = !selectedChatflow || 
       userData.conversations?.some(conversation => conversation.app_id == selectedChatflow);
@@ -2356,7 +2370,7 @@ function UserChatHistoryManagement() {
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Tìm theo tên, username hoặc email..."
+              placeholder="Tìm theo tên hoặc email..."
               className="w-full border border-gray-300 rounded-md shadow-sm p-2 text-black focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
           </div>
@@ -2417,12 +2431,12 @@ function UserChatHistoryManagement() {
                   <div className="flex items-center space-x-3">
                     <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
                       <span className="text-white font-semibold text-sm">
-                        {(user.full_name || user.username || 'U').charAt(0).toUpperCase()}
+                        {(user.full_name || 'U').charAt(0).toUpperCase()}
                       </span>
                     </div>
                     <div>
                       <h3 className="font-medium text-gray-900">
-                        {user.full_name || user.username || 'Unknown User'}
+                        {user.full_name || 'Unknown User'}
                       </h3>
                       <p className="text-sm text-gray-500">
                         {user.email} • {conversations.length} cuộc trò chuyện

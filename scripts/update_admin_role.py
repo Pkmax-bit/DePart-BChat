@@ -8,12 +8,12 @@ try:
     for role in roles.data:
         print(f'  - ID: {role["id"]}, Name: {role["name"]}')
 
-    # Update user khoa to admin role (role_id = 1)
-    update_result = supabase.table('employees').update({'role_id': 1}).eq('username', 'khoa').execute()
-    print(f'\nUpdated user khoa to admin role: {update_result.data}')
+    # Update user khoa to admin role (role_id = 1) - using email instead of username
+    update_result = supabase.table('employees').update({'role_id': 1}).eq('email', 'khoa@example.com').execute()  # Replace with actual email
+    print(f'\nUpdated user to admin role: {update_result.data}')
 
-    # Verify the update
-    verify = supabase.table('employees').select('*').eq('username', 'khoa').execute()
+    # Verify the update - using email instead of username
+    verify = supabase.table('employees').select('*').eq('email', 'khoa@example.com').execute()  # Replace with actual email
     print(f'Verified user: {verify.data[0] if verify.data else "Not found"}')
 
 except Exception as e:

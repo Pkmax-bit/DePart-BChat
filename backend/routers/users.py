@@ -109,7 +109,6 @@ def login_user(login: LoginRequest):
             "message": "Đăng nhập thành công",
             "user": {
                 "id": user['ma_nv'],
-                "username": user['username'],
                 "email": user['email'],
                 "full_name": user['full_name'],
                 "role_id": user['role_id'],
@@ -162,6 +161,7 @@ def logout_user(user_id: str):
 def create_new_user(user: UserCreate):
     """
     Tạo một tài khoản nhân viên mới.
+    Username sẽ được tự động tạo từ ma_nv hoặc full_name nếu không được cung cấp.
     - Admin (role_id=1): Lưu cả Supabase Auth và database
     - User/Manager (role_id=2,3): Chỉ lưu database, không tạo Auth account
     """
@@ -169,6 +169,34 @@ def create_new_user(user: UserCreate):
         print(f"Creating user with data: {user.dict()}")  # Debug log
 
         supabase_user_id = None
+
+        # Tự động tạo ma_nv nếu không được cung cấp
+        if not user.ma_nv or not user.ma_nv.strip():
+            # Tự động tạo ma_nv với format số nguyên tăng dần
+            # Tìm số thứ tự cao nhất hiện tại
+            try:
+                existing_ma_nv = supabase.table('employees').select('ma_nv').execute()
+                existing_numbers = []
+                if existing_ma_nv.data:
+                    for emp in existing_ma_nv.data:
+                        if emp['ma_nv'] is not None:
+                            try:
+                                # Convert to int if it's string, or use as is if already int
+                                num = int(emp['ma_nv'])
+                                existing_numbers.append(num)
+                            except (ValueError, TypeError):
+                                continue
+                
+                # Tìm số thứ tự tiếp theo (bắt đầu từ 1000 nếu chưa có)
+                next_number = max(existing_numbers) + 1 if existing_numbers else 1000
+                ma_nv = str(next_number)  # Lưu dưới dạng string để tương thích
+            except Exception as e:
+                print(f"Error generating ma_nv: {e}")
+                # Fallback: tạo số ngẫu nhiên
+                import random
+                ma_nv = str(random.randint(1000, 9999))
+        else:
+            ma_nv = user.ma_nv.strip()
 
         # Chỉ tạo Auth account nếu là Admin (role_id = 1)
         if user.role_id == 1:
@@ -179,7 +207,6 @@ def create_new_user(user: UserCreate):
                 "email_confirm": True, # Tự động xác thực email
                 "user_metadata": {
                     "full_name": user.full_name,
-                    "username": user.username,
                     "role_id": user.role_id
                 }
             })
@@ -190,18 +217,28 @@ def create_new_user(user: UserCreate):
 
         # Thêm vào bảng employees
         user_data = {
-            "username": user.username,
             "email": user.email,
-            "full_name": user.full_name,
+            "ho_ten": user.full_name,  # Keep ho_ten for backward compatibility
+            "full_name": user.full_name,  # Also save to full_name
             "role_id": user.role_id,
             "is_active": True,
-            "department_id": user.department_id  # Thêm department_id vào user_data
+            "department_id": user.department_id,
+            # Employee-specific fields
+            "ma_nv": ma_nv,
+            "chuc_vu": user.chuc_vu,
+            "phong_ban": user.phong_ban,
+            "luong_hop_dong": user.luong_hop_dong,
+            "muc_luong_dong_bhxh": user.muc_luong_dong_bhxh,
+            "so_nguoi_phu_thuoc": user.so_nguoi_phu_thuoc,
+            "dien_thoai": user.dien_thoai,
+            "dia_chi": user.dia_chi,
+            "ngay_vao_lam": user.ngay_vao_lam
         }
 
         # Hash password cho tất cả users (bao gồm cả User/Manager)
         hashed_password = bcrypt.hashpw(user.password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
         user_data["hashed_password"] = hashed_password
-        print(f"Password hashed for {user.username}: {hashed_password[:20]}...")  # Debug log (chỉ hiển thị 20 ký tự đầu)
+        print(f"Password hashed for {user.email}: {hashed_password[:20]}...")  # Debug log (chỉ hiển thị 20 ký tự đầu)
 
         user_result = supabase.table('employees').insert(user_data).execute()
         print(f"User created in database: {user_result.data}")
@@ -243,7 +280,6 @@ def list_all_users(department_id: int = None, search: str = None):
             if all_users_result.data:
                 for user in all_users_result.data:
                     if (search_term.lower() in (user.get('full_name') or '').lower() or
-                        search_term.lower() in (user.get('username') or '').lower() or
                         search_term.lower() in (user.get('email') or '').lower()):
                         filtered_users.append(user)
 
@@ -282,18 +318,36 @@ def update_user(user_id: str, user_data: dict):
     try:
         # Cập nhật thông tin user trong bảng employees
         update_data = {}
-        if 'username' in user_data:
-            update_data['username'] = user_data['username']
         if 'email' in user_data:
             update_data['email'] = user_data['email']
         if 'full_name' in user_data:
-            update_data['full_name'] = user_data['full_name']
+            update_data['ho_ten'] = user_data['full_name']  # Update ho_ten for backward compatibility
+            update_data['full_name'] = user_data['full_name']  # Also update full_name
         if 'department_id' in user_data:
             update_data['department_id'] = user_data['department_id']
         if 'is_active' in user_data:
             update_data['is_active'] = user_data['is_active']
         if 'role_id' in user_data:
             update_data['role_id'] = user_data['role_id']
+        # Employee-specific fields
+        if 'ma_nv' in user_data:
+            update_data['ma_nv'] = user_data['ma_nv']
+        if 'chuc_vu' in user_data:
+            update_data['chuc_vu'] = user_data['chuc_vu']
+        if 'phong_ban' in user_data:
+            update_data['phong_ban'] = user_data['phong_ban']
+        if 'luong_hop_dong' in user_data:
+            update_data['luong_hop_dong'] = user_data['luong_hop_dong']
+        if 'muc_luong_dong_bhxh' in user_data:
+            update_data['muc_luong_dong_bhxh'] = user_data['muc_luong_dong_bhxh']
+        if 'so_nguoi_phu_thuoc' in user_data:
+            update_data['so_nguoi_phu_thuoc'] = user_data['so_nguoi_phu_thuoc']
+        if 'dien_thoai' in user_data:
+            update_data['dien_thoai'] = user_data['dien_thoai']
+        if 'dia_chi' in user_data:
+            update_data['dia_chi'] = user_data['dia_chi']
+        if 'ngay_vao_lam' in user_data:
+            update_data['ngay_vao_lam'] = user_data['ngay_vao_lam']
 
         if update_data:
             result = supabase.table('employees').update(update_data).eq('ma_nv', user_id).execute()
@@ -349,7 +403,7 @@ def get_activity_logs(current_user = Depends(get_current_admin_user)):
         # Join với bảng employees và chatflows để lấy thông tin chi tiết
         result = supabase.table('activity_logs').select('''
             *,
-            employees!fk_user(username, full_name, email),
+            employees!fk_user(ma_nv, full_name, email),
             chatflows!fk_chatflow(name)
         ''').order('access_time', desc=True).execute()
 
@@ -499,6 +553,125 @@ def verify_code_and_reset_password(request: VerifyCodeRequest):
         print(f"Error verifying code: {str(e)}")
         raise HTTPException(status_code=500, detail="Lỗi server")
 
+@router.post("/bulk-upload")
+def bulk_upload_users(file: UploadFile = File(...)):
+    """
+    Upload file Excel để tạo nhiều nhân viên cùng lúc.
+    Username sẽ được tự động tạo từ ma_nv hoặc full_name nếu không được cung cấp.
+    """
+    try:
+        if not SUPABASE_AVAILABLE or supabase is None:
+            raise HTTPException(status_code=503, detail="Database service unavailable")
+
+        # Kiểm tra loại file
+        if not file.filename.endswith(('.xlsx', '.xls', '.csv')):
+            raise HTTPException(status_code=400, detail="Chỉ chấp nhận file Excel (.xlsx, .xls) hoặc CSV (.csv)")
+
+        # Đọc file
+        try:
+            if file.filename.endswith('.csv'):
+                df = pd.read_csv(file.file)
+            else:
+                df = pd.read_excel(file.file)
+        except Exception as e:
+            raise HTTPException(status_code=400, detail=f"Không thể đọc file: {str(e)}")
+
+        # Kiểm tra các cột bắt buộc (ma_nv không còn bắt buộc)
+        required_columns = ['email', 'password', 'full_name', 'luong_hop_dong', 'muc_luong_dong_bhxh']
+        missing_columns = [col for col in required_columns if col not in df.columns]
+        if missing_columns:
+            raise HTTPException(status_code=400, detail=f"Thiếu các cột bắt buộc: {', '.join(missing_columns)}")
+
+        created_users = []
+        errors = []
+
+        # Xử lý từng dòng
+        for index, row in df.iterrows():
+            try:
+                # Tự động tạo ma_nv nếu không được cung cấp
+                if 'ma_nv' in row and pd.notna(row['ma_nv']) and str(row['ma_nv']).strip():
+                    ma_nv = str(row['ma_nv']).strip()
+                else:
+                    # Tự động tạo ma_nv với format số nguyên tăng dần
+                    # Tìm số thứ tự cao nhất hiện tại
+                    try:
+                        existing_ma_nv = supabase.table('employees').select('ma_nv').execute()
+                        existing_numbers = []
+                        if existing_ma_nv.data:
+                            for emp in existing_ma_nv.data:
+                                if emp['ma_nv'] is not None:
+                                    try:
+                                        # Convert to int if it's string, or use as is if already int
+                                        num = int(emp['ma_nv'])
+                                        existing_numbers.append(num)
+                                    except (ValueError, TypeError):
+                                        continue
+                        
+                        # Tìm số thứ tự tiếp theo (bắt đầu từ 1000 nếu chưa có)
+                        next_number = max(existing_numbers) + 1 if existing_numbers else 1000
+                        ma_nv = str(next_number)  # Lưu dưới dạng string để tương thích
+                    except Exception as e:
+                        print(f"Error generating ma_nv: {e}")
+                        # Fallback: tạo số ngẫu nhiên
+                        import random
+                        ma_nv = str(random.randint(1000, 9999))
+
+                # Chuẩn bị dữ liệu
+                user_data = {
+                    "email": str(row['email']).strip(),
+                    "ho_ten": str(row['full_name']).strip(),  # Keep ho_ten for backward compatibility
+                    "full_name": str(row['full_name']).strip(),  # Also save to full_name
+                    "role_id": 2,  # Default role
+                    "is_active": True,
+                    "ma_nv": ma_nv,
+                    "luong_hop_dong": float(row['luong_hop_dong']),
+                    "muc_luong_dong_bhxh": float(row['muc_luong_dong_bhxh'])
+                }
+
+                # Các trường tùy chọn
+                optional_fields = ['chuc_vu', 'phong_ban', 'so_nguoi_phu_thuoc', 'dien_thoai', 'dia_chi', 'ngay_vao_lam', 'department']
+                for field in optional_fields:
+                    if field in row and pd.notna(row[field]) and str(row[field]).strip():
+                        if field == 'so_nguoi_phu_thuoc':
+                            user_data[field] = int(float(row[field]))
+                        elif field == 'department':
+                            # Map department name to department_id if needed
+                            # For now, store as phong_ban
+                            user_data['phong_ban'] = str(row[field]).strip()
+                        else:
+                            user_data[field] = str(row[field]).strip()
+
+                # Hash password
+                hashed_password = bcrypt.hashpw(str(row['password']).encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+                user_data["hashed_password"] = hashed_password
+
+                # Thêm vào database
+                result = supabase.table('employees').insert(user_data).execute()
+
+                if result.data:
+                    created_users.append({
+                        "email": user_data["email"],
+                        "ma_nv": user_data["ma_nv"]
+                    })
+                else:
+                    errors.append(f"Dòng {index + 2}: Không thể tạo user {user_data['email']}")
+
+            except Exception as e:
+                errors.append(f"Dòng {index + 2}: {str(e)}")
+
+        return {
+            "message": f"Upload hoàn thành. Tạo thành công {len(created_users)} nhân viên.",
+            "created_count": len(created_users),
+            "created_users": created_users,
+            "errors": errors
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error in bulk upload: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Lỗi server: {str(e)}")
+
 @router.get("/me")
 def get_current_user_info():
     """
@@ -522,7 +695,6 @@ def get_current_user_info():
 
         return {
             "id": user['ma_nv'],
-            "username": user['username'],
             "email": user['email'],
             "full_name": user['full_name'],
             "role_id": user['role_id'],
