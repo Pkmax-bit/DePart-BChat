@@ -10,7 +10,7 @@ export default function AccountingLayout({ user, activeTab, onTabChange, childre
     { id: 'dashboard', label: 'Dashboard Báo cáo', icon: BarChart3 },
     { id: 'revenue', label: 'Quản lý Doanh thu', icon: Receipt },
     { id: 'expenses', label: 'Quản lý Chi phí', icon: CreditCard },
-    { id: 'profit', label: 'Báo cáo Lợi nhuận', icon: TrendingUp },
+    { id: 'profit', label: 'Báo cáo hoạt động kinh doanh', icon: TrendingUp },
     { id: 'products', label: 'Quản lý Sản phẩm', icon: Package },
     { id: 'categories', label: 'Quản lý Danh mục', icon: Settings },
     { id: 'generate', label: 'Tạo Báo cáo', icon: FileText },

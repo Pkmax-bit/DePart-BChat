@@ -217,8 +217,8 @@ def create_sample_revenue():
     return created_count
 
 def test_profit_calculation():
-    """Test tính toán lợi nhuận"""
-    print("\n🧮 Test tính toán lợi nhuận...")
+    """Test tính toán hoạt động kinh doanh"""
+    print("\n🧮 Test tính toán hoạt động kinh doanh...")
 
     try:
         # Lấy tổng doanh thu
@@ -229,15 +229,15 @@ def test_profit_calculation():
         expense_result = supabase.table('quanly_chiphi').select('giathanh').execute()
         total_expenses = sum(expense['giathanh'] or 0 for expense in expense_result.data)
 
-        # Tính lợi nhuận
+        # Tính hoạt động kinh doanh
         total_profit = total_revenue - total_expenses
         profit_margin = (total_profit / total_revenue * 100) if total_revenue > 0 else 0
 
-        print("📊 KẾT QUẢ TÍNH LỢI NHUẬN:")
+        print("📊 KẾT QUẢ TÍNH HOẠT ĐỘNG KINH DOANH:")
         print(f"   Tổng doanh thu: {total_revenue:,.0f} VND")
         print(f"   Tổng chi phí: {total_expenses:,.0f} VND")
-        print(f"   Lợi nhuận: {total_profit:,.0f} VND")
-        print(f"   Tỷ suất lợi nhuận: {profit_margin:.2f}%")
+        print(f"   Hoạt động kinh doanh: {total_profit:,.0f} VND")
+        print(f"   Tỷ suất hoạt động kinh doanh: {profit_margin:.2f}%")
         print(f"   Trạng thái: {'LỢI NHUẬN' if total_profit >= 0 else 'LỖ'}")
 
         return total_revenue, total_expenses, total_profit, profit_margin
@@ -278,7 +278,7 @@ def main():
     test_profit_calculation()
 
     print("\n" + "=" * 60)
-    print("✅ HOÀN THÀNH! Dữ liệu đã sẵn sàng cho báo cáo lợi nhuận.")
+    print("✅ HOÀN THÀNH! Dữ liệu đã sẵn sàng cho báo cáo hoạt động kinh doanh.")
     print("💡 Bạn có thể truy cập trang lợi nhuận để xem báo cáo.")
 
 if __name__ == "__main__":

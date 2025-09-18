@@ -223,7 +223,7 @@ def create_profit_summary_sheet(sheet, data, header_font, header_fill, border):
         ['Tong chi phi van hanh', total_expenses, f"{(total_expenses/total_revenue*100):.2f}" if total_revenue > 0 else '0.00'],
         ['Tong chi phi nhan su', total_payroll, f"{(total_payroll/total_revenue*100):.2f}" if total_revenue > 0 else '0.00'],
         ['Tong chi phi', total_all_expenses, f"{(total_all_expenses/total_revenue*100):.2f}" if total_revenue > 0 else '0.00'],
-        ['Loi nhuan', total_profit, f"{profit_margin:.2f}"],
+        ['Hoat dong kinh doanh', total_profit, f"{profit_margin:.2f}"],
     ]
 
     for row_idx, row_data in enumerate(summary_data, 5):
@@ -248,7 +248,7 @@ def create_profit_summary_sheet(sheet, data, header_font, header_fill, border):
         ['So luong chi phi van hanh', len(data['expenses'])],
         ['So luong nhan vien co luong', len(data['payroll'])],
         ['Trung binh luong/nhan vien', total_payroll / len(data['payroll']) if data['payroll'] else 0],
-        ['Trang thai', 'LOI NHUAN' if total_profit >= 0 else 'LO'],
+        ['Trang thai', 'HOAT DONG KINH DOANH TOT' if total_profit >= 0 else 'HOAT DONG KINH DOANH XAU'],
     ]
 
     for row_idx, (label, value) in enumerate(stats_data, 11):

@@ -1085,7 +1085,7 @@ async def get_chiphi_tong_quan(month: str = None):
 
 @router.get("/profit/")
 async def get_profit_report(month: str = None):
-    """Lấy báo cáo lợi nhuận tổng hợp"""
+    """Lấy báo cáo hoạt động kinh doanh tổng hợp"""
     try:
         # Lấy dữ liệu doanh thu
         revenue_query = supabase.table('invoices').select('*')
@@ -1189,7 +1189,7 @@ async def get_profit_report(month: str = None):
 
 @router.get("/profits/")
 async def get_profit_reports(month: str = None):
-    """Lấy danh sách báo cáo lợi nhuận (sort bằng Python thay vì database index)"""
+    """Lấy danh sách báo cáo hoạt động kinh doanh (sort bằng Python thay vì database index)"""
     try:
         query = supabase.table('profits').select('*')
 
@@ -1212,7 +1212,7 @@ async def get_profit_reports(month: str = None):
 
 @router.post("/profits/")
 async def create_profit_report(report_data: dict):
-    """Tạo báo cáo lợi nhuận mới"""
+    """Tạo báo cáo hoạt động kinh doanh mới"""
     try:
         result = supabase.table('profits').insert({
             'report_month': report_data['report_month'],
@@ -1233,7 +1233,7 @@ async def create_profit_report(report_data: dict):
 
 @router.put("/profits/{report_id}")
 async def update_profit_report(report_id: int, report_data: dict):
-    """Cập nhật báo cáo lợi nhuận"""
+    """Cập nhật báo cáo hoạt động kinh doanh"""
     try:
         result = supabase.table('profits').update({
             'total_revenue': report_data.get('total_revenue'),
@@ -1253,7 +1253,7 @@ async def update_profit_report(report_id: int, report_data: dict):
 
 @router.delete("/profits/{report_id}")
 async def delete_profit_report(report_id: int):
-    """Xóa báo cáo lợi nhuận"""
+    """Xóa báo cáo hoạt động kinh doanh"""
     try:
         result = supabase.table('profits').delete().eq('id', report_id).execute()
         return {"message": "Profit report deleted successfully"}
@@ -1262,7 +1262,7 @@ async def delete_profit_report(report_id: int):
 
 @router.post("/profits/generate/{month}")
 async def generate_profit_report(month: str):
-    """Tự động tạo báo cáo lợi nhuận cho tháng cụ thể"""
+    """Tự động tạo báo cáo hoạt động kinh doanh cho tháng cụ thể"""
     try:
         # Kiểm tra xem đã có báo cáo cho tháng này chưa
         existing = supabase.table('profits').select('*').eq('report_month', month).execute()
@@ -1322,7 +1322,7 @@ async def generate_profit_report(month: str):
 
 @router.put("/profits/sync/{month}")
 async def sync_profit_report(month: str):
-    """Đồng bộ lại báo cáo lợi nhuận cho tháng cụ thể"""
+    """Đồng bộ lại báo cáo hoạt động kinh doanh cho tháng cụ thể"""
     try:
         # Lấy dữ liệu doanh thu
         start_date = f"{month}-01"
@@ -1392,7 +1392,7 @@ async def sync_profit_report(month: str):
 
 @router.post("/profits/sync_all/")
 async def sync_all_profit_reports():
-    """Đồng bộ lại tất cả báo cáo lợi nhuận"""
+    """Đồng bộ lại tất cả báo cáo hoạt động kinh doanh"""
     try:
         synced_months = []
         errors = []
@@ -1509,7 +1509,7 @@ async def sync_all_profit_reports():
 
 @router.get("/export_profit_excel/")
 async def export_profit_excel(month: str = None):
-    """Xuất báo cáo lợi nhuận ra file Excel"""
+    """Xuất báo cáo hoạt động kinh doanh ra file Excel"""
     try:
         import subprocess
         import os

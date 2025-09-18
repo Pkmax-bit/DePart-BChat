@@ -164,7 +164,7 @@ function UserManagement() {
       }
       
       const queryString = params.toString();
-      const url = `http://localhost:8001/api/v1/users/${queryString ? '?' + queryString : ''}`;
+      const url = `http://localhost:8003/api/v1/users/${queryString ? '?' + queryString : ''}`;
       
       const response = await fetch(url, {
         // headers: {
@@ -187,7 +187,7 @@ function UserManagement() {
 
   const fetchDepartments = async () => {
     try {
-      const response = await fetch('http://localhost:8001/api/v1/departments/');
+      const response = await fetch('http://localhost:8003/api/v1/departments/');
       if (response.ok) {
         const data = await response.json();
         setDepartments(data);
@@ -199,7 +199,7 @@ function UserManagement() {
 
   const downloadSampleFile = async () => {
     try {
-      const response = await fetch('http://localhost:8001/api/v1/sample-files/bulk-upload-template');
+      const response = await fetch('http://localhost:8003/api/v1/sample-files/bulk-upload-template');
       
       if (response.ok) {
         const blob = await response.blob();
@@ -246,7 +246,7 @@ function UserManagement() {
 
       console.log('Creating unified employee with data:', employeeData);
 
-      const response = await fetch('http://localhost:8001/api/v1/users/', {
+      const response = await fetch('http://localhost:8003/api/v1/users/', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -297,7 +297,7 @@ function UserManagement() {
     e.preventDefault();
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      const response = await fetch(`http://localhost:8001/api/v1/users/${editingUser.id}`, {
+      const response = await fetch(`http://localhost:8003/api/v1/users/${editingUser.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -344,7 +344,7 @@ function UserManagement() {
     setDeletingUser(userId);
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      const response = await fetch(`http://localhost:8001/api/v1/users/${userId}`, {
+      const response = await fetch(`http://localhost:8003/api/v1/users/${userId}`, {
         method: 'DELETE',
         headers: {
           // 'Authorization': session ? `Bearer ${session.access_token}` : ''
@@ -451,7 +451,7 @@ function UserManagement() {
                   const formData = new FormData();
                   formData.append('file', file);
 
-                  const response = await fetch('http://localhost:8001/api/v1/users/bulk-upload', {
+                  const response = await fetch('http://localhost:8003/api/v1/users/bulk-upload', {
                     method: 'POST',
                     body: formData
                   });
@@ -1111,7 +1111,7 @@ function ChatflowManagement() {
   const fetchChatflows = async () => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      const response = await fetch('http://localhost:8001/api/v1/chatflows/', {
+      const response = await fetch('http://localhost:8003/api/v1/chatflows/', {
         // headers: {
         //   'Authorization': session ? `Bearer ${session.access_token}` : ''
         // }
@@ -1129,7 +1129,7 @@ function ChatflowManagement() {
 
   const fetchDepartments = async () => {
     try {
-      const response = await fetch('http://localhost:8001/api/v1/departments/');
+      const response = await fetch('http://localhost:8003/api/v1/departments/');
       if (response.ok) {
         const data = await response.json();
         setDepartments(data);
@@ -1143,7 +1143,7 @@ function ChatflowManagement() {
     e.preventDefault();
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      const response = await fetch('http://localhost:8001/api/v1/chatflows/', {
+      const response = await fetch('http://localhost:8003/api/v1/chatflows/', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -1165,7 +1165,7 @@ function ChatflowManagement() {
     e.preventDefault();
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      const response = await fetch(`http://localhost:8001/api/v1/chatflows/${editingChatflow.id}`, {
+      const response = await fetch(`http://localhost:8003/api/v1/chatflows/${editingChatflow.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -1188,7 +1188,7 @@ function ChatflowManagement() {
     setTogglingStatus(chatflowId);
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      const response = await fetch(`http://localhost:8001/api/v1/chatflows/${chatflowId}`, {
+      const response = await fetch(`http://localhost:8003/api/v1/chatflows/${chatflowId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -1214,7 +1214,7 @@ function ChatflowManagement() {
     setDeletingChatflow(chatflowId);
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      const response = await fetch(`http://localhost:8001/api/v1/chatflows/${chatflowId}`, {
+      const response = await fetch(`http://localhost:8003/api/v1/chatflows/${chatflowId}`, {
         method: 'DELETE',
         headers: {
           // 'Authorization': session ? `Bearer ${session.access_token}` : ''
@@ -1492,7 +1492,7 @@ function ActivityLogs() {
             authMethod = 'Local Auth';
             
             // For now, use the test endpoint which doesn't require authentication
-            const response = await fetch('http://localhost:8001/api/v1/users/activity/logs/test');
+            const response = await fetch('http://localhost:8003/api/v1/users/activity/logs/test');
             
             if (response.ok) {
               const data = await response.json();
@@ -1511,7 +1511,7 @@ function ActivityLogs() {
       }
 
       console.log(`Fetching activity logs using ${authMethod}...`);
-      const response = await fetch('http://localhost:8001/api/v1/users/activity/logs', {
+      const response = await fetch('http://localhost:8003/api/v1/users/activity/logs', {
         headers: headers
       });
 
@@ -1697,7 +1697,7 @@ function FeedbackManagement() {
         return;
       }
 
-      const response = await fetch('http://localhost:8001/api/v1/feedback/', {
+      const response = await fetch('http://localhost:8003/api/v1/feedback/', {
         headers: {
           'Authorization': `Bearer ${session.access_token}`
         }
@@ -1725,7 +1725,7 @@ function FeedbackManagement() {
         return;
       }
 
-      const response = await fetch(`http://localhost:8001/api/v1/feedback/${feedbackId}`, {
+      const response = await fetch(`http://localhost:8003/api/v1/feedback/${feedbackId}`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${session.access_token}`,
@@ -1762,7 +1762,7 @@ function FeedbackManagement() {
         return;
       }
 
-      const response = await fetch(`http://localhost:8001/api/v1/feedback/${feedbackId}`, {
+      const response = await fetch(`http://localhost:8003/api/v1/feedback/${feedbackId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${session.access_token}`
@@ -1941,7 +1941,7 @@ function ChatHistoryManagement() {
 
   const fetchApps = async () => {
     try {
-      const response = await fetch('http://localhost:8001/api/v1/chat-history/apps');
+      const response = await fetch('http://localhost:8003/api/v1/chat-history/apps');
       if (response.ok) {
         const data = await response.json();
         setApps(data);
@@ -1957,7 +1957,7 @@ function ChatHistoryManagement() {
     setLoadingHistory(true);
     try {
       console.log('Fetching chat history for app:', appName);
-      const response = await fetch(`http://localhost:8001/api/v1/chat-history/app/${encodeURIComponent(appName)}`);
+      const response = await fetch(`http://localhost:8003/api/v1/chat-history/app/${encodeURIComponent(appName)}`);
       console.log('Response status:', response.status);
       console.log('Response ok:', response.ok);
 
@@ -2309,7 +2309,7 @@ function UserChatHistoryManagement() {
   const fetchAllUserChatHistory = async () => {
     try {
       setLoading(true);
-      const response = await fetch('http://localhost:8001/api/v1/user-chat/admin/all-users');
+      const response = await fetch('http://localhost:8003/api/v1/user-chat/admin/all-users');
       if (response.ok) {
         const data = await response.json();
         setAllUserChatHistory(data.users || []);
@@ -2323,7 +2323,7 @@ function UserChatHistoryManagement() {
 
   const fetchChatflows = async () => {
     try {
-      const response = await fetch('http://localhost:8001/api/v1/chatflows/');
+      const response = await fetch('http://localhost:8003/api/v1/chatflows/');
       if (response.ok) {
         const data = await response.json();
         setChatflows(data);
@@ -2346,7 +2346,7 @@ function UserChatHistoryManagement() {
   const fetchConversationDetails = async (conversationId) => {
     setLoadingDetails(true);
     try {
-      const response = await fetch(`http://localhost:8001/api/v1/chat-history/conversation/${conversationId}`);
+      const response = await fetch(`http://localhost:8003/api/v1/chat-history/conversation/${conversationId}`);
       if (response.ok) {
         const data = await response.json();
         setConversationDetails(data);
@@ -2657,7 +2657,7 @@ function DepartmentManagement() {
 
   const fetchDepartments = async () => {
     try {
-      const response = await fetch('http://localhost:8001/api/v1/departments/');
+      const response = await fetch('http://localhost:8003/api/v1/departments/');
       if (response.ok) {
         const data = await response.json();
         setDepartments(data);
@@ -2672,7 +2672,7 @@ function DepartmentManagement() {
   const handleAddDepartment = async (e) => {
     e.preventDefault();
     try {
-      const response = await fetch('http://localhost:8001/api/v1/departments/', {
+      const response = await fetch('http://localhost:8003/api/v1/departments/', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -2692,7 +2692,7 @@ function DepartmentManagement() {
   const handleEditDepartment = async (e) => {
     e.preventDefault();
     try {
-      const response = await fetch(`http://localhost:8001/api/v1/departments/${editingDepartment.id}`, {
+      const response = await fetch(`http://localhost:8003/api/v1/departments/${editingDepartment.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -2717,7 +2717,7 @@ function DepartmentManagement() {
 
     setDeletingDepartment(departmentId);
     try {
-      const response = await fetch(`http://localhost:8001/api/v1/departments/${departmentId}`, {
+      const response = await fetch(`http://localhost:8003/api/v1/departments/${departmentId}`, {
         method: 'DELETE',
       });
       if (response.ok) {
@@ -2895,6 +2895,7 @@ function NotificationManagement() {
   const [employees, setEmployees] = useState([]);
   const [departments, setDepartments] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [showAddForm, setShowAddForm] = useState(false);
   const [showEditForm, setShowEditForm] = useState(false);
   const [editingNotification, setEditingNotification] = useState(null);
@@ -2936,9 +2937,97 @@ function NotificationManagement() {
     fetchDepartments();
   }, []);
 
+  // Real-time subscription for notifications
+  useEffect(() => {
+    if (!loading) {
+      const subscription = supabase
+        .channel('notifications_changes')
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'notifications'
+          },
+          (payload) => {
+            console.log('Notification updated:', payload);
+            const { new: newNotification, old: oldNotification } = payload;
+
+            // Check if status changed from 'published' to 'sent' (auto-sent by scheduler)
+            if (oldNotification.status === 'published' && newNotification.status === 'sent') {
+              console.log('Notification auto-sent by scheduler:', newNotification.id);
+
+              // Show toast notification
+              showAutoSendToast(newNotification);
+
+              // Refresh notifications list
+              refreshNotifications();
+            }
+          }
+        )
+        .subscribe();
+
+      return () => {
+        subscription.unsubscribe();
+      };
+    }
+  }, [loading]);
+
+  const refreshNotifications = async () => {
+    setRefreshing(true);
+    try {
+      await fetchNotifications();
+    } catch (error) {
+      console.error('Error refreshing notifications:', error);
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
+  const showAutoSendToast = (notification) => {
+    // Create a temporary toast element
+    const toast = document.createElement('div');
+    toast.className = 'fixed top-4 right-4 z-50 bg-green-500 text-white px-6 py-4 rounded-lg shadow-lg transform transition-all duration-300 translate-x-full';
+    toast.innerHTML = `
+      <div class="flex items-center space-x-3">
+        <div class="flex-shrink-0">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path>
+          </svg>
+        </div>
+        <div class="flex-1">
+          <p class="text-sm font-medium">Thông báo đã được gửi tự động</p>
+          <p class="text-xs opacity-90">${notification.title}</p>
+        </div>
+        <button onclick="this.parentElement.parentElement.remove()" class="flex-shrink-0 ml-4 text-green-200 hover:text-white">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+          </svg>
+        </button>
+      </div>
+    `;
+
+    document.body.appendChild(toast);
+
+    // Animate in
+    setTimeout(() => {
+      toast.classList.remove('translate-x-full');
+    }, 100);
+
+    // Auto remove after 5 seconds
+    setTimeout(() => {
+      toast.classList.add('translate-x-full');
+      setTimeout(() => {
+        if (toast.parentElement) {
+          toast.parentElement.removeChild(toast);
+        }
+      }, 300);
+    }, 5000);
+  };
+
   const fetchNotifications = async () => {
     try {
-      const response = await fetch('http://localhost:8001/api/v1/notifications/');
+      const response = await fetch('http://localhost:8003/api/v1/notifications/');
       if (response.ok) {
         const data = await response.json();
         setNotifications(data);
@@ -2952,7 +3041,7 @@ function NotificationManagement() {
 
   const fetchEmployees = async () => {
     try {
-      const response = await fetch('http://localhost:8001/api/v1/users/');
+      const response = await fetch('http://localhost:8003/api/v1/users/');
       if (response.ok) {
         const data = await response.json();
         setEmployees(data.users || data || []);
@@ -2964,7 +3053,7 @@ function NotificationManagement() {
 
   const fetchDepartments = async () => {
     try {
-      const response = await fetch('http://localhost:8001/api/v1/departments/');
+      const response = await fetch('http://localhost:8003/api/v1/departments/');
       if (response.ok) {
         const data = await response.json();
         setDepartments(data);
@@ -2985,7 +3074,7 @@ function NotificationManagement() {
         recipient_employees: filteredEmployees
       };
 
-      const response = await fetch('http://localhost:8001/api/v1/notifications/', {
+      const response = await fetch('http://localhost:8003/api/v1/notifications/', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -3032,7 +3121,7 @@ function NotificationManagement() {
         recipient_employees: filteredEmployees
       };
 
-      const response = await fetch(`http://localhost:8001/api/v1/notifications/${editingNotification.id}`, {
+      const response = await fetch(`http://localhost:8003/api/v1/notifications/${editingNotification.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -3076,7 +3165,7 @@ function NotificationManagement() {
 
     setDeletingNotification(notificationId);
     try {
-      const response = await fetch(`http://localhost:8001/api/v1/notifications/${notificationId}`, {
+      const response = await fetch(`http://localhost:8003/api/v1/notifications/${notificationId}`, {
         method: 'DELETE',
       });
       if (response.ok) {
@@ -3100,7 +3189,7 @@ function NotificationManagement() {
 
     setSendingNotification(notificationId);
     try {
-      const response = await fetch(`http://localhost:8001/api/v1/notifications/${notificationId}/send`, {
+      const response = await fetch(`http://localhost:8003/api/v1/notifications/${notificationId}/send`, {
         method: 'POST',
       });
       if (response.ok) {
@@ -3992,8 +4081,20 @@ function NotificationManagement() {
       <div className="max-w-7xl mx-auto">
         <div className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
           <div className="bg-gradient-to-r from-gray-50 to-gray-100 p-6 border-b border-gray-200">
-            <h3 className="text-lg font-semibold text-gray-900">Danh sách thông báo</h3>
-            <p className="text-sm text-gray-600 mt-1">Quản lý tất cả thông báo đã tạo</p>
+            <div className="flex justify-between items-center">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">Danh sách thông báo</h3>
+                <p className="text-sm text-gray-600 mt-1">Quản lý tất cả thông báo đã tạo</p>
+              </div>
+              {refreshing && (
+                <div className="flex items-center space-x-2 text-blue-600">
+                  <svg className="w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                  <span className="text-sm">Đang cập nhật...</span>
+                </div>
+              )}
+            </div>
           </div>
 
           <div className="overflow-x-auto">

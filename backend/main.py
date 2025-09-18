@@ -30,6 +30,7 @@ async def lifespan(app: FastAPI):
     """Handle application startup and shutdown events"""
     # Startup
     try:
+        # Start notification scheduler
         notification_scheduler.start_scheduler()
         print("✅ Notification scheduler started successfully")
     except Exception as e:
@@ -38,7 +39,7 @@ async def lifespan(app: FastAPI):
     # Shutdown
     try:
         notification_scheduler.stop_scheduler()
-        print("✅ Notification scheduler stopped successfully")
+        print("✅ Notification scheduler shutdown successfully")
     except Exception as e:
         print(f"❌ Error stopping notification scheduler: {e}")
 
