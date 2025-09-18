@@ -2,10 +2,11 @@ import schedule
 import time
 import threading
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Dict, List, Optional
 import sys
 import os
+import pytz
 
 # Add backend directory to path for imports
 backend_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -65,10 +66,10 @@ class NotificationScheduler:
         """Check for notifications that need to be scheduled"""
         try:
             # Get notifications that are published but not yet sent and have a scheduled time
-            now = datetime.now()
-            current_time = now.isoformat()
+            now_utc = datetime.now(timezone.utc)
+            current_time_utc = now_utc.isoformat()
 
-            result = supabase.table('notifications').select('*').eq('status', 'published').lt('scheduled_send_at', current_time).execute()
+            result = supabase.table('notifications').select('*').eq('status', 'published').lt('scheduled_send_at', current_time_utc).execute()
 
             if result.data:
                 for notification in result.data:
@@ -76,26 +77,39 @@ class NotificationScheduler:
 
         except Exception as e:
             logger.error(f"Error checking scheduled notifications: {str(e)}")
+            # Don't crash the scheduler, just log the error and continue
 
     def _schedule_notification(self, notification: dict):
         """Schedule a notification for sending"""
         try:
             notification_id = notification['id']
-            scheduled_time = datetime.fromisoformat(notification['scheduled_send_at'])
+            scheduled_time_str = notification['scheduled_send_at']
+
+            # Parse the scheduled time (stored as UTC)
+            if scheduled_time_str.endswith('Z'):
+                scheduled_time_str = scheduled_time_str[:-1] + '+00:00'
+
+            scheduled_time_utc = datetime.fromisoformat(scheduled_time_str)
+            if scheduled_time_utc.tzinfo is None:
+                scheduled_time_utc = scheduled_time_utc.replace(tzinfo=timezone.utc)
+
+            # Get current UTC time
+            now_utc = datetime.now(timezone.utc)
 
             # Calculate delay in seconds
-            now = datetime.now()
-            delay_seconds = max(0, (scheduled_time - now).total_seconds())
+            delay_seconds = max(0, (scheduled_time_utc - now_utc).total_seconds())
 
             if delay_seconds > 0:
-                # Schedule the job
-                job = schedule.every().day.at(scheduled_time.strftime("%H:%M")).do(
+                # Schedule the job using local time for the schedule library
+                # Since user says Vietnam local time doesn't add hours, convert UTC to local time
+                scheduled_time_local = scheduled_time_utc.replace(tzinfo=None)  # Remove timezone info, treat as local
+                job = schedule.every().day.at(scheduled_time_local.strftime("%H:%M")).do(
                     self._send_scheduled_notification,
                     notification_id=notification_id
                 )
 
                 self.scheduled_jobs[notification_id] = job
-                logger.info(f"Scheduled notification {notification_id} for {scheduled_time}")
+                logger.info(f"Scheduled notification {notification_id} for {scheduled_time_local} (local time)")
             else:
                 # Send immediately if the scheduled time has passed
                 self._send_scheduled_notification(notification_id)
@@ -144,7 +158,7 @@ class NotificationScheduler:
 
             # Update notification status
             update_data = {
-                'status': 'sent' if result['success'] else 'failed',
+                'status': 'sent' if result['success'] else 'cancelled',
                 'sent_at': datetime.now().isoformat(),
                 'updated_at': datetime.now().isoformat()
             }
@@ -182,33 +196,45 @@ class NotificationScheduler:
 
             # Employee recipients
             if notification.get('recipient_employees'):
-                for emp_id in notification['recipient_employees']:
-                    emp_result = supabase.table('employees').select('email').eq('id', emp_id).execute()
-                    if emp_result.data and emp_result.data[0].get('email'):
-                        recipient_emails.add(emp_result.data[0]['email'])
+                try:
+                    for emp_id in notification['recipient_employees']:
+                        emp_result = supabase.table('employees').select('email').eq('id', emp_id).execute()
+                        if emp_result.data and emp_result.data[0].get('email'):
+                            recipient_emails.add(emp_result.data[0]['email'])
+                except Exception as e:
+                    logger.error(f"Error getting employee emails: {str(e)}")
 
             # Department recipients
             if notification.get('recipient_departments'):
-                for dept_id in notification['recipient_departments']:
-                    emp_result = supabase.table('employees').select('email').eq('department_id', dept_id).execute()
-                    for emp in emp_result.data or []:
-                        if emp.get('email'):
-                            recipient_emails.add(emp['email'])
+                try:
+                    for dept_id in notification['recipient_departments']:
+                        emp_result = supabase.table('employees').select('email').eq('department_id', dept_id).execute()
+                        for emp in emp_result.data or []:
+                            if emp.get('email'):
+                                recipient_emails.add(emp['email'])
+                except Exception as e:
+                    logger.error(f"Error getting department emails: {str(e)}")
 
             # Role recipients
             if notification.get('recipient_roles'):
-                for role_id in notification['recipient_roles']:
-                    emp_result = supabase.table('employees').select('email').eq('role_id', role_id).execute()
-                    for emp in emp_result.data or []:
-                        if emp.get('email'):
-                            recipient_emails.add(emp['email'])
+                try:
+                    for role_id in notification['recipient_roles']:
+                        emp_result = supabase.table('employees').select('email').eq('role_id', role_id).execute()
+                        for emp in emp_result.data or []:
+                            if emp.get('email'):
+                                recipient_emails.add(emp['email'])
+                except Exception as e:
+                    logger.error(f"Error getting role emails: {str(e)}")
 
             # Send to all
             if notification.get('send_to_all'):
-                emp_result = supabase.table('employees').select('email').execute()
-                for emp in emp_result.data or []:
-                    if emp.get('email'):
-                        recipient_emails.add(emp['email'])
+                try:
+                    emp_result = supabase.table('employees').select('email').execute()
+                    for emp in emp_result.data or []:
+                        if emp.get('email'):
+                            recipient_emails.add(emp['email'])
+                except Exception as e:
+                    logger.error(f"Error getting all employee emails: {str(e)}")
 
         except Exception as e:
             logger.error(f"Error getting recipient emails: {str(e)}")
@@ -244,7 +270,7 @@ class NotificationScheduler:
 
             # Update notification status
             update_data = {
-                'status': 'sent' if result['success'] else 'failed',
+                'status': 'sent' if result['success'] else 'cancelled',
                 'sent_at': datetime.now().isoformat(),
                 'updated_at': datetime.now().isoformat()
             }

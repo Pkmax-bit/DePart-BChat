@@ -310,7 +310,7 @@ class NotificationCreate(BaseModel):
     recipient_departments: Optional[list[int]] = []
     recipient_roles: Optional[list[int]] = []
     send_to_all: bool = False
-    scheduled_send_at: Optional[str] = None
+    scheduled_send_at: Optional[str] = None  # ISO string in user's local timezone
 
 # Model cho cập nhật thông báo
 class NotificationUpdate(BaseModel):

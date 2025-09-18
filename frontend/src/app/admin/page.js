@@ -3191,6 +3191,7 @@ function NotificationManagement() {
   const getStatusColor = (status) => {
     switch (status) {
       case 'draft': return 'bg-gray-100 text-gray-800 border-gray-200';
+      case 'published': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
       case 'scheduled': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
       case 'sent': return 'bg-green-100 text-green-800 border-green-200';
       case 'failed': return 'bg-red-100 text-red-800 border-red-200';
@@ -3285,7 +3286,7 @@ function NotificationManagement() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600">Lên lịch</p>
-                <p className="text-2xl font-bold text-purple-600">{notifications.filter(n => n.status === 'scheduled').length}</p>
+                <p className="text-2xl font-bold text-purple-600">{notifications.filter(n => n.status === 'published' || n.status === 'scheduled').length}</p>
               </div>
               <div className="bg-purple-100 p-3 rounded-lg">
                 <svg className="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -4072,6 +4073,7 @@ function NotificationManagement() {
                       <td className="px-6 py-4">
                         <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor(notification.status)}`}>
                           {notification.status === 'draft' ? '📝 Nháp' :
+                           notification.status === 'published' ? '⏰ Đã lên lịch' :
                            notification.status === 'scheduled' ? '⏰ Đã lên lịch' :
                            notification.status === 'sent' ? '✅ Đã gửi' :
                            notification.status === 'failed' ? '❌ Thất bại' : notification.status}
@@ -4079,7 +4081,7 @@ function NotificationManagement() {
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-900">
                         {notification.scheduled_send_at
-                          ? new Date(notification.scheduled_send_at).toLocaleString('vi-VN')
+                          ? notification.scheduled_send_at.replace('T', ' ').substring(0, 16)
                           : '📤 Gửi ngay'
                         }
                       </td>
@@ -4102,6 +4104,25 @@ function NotificationManagement() {
                                 </svg>
                               )}
                               Gửi
+                            </button>
+                          )}
+                          {(notification.status === 'published' || notification.status === 'scheduled') && notification.scheduled_send_at && (
+                            <button
+                              onClick={() => handleSendNotification(notification.id)}
+                              disabled={sendingNotification === notification.id}
+                              className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-lg text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 transition-colors"
+                              title="Gửi ngay lập tức"
+                            >
+                              {sendingNotification === notification.id ? (
+                                <svg className="w-4 h-4 mr-1 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                </svg>
+                              ) : (
+                                <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                                </svg>
+                              )}
+                              Gửi ngay
                             </button>
                           )}
                           <button

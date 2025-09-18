@@ -15,7 +15,48 @@ from models import (
 from supabase_client import supabase
 from email_service import email_service
 from notification_scheduler import notification_scheduler
-from datetime import datetime
+from datetime import datetime, timezone
+import pytz
+import logging
+
+logger = logging.getLogger(__name__)
+
+# Timezone utilities - Simplified for Vietnam local time
+def local_to_utc(local_datetime_str: str) -> str:
+    """Convert local datetime string to UTC ISO string"""
+    if not local_datetime_str or not local_datetime_str.strip():
+        return None
+
+    try:
+        # Parse the datetime string (from datetime-local input, it's already in Vietnam local time)
+        local_dt = datetime.fromisoformat(local_datetime_str.replace('Z', '+00:00'))
+
+        # Since user says Vietnam local time doesn't add hours, treat it as UTC
+        if local_dt.tzinfo is None:
+            local_dt = local_dt.replace(tzinfo=timezone.utc)
+
+        return local_dt.isoformat()
+    except Exception as e:
+        logger.error(f"Error converting local to UTC: {str(e)}")
+        return local_datetime_str  # Return as-is if conversion fails
+
+def utc_to_local(utc_datetime_str: str) -> str:
+    """Convert UTC datetime string to local timezone ISO string"""
+    if not utc_datetime_str or not utc_datetime_str.strip():
+        return None
+
+    try:
+        # Parse UTC datetime
+        utc_dt = datetime.fromisoformat(utc_datetime_str.replace('Z', '+00:00'))
+        if utc_dt.tzinfo is None:
+            utc_dt = utc_dt.replace(tzinfo=timezone.utc)
+
+        # Since user says Vietnam local time doesn't add hours, return as-is without timezone info
+        # This prevents JavaScript from interpreting it as UTC and adding 7 hours
+        return utc_dt.strftime('%Y-%m-%dT%H:%M')
+    except Exception as e:
+        logger.error(f"Error converting UTC to local: {str(e)}")
+        return utc_datetime_str  # Return as-is if conversion fails
 
 router = APIRouter()
 
@@ -29,8 +70,8 @@ async def create_notification(notification: NotificationCreate):
         else:
             status = 'draft'
 
-        # Handle scheduled_send_at - convert empty string to None
-        scheduled_at = notification.scheduled_send_at if (notification.scheduled_send_at and notification.scheduled_send_at.strip()) else None
+        # Handle scheduled_send_at - convert local time to UTC for storage
+        scheduled_at = local_to_utc(notification.scheduled_send_at) if notification.scheduled_send_at and notification.scheduled_send_at.strip() else None
 
         result = supabase.table('notifications').insert({
             'title': notification.title,
@@ -48,6 +89,10 @@ async def create_notification(notification: NotificationCreate):
 
         if result.data:
             created_notification = result.data[0]
+
+            # Convert scheduled_send_at from UTC to local time for display
+            if created_notification.get('scheduled_send_at'):
+                created_notification['scheduled_send_at'] = utc_to_local(created_notification['scheduled_send_at'])
 
             # If no schedule is set, send immediately
             if not scheduled_at:
@@ -79,7 +124,14 @@ async def get_notifications(status: Optional[str] = None, limit: int = 50, offse
 
         result = query.execute()
 
-        return result.data if result.data else []
+        # Convert scheduled_send_at from UTC to local time for display
+        notifications = []
+        for notification in result.data if result.data else []:
+            if notification.get('scheduled_send_at'):
+                notification['scheduled_send_at'] = utc_to_local(notification['scheduled_send_at'])
+            notifications.append(notification)
+
+        return notifications
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Lỗi lấy danh sách thông báo: {str(e)}")
 
@@ -92,7 +144,13 @@ async def get_notification(notification_id: int):
         if not result.data:
             raise HTTPException(status_code=404, detail="Không tìm thấy thông báo")
 
-        return result.data[0]
+        notification = result.data[0]
+
+        # Convert scheduled_send_at from UTC to local time for display
+        if notification.get('scheduled_send_at'):
+            notification['scheduled_send_at'] = utc_to_local(notification['scheduled_send_at'])
+
+        return notification
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Lỗi lấy thông tin thông báo: {str(e)}")
 
@@ -128,14 +186,24 @@ async def update_notification(notification_id: int, notification: NotificationUp
         if notification.send_to_all is not None:
             update_data['send_to_all'] = notification.send_to_all
         if notification.scheduled_send_at is not None:
-            update_data['scheduled_send_at'] = notification.scheduled_send_at if (notification.scheduled_send_at and notification.scheduled_send_at.strip()) else None
+            update_data['scheduled_send_at'] = local_to_utc(notification.scheduled_send_at) if (notification.scheduled_send_at and notification.scheduled_send_at.strip()) else None
 
         update_data['updated_at'] = datetime.now().isoformat()
 
         if update_data:
             result = supabase.table('notifications').update(update_data).eq('id', notification_id).execute()
-            return result.data[0] if result.data else current_result.data[0]
+            updated_notification = result.data[0] if result.data else current_result.data[0]
+
+            # Convert scheduled_send_at from UTC to local time for display
+            if updated_notification.get('scheduled_send_at'):
+                updated_notification['scheduled_send_at'] = utc_to_local(updated_notification['scheduled_send_at'])
+
+            return updated_notification
         else:
+            # Convert scheduled_send_at from UTC to local time for display
+            if current_result.data[0].get('scheduled_send_at'):
+                current_result.data[0]['scheduled_send_at'] = utc_to_local(current_result.data[0]['scheduled_send_at'])
+
             return current_result.data[0]
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Lỗi cập nhật thông báo: {str(e)}")

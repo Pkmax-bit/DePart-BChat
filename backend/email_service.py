@@ -9,8 +9,8 @@ logger = logging.getLogger(__name__)
 class EmailService:
     def __init__(self):
         # Email configuration - you can move these to environment variables
-        self.sender_email = os.getenv('SENDER_EMAIL', 'your-email@example.com')
-        self.sender_password = os.getenv('SENDER_PASSWORD', 'your-password')
+        self.sender_email = os.getenv('SMTP_USER', 'your-email@example.com')
+        self.sender_password = os.getenv('SMTP_PASSWORD', 'your-password')
         self.smtp_server = os.getenv('SMTP_SERVER', 'smtp.gmail.com')
         self.smtp_port = int(os.getenv('SMTP_PORT', '587'))
 
@@ -20,7 +20,10 @@ class EmailService:
                 user=self.sender_email,
                 password=self.sender_password,
                 host=self.smtp_server,
-                port=self.smtp_port
+                port=self.smtp_port,
+                smtp_ssl=False,  # Disable SSL, use TLS instead
+                smtp_starttls=True,  # Enable STARTTLS
+                smtp_skip_login=False
             )
             logger.info("Email service initialized successfully")
         except Exception as e:
