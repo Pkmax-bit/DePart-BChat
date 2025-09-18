@@ -360,9 +360,11 @@ async def create_invoice(invoice_data: dict):
                 supabase.table('invoice_items').insert({
                     'invoice_id': invoice_id,
                     'loai_san_pham': 'phu_kien_bep',
+                    'id_loaiphukien': item.get('id_loaiphukien'),
                     'id_phukien': item['id_phukien'],
                     'so_luong': item.get('so_luong', 1),
                     'don_gia': item['don_gia'],
+                    'chiet_khau': item.get('chiet_khau', 0),
                     'thanh_tien': item['thanh_tien']
                 }).execute()
             else:
@@ -380,9 +382,7 @@ async def create_invoice(invoice_data: dict):
                     'sau': item['sau'],
                     'so_luong': item['so_luong'],
                     'don_gia': item['don_gia'],
-                    'dien_tich_ke_hoach': item['dien_tich_ke_hoach'],
-                    'dien_tich_thuc_te': item['dien_tich_thuc_te'],
-                    'ti_le': item['ti_le'],
+                    'chiet_khau': item.get('chiet_khau', 0),
                     'thanh_tien': item['thanh_tien']
                 }).execute()
 

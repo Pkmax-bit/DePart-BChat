@@ -258,6 +258,7 @@ function InvoicesTab() {
         dien_tich_ke_hoach: 0,
         dien_tich_thuc_te: 0,
         ti_le: 0,
+        chiet_khau: 0,
         thanh_tien: 0
       };
       setInvoiceItems([...invoiceItems, newItem]);
@@ -270,6 +271,7 @@ function InvoicesTab() {
         phukien: null,
         so_luong: 1,
         don_gia: 0,
+        chiet_khau: 0,
         thanh_tien: 0
       };
       setInvoiceItems([...invoiceItems, newItem]);
@@ -319,6 +321,7 @@ function InvoicesTab() {
             dien_tich_ke_hoach: 0,
             dien_tich_thuc_te: 0,
             ti_le: 0,
+            chiet_khau: 0,
             thanh_tien: 0
           };
           updatedItems.push(item);
@@ -397,6 +400,7 @@ function InvoicesTab() {
           dien_tich_ke_hoach: 0,
           dien_tich_thuc_te: 0,
           ti_le: 0,
+          chiet_khau: 0,
           thanh_tien: 0
         };
         updatedItems.push(item);
@@ -639,6 +643,9 @@ function InvoicesTab() {
         if (field === 'don_gia') {
           calculateInvoiceItem(updatedItem);
         }
+        if (field === 'chiet_khau') {
+          calculateInvoiceItem(updatedItem);
+        }
         
         return updatedItem;
       }
@@ -647,10 +654,11 @@ function InvoicesTab() {
   };
 
   const calculateInvoiceItem = (item) => {
-    // Nếu là phụ kiện bếp, chỉ cần tính đơn giá * số lượng
+    // Nếu là phụ kiện bếp, chỉ cần tính đơn giá * số lượng - chiết khấu
     if (item.loai_san_pham === 'phu_kien_bep') {
-      const thanh_tien = (item.don_gia || 0) * (item.so_luong || 1);
-      item.thanh_tien = thanh_tien;
+      const thanh_tien_truoc_chiet_khau = (item.don_gia || 0) * (item.so_luong || 1);
+      const chiet_khau_amount = (thanh_tien_truoc_chiet_khau * (item.chiet_khau || 0)) / 100;
+      item.thanh_tien = thanh_tien_truoc_chiet_khau - chiet_khau_amount;
       return;
     }
 
@@ -666,8 +674,14 @@ function InvoicesTab() {
     // Tỉ lệ
     const ti_le = dien_tich_ke_hoach > 0 ? (dien_tich_thuc_te / dien_tich_ke_hoach) : 0;
     
-    // Thành tiền
-    const thanh_tien = ti_le * (item.don_gia || 0) * (item.so_luong || 1);
+    // Thành tiền trước chiết khấu
+    const thanh_tien_truoc_chiet_khau = ti_le * (item.don_gia || 0) * (item.so_luong || 1);
+    
+    // Tính chiết khấu
+    const chiet_khau_amount = (thanh_tien_truoc_chiet_khau * (item.chiet_khau || 0)) / 100;
+    
+    // Thành tiền sau chiết khấu
+    const thanh_tien = thanh_tien_truoc_chiet_khau - chiet_khau_amount;
     
     item.dien_tich_thuc_te = dien_tich_thuc_te;
     item.ti_le = ti_le;
@@ -732,6 +746,7 @@ function InvoicesTab() {
               id_phukien: item.id_phukien,
               so_luong: item.so_luong,
               don_gia: item.don_gia,
+              chiet_khau: item.chiet_khau,
               thanh_tien: item.thanh_tien
             };
           } else {
@@ -750,6 +765,7 @@ function InvoicesTab() {
               dien_tich_ke_hoach: item.dien_tich_ke_hoach,
               dien_tich_thuc_te: item.dien_tich_thuc_te,
               ti_le: item.ti_le,
+              chiet_khau: item.chiet_khau,
               thanh_tien: item.thanh_tien
             };
           }
@@ -774,8 +790,6 @@ function InvoicesTab() {
         setInvoiceItems([]);
         setInvoiceDate(new Date().toISOString().split('T')[0]);
         setInvoiceTime(new Date().toTimeString().split(' ')[0]);
-        // Reload trang
-        window.location.reload();
       } else {
         const errorData = await response.json();
         alert(`Có lỗi xảy ra khi lưu hóa đơn: ${errorData.detail || 'Lỗi không xác định'}`);
@@ -816,7 +830,7 @@ function InvoicesTab() {
       {/* Invoice Info */}
       <div className="bg-white rounded-lg shadow-sm border p-6">
         <h3 className="text-lg font-semibold text-gray-900 mb-4">Thông tin hóa đơn</h3>
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Tên khách hàng</label>
             <input
@@ -1258,6 +1272,19 @@ function InvoicesTab() {
                       />
                     </div>
                     <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Chiết khấu (%)</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        max="100"
+                        value={item.chiet_khau}
+                        onChange={(e) => updateInvoiceItem(item.id, 'chiet_khau', parseFloat(e.target.value) || 0)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-red-100 text-black"
+                        placeholder="0"
+                      />
+                    </div>
+                    <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">Diện tích kế hoạch (mm²)</label>
                       <input
                         type="number"
@@ -1275,6 +1302,9 @@ function InvoicesTab() {
                         readOnly
                       />
                     </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">Tỉ lệ (%)</label>
                       <input
@@ -1285,16 +1315,12 @@ function InvoicesTab() {
                         readOnly
                       />
                     </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Tỉ lệ (%)</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Thành tiền trước CK (VND)</label>
                       <input
-                        type="number"
-                        step="0.01"
-                        value={(item.ti_le * 100).toFixed(2)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-black"
+                        type="text"
+                        value={`${((item.ti_le * item.don_gia * item.so_luong) || 0).toLocaleString('vi-VN')} VND`}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-blue-50 text-blue-700"
                         readOnly
                       />
                     </div>
@@ -1387,17 +1413,39 @@ function InvoicesTab() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Đơn giá (VND)</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Thành tiền trước CK (VND)</label>
+                    <input
+                      type="text"
+                      value={`${((item.don_gia * item.so_luong) || 0).toLocaleString('vi-VN')} VND`}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-blue-50 text-blue-700"
+                      readOnly
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Chiết khấu (%)</label>
                     <input
                       type="number"
-                      step="0.01"
                       min="0"
-                      value={item.don_gia}
-                      onChange={(e) => updateInvoiceItem(item.id, 'don_gia', parseFloat(e.target.value) || 0)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-yellow-100 text-black"
-                      placeholder="Nhập đơn giá"
+                      max="100"
+                      step="0.1"
+                      value={item.chiet_khau || 0}
+                      onChange={(e) => {
+                        const newChietKhau = parseFloat(e.target.value) || 0;
+                        const updatedItems = invoiceItems.map(invItem =>
+                          invItem.id === item.id
+                            ? {
+                                ...invItem,
+                                chiet_khau: newChietKhau,
+                                thanh_tien: Math.round((invItem.don_gia * invItem.so_luong) * (1 - newChietKhau / 100))
+                              }
+                            : invItem
+                        );
+                        setInvoiceItems(updatedItems);
+                      }}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent text-black"
+                      placeholder="0.0"
                     />
                   </div>
                   <div>
@@ -1511,8 +1559,8 @@ function InvoicesTab() {
                         <p className="font-medium text-black">{(item.ti_le * 100 || 0).toFixed(2)}%</p>
                       </div>
                       <div>
-                        <span className="text-gray-700 font-medium">Đơn giá:</span>
-                        <p className="font-medium text-black">{(item.don_gia || 0).toLocaleString('vi-VN')} VND</p>
+                        <span className="text-gray-700 font-medium">Chiết khấu:</span>
+                        <p className="font-medium text-red-600">{item.chiet_khau || 0}%</p>
                       </div>
                     </div>
                   </div>
@@ -1551,8 +1599,8 @@ function InvoicesTab() {
                       <p className="font-medium text-black">{item.phukien?.cong_suat || 'N/A'}</p>
                     </div>
                     <div>
-                      <span className="text-gray-700 font-medium">Đơn giá:</span>
-                      <p className="font-medium text-black">{item.don_gia.toLocaleString('vi-VN')} VND</p>
+                      <span className="text-gray-700 font-medium">Chiết khấu:</span>
+                      <p className="font-medium text-red-600">{item.chiet_khau || 0}%</p>
                     </div>
                   </div>
                 </div>
@@ -1563,7 +1611,7 @@ function InvoicesTab() {
             <div className="mt-6 pt-4 border-t">
               <div className="flex justify-between items-center">
                 <div>
-                  <h4 className="text-lg font-semibold text-black">Tổng cộng</h4>
+                  <h4 className="text-lg font-semibold text-black">Tóm tắt</h4>
                   <p className="text-sm text-gray-700">
                     {selectedBophans.length} bộ phận tủ bếp • {invoiceItems.filter(item => item.loai_san_pham === 'phu_kien_bep').length} phụ kiện bếp • {invoiceItems.reduce((sum, item) => sum + (item.so_luong || 0), 0)} sản phẩm
                   </p>
@@ -1814,6 +1862,7 @@ function RevenueTab({ salesData, products, setSalesData }) {
                     <th>Kích thước</th>
                     <th>Số lượng</th>
                     <th>Đơn giá</th>
+                    <th>Chiết khấu</th>
                     <th>Thành tiền</th>
                   </tr>
                 </thead>
@@ -1830,6 +1879,7 @@ function RevenueTab({ salesData, products, setSalesData }) {
                       <td>${item.ngang} x ${item.cao} x ${item.sau} mm</td>
                       <td>${item.so_luong}</td>
                       <td>${item.don_gia?.toLocaleString('vi-VN')} VND</td>
+                      <td>${item.chiet_khau || 0}%</td>
                       <td>${item.thanh_tien?.toLocaleString('vi-VN')} VND</td>
                     </tr>
                   `).join('')}
@@ -1904,6 +1954,7 @@ function RevenueTab({ salesData, products, setSalesData }) {
                     <th>Kích thước</th>
                     <th>Số lượng</th>
                     <th>Đơn giá</th>
+                    <th>Chiết khấu</th>
                     <th>Thành tiền</th>
                   </tr>
                 </thead>
@@ -1920,6 +1971,7 @@ function RevenueTab({ salesData, products, setSalesData }) {
                       <td>${item.ngang} x ${item.cao} x ${item.sau} mm</td>
                       <td>${item.so_luong}</td>
                       <td>${item.don_gia?.toLocaleString('vi-VN')} VND</td>
+                      <td>${item.chiet_khau || 0}%</td>
                       <td>${item.thanh_tien?.toLocaleString('vi-VN')} VND</td>
                     </tr>
                   `).join('')}
@@ -1960,7 +2012,7 @@ function RevenueTab({ salesData, products, setSalesData }) {
     // Header
     excelData.push(['DANH SÁCH HÓA ĐƠN THÁNG ' + selectedMonth]);
     excelData.push([]);
-    excelData.push(['STT', 'Khách hàng', 'Ngày', 'Giờ', 'Loại sản phẩm', 'Tên sản phẩm', 'Loại/Thông số', 'Kích thước', 'Số lượng', 'Đơn giá', 'Thành tiền', 'Tổng hóa đơn']);
+    excelData.push(['STT', 'Khách hàng', 'Ngày', 'Giờ', 'Loại sản phẩm', 'Tên sản phẩm', 'Loại/Thông số', 'Kích thước', 'Số lượng', 'Đơn giá', 'Chiết khấu', 'Thành tiền', 'Tổng hóa đơn']);
 
     let rowIndex = 4; // Bắt đầu từ dòng 4 (index 3)
     
@@ -1990,6 +2042,7 @@ function RevenueTab({ salesData, products, setSalesData }) {
               : `${item.ngang || 0} x ${item.cao || 0} x ${item.sau || 0} mm`, // Kích thước
             item.so_luong,
             item.don_gia || 0,
+            item.chiet_khau || 0,
             item.thanh_tien || 0,
             itemIndex === 0 ? invoice.total_amount || 0 : '' // Chỉ hiển thị tổng ở dòng đầu của mỗi hóa đơn
           ]);
@@ -2007,6 +2060,7 @@ function RevenueTab({ salesData, products, setSalesData }) {
           'N/A', // Kích thước
           0,
           0,
+          0, // Chiết khấu
           0,
           invoice.total_amount || 0
         ]);
@@ -2037,6 +2091,7 @@ function RevenueTab({ salesData, products, setSalesData }) {
       { wch: 20 },  // Kích thước
       { wch: 12 },  // Số lượng
       { wch: 15 },  // Đơn giá
+      { wch: 12 },  // Chiết khấu
       { wch: 15 },  // Thành tiền
       { wch: 18 }   // Tổng hóa đơn
     ];
@@ -2087,7 +2142,7 @@ function RevenueTab({ salesData, products, setSalesData }) {
         };
         
         // Căn giữa cho các cột số
-        if (col === 0 || col === 8 || col === 9 || col === 10) {
+        if (col === 0 || col === 8 || col === 9 || col === 10 || col === 11) {
           ws[cellAddress].s.alignment = { horizontal: "center", vertical: "center" };
         } else {
           ws[cellAddress].s.alignment = { horizontal: "left", vertical: "center" };
