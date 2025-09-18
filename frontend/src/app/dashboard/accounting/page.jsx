@@ -271,6 +271,9 @@ function InvoicesTab() {
         phukien: null,
         so_luong: 1,
         don_gia: 0,
+        dien_tich_ke_hoach: 0,
+        dien_tich_thuc_te: 0,
+        ti_le: 0,
         chiet_khau: 0,
         thanh_tien: 0
       };
