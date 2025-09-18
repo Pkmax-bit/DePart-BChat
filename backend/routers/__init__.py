@@ -11,3 +11,4 @@ from . import conversation_sync
 from . import user_chat
 from . import accounting
 from . import payroll
+from . import notifications

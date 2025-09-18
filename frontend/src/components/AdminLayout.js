@@ -1,4 +1,4 @@
-import { Users, MessageSquare, MessageCircle, Building, LogOut, History, Menu, X } from 'lucide-react';
+import { Users, MessageSquare, MessageCircle, Building, LogOut, History, Menu, X, Bell } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
 import { useState } from 'react';
 
@@ -135,7 +135,7 @@ export default function AdminLayout({ user, activeTab, onTabChange, children }) 
               onTabChange('chat-history');
               setSidebarOpen(false);
             }}
-            className={`w-full text-left px-3 py-2 rounded-md text-sm font-medium flex items-center ${
+            className={`w-full text-left px-3 py-2 rounded-md text-sm font-medium mb-2 flex items-center ${
               activeTab === 'chat-history'
                 ? 'bg-blue-100 text-blue-700'
                 : 'text-gray-900 hover:bg-gray-100'
@@ -143,6 +143,21 @@ export default function AdminLayout({ user, activeTab, onTabChange, children }) 
           >
             <History className="w-4 h-4 mr-2" />
             Lịch sử Chat
+          </button>
+
+          <button
+            onClick={() => {
+              onTabChange('notifications');
+              setSidebarOpen(false);
+            }}
+            className={`w-full text-left px-3 py-2 rounded-md text-sm font-medium mb-2 flex items-center ${
+              activeTab === 'notifications'
+                ? 'bg-blue-100 text-blue-700'
+                : 'text-gray-900 hover:bg-gray-100'
+            }`}
+          >
+            <Bell className="w-4 h-4 mr-2" />
+            Thông báo
           </button>
         </nav>
 
@@ -187,7 +202,8 @@ export default function AdminLayout({ user, activeTab, onTabChange, children }) 
                  activeTab === 'departments' ? 'Quản lý Phòng ban' :
                  activeTab === 'feedback' ? 'Quản lý Góp Ý' :
                  activeTab === 'user-chat-history' ? 'User Chat History' :
-                 activeTab === 'chat-history' ? 'Lịch sử Trò chuyện' : 'Admin Panel'}
+                 activeTab === 'chat-history' ? 'Lịch sử Trò chuyện' :
+                 activeTab === 'notifications' ? 'Quản lý Thông báo' : 'Admin Panel'}
               </h1>
             </div>
             <div className="flex items-center space-x-4">

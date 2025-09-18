@@ -295,3 +295,74 @@ class TinhLuongRequest(BaseModel):
     ky_tinh_luong: str
     phu_cap_khac: float = 0
     thuong_kpi: float = 0
+
+# ===== NOTIFICATION MODELS =====
+
+# Model cho tạo thông báo mới
+class NotificationCreate(BaseModel):
+    title: str
+    content: str
+    type: str = "info"  # "info", "warning", "error", "success", "announcement"
+    priority: str = "normal"  # "low", "normal", "high", "urgent"
+    status: str = "draft"  # "draft", "published", "sent", "cancelled"
+    recipient_emails: Optional[list[str]] = []
+    recipient_employees: Optional[list[str]] = []
+    recipient_departments: Optional[list[int]] = []
+    recipient_roles: Optional[list[int]] = []
+    send_to_all: bool = False
+    scheduled_send_at: Optional[str] = None
+
+# Model cho cập nhật thông báo
+class NotificationUpdate(BaseModel):
+    title: Optional[str] = None
+    content: Optional[str] = None
+    type: Optional[str] = None
+    priority: Optional[str] = None
+    status: Optional[str] = None
+    recipient_emails: Optional[list[str]] = None
+    recipient_employees: Optional[list[str]] = None
+    recipient_departments: Optional[list[int]] = None
+    recipient_roles: Optional[list[int]] = None
+    send_to_all: Optional[bool] = None
+    scheduled_send_at: Optional[str] = None
+
+# Model cho phản hồi thông báo
+class NotificationResponse(BaseModel):
+    id: int
+    title: str
+    content: str
+    type: str
+    priority: str
+    status: str
+    recipient_emails: list[str]
+    recipient_employees: list[str]
+    recipient_departments: list[int]
+    recipient_roles: list[int]
+    send_to_all: bool
+    scheduled_send_at: Optional[str]
+    sent_at: Optional[str]
+    created_at: Optional[str]
+    updated_at: Optional[str]
+
+# Model cho gửi thông báo
+class NotificationSendRequest(BaseModel):
+    notification_id: int
+
+# Model cho lịch sử gửi thông báo
+class NotificationLogCreate(BaseModel):
+    notification_id: int
+    recipient_email: str
+    recipient_employee: Optional[str] = None
+    status: str = "pending"  # "pending", "sent", "failed"
+    sent_at: Optional[str] = None
+    error_message: Optional[str] = None
+
+class NotificationLogResponse(BaseModel):
+    id: int
+    notification_id: int
+    recipient_email: str
+    recipient_employee: Optional[str]
+    status: str
+    sent_at: Optional[str]
+    error_message: Optional[str]
+    created_at: Optional[str]

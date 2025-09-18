@@ -88,6 +88,7 @@ export default function AdminPage() {
       {activeTab === 'feedback' && <FeedbackManagement />}
       {activeTab === 'user-chat-history' && <UserChatHistoryManagement />}
       {activeTab === 'chat-history' && <ChatHistoryManagement />}
+      {activeTab === 'notifications' && <NotificationManagement />}
     </AdminLayout>
   );
 }
@@ -2883,6 +2884,1261 @@ function DepartmentManagement() {
               ))}
             </tbody>
           </table>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function NotificationManagement() {
+  const [notifications, setNotifications] = useState([]);
+  const [employees, setEmployees] = useState([]);
+  const [departments, setDepartments] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [showEditForm, setShowEditForm] = useState(false);
+  const [editingNotification, setEditingNotification] = useState(null);
+  const [deletingNotification, setDeletingNotification] = useState(null);
+  const [sendingNotification, setSendingNotification] = useState(null);
+  const [selectedEmployees, setSelectedEmployees] = useState([]);
+  const [employeeSearchTerm, setEmployeeSearchTerm] = useState('');
+  const [selectedDepartmentFilter, setSelectedDepartmentFilter] = useState('');
+  const [newNotification, setNewNotification] = useState({
+    title: '',
+    content: '',
+    type: 'info', // 'info', 'warning', 'error', 'success', 'announcement'
+    priority: 'normal', // 'low', 'normal', 'high', 'urgent'
+    status: 'draft',
+    recipient_emails: [],
+    recipient_employees: [],
+    recipient_departments: [],
+    recipient_roles: [],
+    send_to_all: false,
+    scheduled_send_at: ''
+  });
+  const [editNotification, setEditNotification] = useState({
+    title: '',
+    content: '',
+    type: 'info',
+    priority: 'normal',
+    status: 'draft',
+    recipient_emails: [],
+    recipient_employees: [],
+    recipient_departments: [],
+    recipient_roles: [],
+    send_to_all: false,
+    scheduled_send_at: ''
+  });
+
+  useEffect(() => {
+    fetchNotifications();
+    fetchEmployees();
+    fetchDepartments();
+  }, []);
+
+  const fetchNotifications = async () => {
+    try {
+      const response = await fetch('http://localhost:8001/api/v1/notifications/');
+      if (response.ok) {
+        const data = await response.json();
+        setNotifications(data);
+      }
+    } catch (error) {
+      console.error('Error fetching notifications:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchEmployees = async () => {
+    try {
+      const response = await fetch('http://localhost:8001/api/v1/users/');
+      if (response.ok) {
+        const data = await response.json();
+        setEmployees(data.users || data || []);
+      }
+    } catch (error) {
+      console.error('Error fetching employees:', error);
+    }
+  };
+
+  const fetchDepartments = async () => {
+    try {
+      const response = await fetch('http://localhost:8001/api/v1/departments/');
+      if (response.ok) {
+        const data = await response.json();
+        setDepartments(data);
+      }
+    } catch (error) {
+      console.error('Error fetching departments:', error);
+    }
+  };
+
+  const handleAddNotification = async (e) => {
+    e.preventDefault();
+    try {
+      // Filter out null values from selectedEmployees
+      const filteredEmployees = selectedEmployees.filter(emp => emp != null && emp !== '');
+
+      const notificationData = {
+        ...newNotification,
+        recipient_employees: filteredEmployees
+      };
+
+      const response = await fetch('http://localhost:8001/api/v1/notifications/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(notificationData)
+      });
+
+      if (response.ok) {
+        setShowAddForm(false);
+        setNewNotification({
+          title: '',
+          content: '',
+          type: 'info',
+          priority: 'normal',
+          status: 'draft',
+          recipient_emails: [],
+          recipient_employees: [],
+          recipient_departments: [],
+          recipient_roles: [],
+          send_to_all: false,
+          scheduled_send_at: ''
+        });
+        setSelectedEmployees([]);
+        fetchNotifications();
+        alert('Đã tạo thông báo thành công!');
+      } else {
+        const errorData = await response.json();
+        alert('Lỗi tạo thông báo: ' + (errorData.detail || 'Có lỗi xảy ra'));
+      }
+    } catch (error) {
+      console.error('Error adding notification:', error);
+      alert('Lỗi kết nối đến server: ' + error.message);
+    }
+  };
+
+  const handleEditNotification = async (e) => {
+    e.preventDefault();
+    try {
+      // Filter out null values from selectedEmployees
+      const filteredEmployees = selectedEmployees.filter(emp => emp != null && emp !== '');
+
+      const notificationData = {
+        ...editNotification,
+        recipient_employees: filteredEmployees
+      };
+
+      const response = await fetch(`http://localhost:8001/api/v1/notifications/${editingNotification.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(notificationData)
+      });
+
+      if (response.ok) {
+        setShowEditForm(false);
+        setEditingNotification(null);
+        setEditNotification({
+          title: '',
+          content: '',
+          type: 'info',
+          priority: 'normal',
+          status: 'draft',
+          recipient_emails: [],
+          recipient_employees: [],
+          recipient_departments: [],
+          recipient_roles: [],
+          send_to_all: false,
+          scheduled_send_at: ''
+        });
+        setSelectedEmployees([]);
+        fetchNotifications();
+        alert('Đã cập nhật thông báo thành công!');
+      } else {
+        const errorData = await response.json();
+        alert('Lỗi cập nhật thông báo: ' + (errorData.detail || 'Có lỗi xảy ra'));
+      }
+    } catch (error) {
+      console.error('Error updating notification:', error);
+      alert('Lỗi kết nối đến server: ' + error.message);
+    }
+  };
+
+  const handleDeleteNotification = async (notificationId) => {
+    if (!confirm('Bạn có chắc chắn muốn xóa thông báo này?')) {
+      return;
+    }
+
+    setDeletingNotification(notificationId);
+    try {
+      const response = await fetch(`http://localhost:8001/api/v1/notifications/${notificationId}`, {
+        method: 'DELETE',
+      });
+      if (response.ok) {
+        fetchNotifications();
+        alert('Đã xóa thông báo thành công!');
+      } else {
+        alert('Có lỗi xảy ra khi xóa thông báo!');
+      }
+    } catch (error) {
+      console.error('Error deleting notification:', error);
+      alert('Có lỗi xảy ra khi xóa thông báo!');
+    } finally {
+      setDeletingNotification(null);
+    }
+  };
+
+  const handleSendNotification = async (notificationId) => {
+    if (!confirm('Bạn có chắc chắn muốn gửi thông báo này ngay bây giờ?')) {
+      return;
+    }
+
+    setSendingNotification(notificationId);
+    try {
+      const response = await fetch(`http://localhost:8001/api/v1/notifications/${notificationId}/send`, {
+        method: 'POST',
+      });
+      if (response.ok) {
+        fetchNotifications();
+        alert('Đã gửi thông báo thành công!');
+      } else {
+        const errorData = await response.json();
+        alert('Lỗi gửi thông báo: ' + (errorData.detail || 'Có lỗi xảy ra'));
+      }
+    } catch (error) {
+      console.error('Error sending notification:', error);
+      alert('Lỗi kết nối đến server: ' + error.message);
+    } finally {
+      setSendingNotification(null);
+    }
+  };
+
+  const openEditForm = (notification) => {
+    setEditingNotification(notification);
+    setEditNotification({
+      title: notification.title,
+      content: notification.content,
+      type: notification.type || 'info',
+      priority: notification.priority || 'normal',
+      status: notification.status || 'draft',
+      recipient_emails: notification.recipient_emails || [],
+      recipient_employees: notification.recipient_employees || [],
+      recipient_departments: notification.recipient_departments || [],
+      recipient_roles: notification.recipient_roles || [],
+      send_to_all: notification.send_to_all || false,
+      scheduled_send_at: notification.scheduled_send_at ? notification.scheduled_send_at.substring(0, 16) : ''
+    });
+    setSelectedEmployees(notification.recipient_employees || []);
+    setShowEditForm(true);
+  };
+
+  const handleEmployeeSelection = (employeeId) => {
+    // If selecting 1 employee, select all employees instead
+    const filteredEmployees = getFilteredEmployees();
+    const allIds = filteredEmployees.map(emp => emp.id);
+    setSelectedEmployees(allIds);
+  };
+
+  const handleSelectAllEmployees = () => {
+    const filteredEmployees = getFilteredEmployees();
+    const allIds = filteredEmployees.map(emp => emp.id);
+    setSelectedEmployees(prev => {
+      const newSelection = [...prev];
+      allIds.forEach(id => {
+        if (!newSelection.includes(id)) {
+          newSelection.push(id);
+        }
+      });
+      return newSelection;
+    });
+  };
+
+  const handleDeselectAllEmployees = () => {
+    const filteredEmployees = getFilteredEmployees();
+    const filteredIds = filteredEmployees.map(emp => emp.id);
+    setSelectedEmployees(prev => prev.filter(id => !filteredIds.includes(id)));
+  };
+
+  const getFilteredEmployees = () => {
+    return employees.filter(employee => {
+      const matchesSearch = employeeSearchTerm === '' ||
+        employee.full_name.toLowerCase().includes(employeeSearchTerm.toLowerCase()) ||
+        employee.email.toLowerCase().includes(employeeSearchTerm.toLowerCase()) ||
+        (employee.ma_nv && employee.ma_nv.toLowerCase().includes(employeeSearchTerm.toLowerCase()));
+
+      const matchesDepartment = selectedDepartmentFilter === '' ||
+        employee.department_id?.toString() === selectedDepartmentFilter;
+
+      return matchesSearch && matchesDepartment;
+    });
+  };
+
+  const getPriorityColor = (priority) => {
+    switch (priority) {
+      case 'low': return 'bg-green-100 text-green-800 border-green-200';
+      case 'normal': return 'bg-blue-100 text-blue-800 border-blue-200';
+      case 'high': return 'bg-orange-100 text-orange-800 border-orange-200';
+      case 'urgent': return 'bg-red-100 text-red-800 border-red-200';
+      default: return 'bg-gray-100 text-gray-800 border-gray-200';
+    }
+  };
+
+  const getStatusColor = (status) => {
+    switch (status) {
+      case 'draft': return 'bg-gray-100 text-gray-800 border-gray-200';
+      case 'scheduled': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+      case 'sent': return 'bg-green-100 text-green-800 border-green-200';
+      case 'failed': return 'bg-red-100 text-red-800 border-red-200';
+      default: return 'bg-gray-100 text-gray-800 border-gray-200';
+    }
+  };
+
+  const getTypeIcon = (type) => {
+    switch (type) {
+      case 'info': return 'ℹ️';
+      case 'warning': return '⚠️';
+      case 'error': return '❌';
+      case 'success': return '✅';
+      case 'announcement': return '📢';
+      default: return '📄';
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-96">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Đang tải danh sách thông báo...</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 p-4 sm:p-6">
+      {/* Header */}
+      <div className="max-w-7xl mx-auto mb-8">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">Quản lý Thông báo</h1>
+            <p className="text-gray-600">Tạo và quản lý thông báo cho nhân viên</p>
+          </div>
+          <button
+            onClick={() => setShowAddForm(true)}
+            className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-6 py-3 rounded-xl hover:from-blue-700 hover:to-purple-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 flex items-center gap-2 font-medium"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+            </svg>
+            Tạo Thông báo Mới
+          </button>
+        </div>
+
+        {/* Stats Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Tổng thông báo</p>
+                <p className="text-2xl font-bold text-gray-900">{notifications.length}</p>
+              </div>
+              <div className="bg-blue-100 p-3 rounded-lg">
+                <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-5-5V12a7 7 0 00-14 0v5h5m0 0v1a3 3 0 006 0v-1m-6 0H9" />
+                </svg>
+              </div>
+            </div>
+          </div>
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Đã gửi</p>
+                <p className="text-2xl font-bold text-green-600">{notifications.filter(n => n.status === 'sent').length}</p>
+              </div>
+              <div className="bg-green-100 p-3 rounded-lg">
+                <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+            </div>
+          </div>
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Chưa gửi</p>
+                <p className="text-2xl font-bold text-yellow-600">{notifications.filter(n => n.status === 'draft').length}</p>
+              </div>
+              <div className="bg-yellow-100 p-3 rounded-lg">
+                <svg className="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+            </div>
+          </div>
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Lên lịch</p>
+                <p className="text-2xl font-bold text-purple-600">{notifications.filter(n => n.status === 'scheduled').length}</p>
+              </div>
+              <div className="bg-purple-100 p-3 rounded-lg">
+                <svg className="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Add Notification Form - Inline */}
+      {showAddForm && (
+        <div className="max-w-7xl mx-auto mb-8">
+          <div className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
+            <div className="bg-gradient-to-r from-blue-600 to-purple-600 p-6 text-white">
+              <div className="flex justify-between items-center">
+                <div>
+                  <h3 className="text-2xl font-bold">Tạo Thông báo Mới</h3>
+                  <p className="text-blue-100 mt-1">Tạo thông báo để gửi đến nhân viên</p>
+                </div>
+                <button
+                  onClick={() => {
+                    setShowAddForm(false);
+                    setSelectedEmployees([]);
+                  }}
+                  className="text-white hover:bg-white hover:bg-opacity-20 p-2 rounded-lg transition-colors"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            <div className="p-6">
+              <form onSubmit={handleAddNotification} className="space-y-8">
+                {/* Basic Information */}
+                <div className="bg-gray-50 rounded-xl p-6">
+                  <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                    <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    Thông tin cơ bản
+                  </h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Tiêu đề thông báo</label>
+                      <input
+                        type="text"
+                        value={newNotification.title}
+                        onChange={(e) => setNewNotification({...newNotification, title: e.target.value})}
+                        className="w-full border border-gray-300 rounded-lg shadow-sm p-4 text-black focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
+                        placeholder="Nhập tiêu đề thông báo..."
+                        required
+                      />
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Nội dung thông báo</label>
+                      <textarea
+                        value={newNotification.content}
+                        onChange={(e) => setNewNotification({...newNotification, content: e.target.value})}
+                        className="w-full border border-gray-300 rounded-lg shadow-sm p-4 text-black focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
+                        rows="4"
+                        placeholder="Nhập nội dung thông báo..."
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Loại thông báo</label>
+                      <select
+                        value={newNotification.type}
+                        onChange={(e) => setNewNotification({...newNotification, type: e.target.value})}
+                        className="w-full border border-gray-300 rounded-lg shadow-sm p-4 text-black focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
+                      >
+                        <option value="info">ℹ️ Thông tin</option>
+                        <option value="warning">⚠️ Cảnh báo</option>
+                        <option value="error">❌ Lỗi</option>
+                        <option value="success">✅ Thành công</option>
+                        <option value="announcement">📢 Thông báo</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Độ ưu tiên</label>
+                      <select
+                        value={newNotification.priority}
+                        onChange={(e) => setNewNotification({...newNotification, priority: e.target.value})}
+                        className="w-full border border-gray-300 rounded-lg shadow-sm p-4 text-black focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
+                      >
+                        <option value="low">🟢 Thấp</option>
+                        <option value="normal">🔵 Bình thường</option>
+                        <option value="high">🟠 Cao</option>
+                        <option value="urgent">🔴 Khẩn cấp</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Recipients */}
+                <div className="bg-gray-50 rounded-xl p-6">
+                  <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                    <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                    </svg>
+                    Người nhận
+                  </h4>
+                  <div className="space-y-6">
+                    <div className="flex items-center p-4 bg-white rounded-lg border border-gray-200">
+                      <input
+                        type="checkbox"
+                        checked={newNotification.send_to_all}
+                        onChange={(e) => {
+                          const checked = e.target.checked;
+                          setNewNotification({
+                            ...newNotification,
+                            send_to_all: checked,
+                            recipient_emails: checked ? [] : newNotification.recipient_emails,
+                            recipient_employees: checked ? [] : newNotification.recipient_employees,
+                            recipient_departments: checked ? [] : newNotification.recipient_departments,
+                            recipient_roles: checked ? [] : newNotification.recipient_roles
+                          });
+                        }}
+                        className="h-5 w-5 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                      />
+                      <div className="ml-3">
+                        <label className="text-sm font-medium text-gray-700">Gửi cho tất cả nhân viên</label>
+                        <p className="text-xs text-gray-500">Thông báo sẽ được gửi đến toàn bộ nhân viên trong công ty</p>
+                      </div>
+                    </div>
+
+                    {!newNotification.send_to_all && (
+                      <div className="space-y-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-3">Chọn nhân viên cụ thể</label>
+
+                          {/* Inline Employee Selector */}
+                          <div className="border border-gray-200 rounded-lg p-4 bg-gray-50">
+                            {/* Search and Filter */}
+                            <div className="mb-4 space-y-3">
+                              <div className="flex flex-col sm:flex-row gap-3">
+                                <div className="flex-1">
+                                  <label className="block text-xs font-medium text-gray-600 mb-1">Tìm kiếm nhân viên</label>
+                                  <div className="relative">
+                                    <input
+                                      type="text"
+                                      value={employeeSearchTerm}
+                                      onChange={(e) => setEmployeeSearchTerm(e.target.value)}
+                                      placeholder="Tìm theo tên, email hoặc mã nhân viên..."
+                                      className="w-full border border-gray-300 rounded-md shadow-sm py-2 pl-8 pr-3 text-sm text-black focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                                    />
+                                    <svg className="w-4 h-4 text-gray-400 absolute left-2.5 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                    </svg>
+                                  </div>
+                                </div>
+                                <div className="sm:w-48">
+                                  <label className="block text-xs font-medium text-gray-600 mb-1">Lọc theo phòng ban</label>
+                                  <select
+                                    value={selectedDepartmentFilter}
+                                    onChange={(e) => setSelectedDepartmentFilter(e.target.value)}
+                                    className="w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 text-sm text-black focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                                  >
+                                    <option value="">Tất cả phòng ban</option>
+                                    {departments.map((dept) => (
+                                      <option key={dept.id} value={dept.id}>
+                                        {dept.name}
+                                      </option>
+                                    ))}
+                                  </select>
+                                </div>
+                              </div>
+
+                              {/* Bulk Actions */}
+                              <div className="flex flex-wrap gap-2">
+                                <button
+                                  onClick={handleSelectAllEmployees}
+                                  className="px-3 py-1.5 bg-blue-100 text-blue-700 rounded-md hover:bg-blue-200 transition-colors text-xs font-medium"
+                                >
+                                  Chọn tất cả ({getFilteredEmployees().length})
+                                </button>
+                                <button
+                                  onClick={handleDeselectAllEmployees}
+                                  className="px-3 py-1.5 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors text-xs font-medium"
+                                >
+                                  Bỏ chọn tất cả
+                                </button>
+                                <div className="ml-auto text-xs text-gray-600 flex items-center gap-2">
+                                  <span>Đã chọn: {selectedEmployees.length} nhân viên</span>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Employee List */}
+                            <div className="max-h-64 overflow-y-auto border border-gray-200 rounded-md bg-white">
+                              {getFilteredEmployees().length === 0 ? (
+                                <div className="p-6 text-center text-gray-500">
+                                  <svg className="w-8 h-8 text-gray-400 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                                  </svg>
+                                  <p className="text-sm font-medium">Không tìm thấy nhân viên</p>
+                                  <p className="text-xs">Thử tìm kiếm với từ khóa khác</p>
+                                </div>
+                              ) : (
+                                <div className="divide-y divide-gray-100">
+                                  {getFilteredEmployees().map((employee) => (
+                                    <div
+                                      key={employee.id}
+                                      className={`p-3 hover:bg-gray-50 transition-colors cursor-pointer ${
+                                        selectedEmployees.includes(employee.id) ? 'bg-blue-50 border-l-4 border-blue-500' : ''
+                                      }`}
+                                      onClick={() => handleEmployeeSelection(employee.id)}
+                                    >
+                                      <div className="flex items-center justify-between">
+                                        <div className="flex items-center space-x-3">
+                                          <div className={`w-4 h-4 rounded border-2 flex items-center justify-center ${
+                                            selectedEmployees.includes(employee.id)
+                                              ? 'bg-blue-600 border-blue-600'
+                                              : 'border-gray-300 hover:border-blue-400'
+                                          }`}>
+                                            {selectedEmployees.includes(employee.id) && (
+                                              <svg className="w-2.5 h-2.5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                              </svg>
+                                            )}
+                                          </div>
+                                          <div className="flex-shrink-0">
+                                            <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold text-sm">
+                                              {employee.full_name.charAt(0).toUpperCase()}
+                                            </div>
+                                          </div>
+                                          <div className="flex-1 min-w-0">
+                                            <div className="flex items-center gap-2">
+                                              <p className="text-sm font-medium text-gray-900 truncate">
+                                                {employee.full_name}
+                                              </p>
+                                              {employee.ma_nv && (
+                                                <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                                                  {employee.ma_nv}
+                                                </span>
+                                              )}
+                                            </div>
+                                            <p className="text-xs text-gray-500 truncate">{employee.email}</p>
+                                            <div className="flex items-center gap-1 mt-0.5">
+                                              <span className="text-xs text-gray-500">
+                                                {departments.find(d => d.id === employee.department_id)?.name || 'Chưa phân công'}
+                                              </span>
+                                              {employee.chuc_vu && (
+                                                <>
+                                                  <span className="text-gray-300">•</span>
+                                                  <span className="text-xs text-gray-500">{employee.chuc_vu}</span>
+                                                </>
+                                              )}
+                                            </div>
+                                          </div>
+                                        </div>
+                                        {selectedEmployees.includes(employee.id) && (
+                                          <div className="flex-shrink-0">
+                                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                              ✓ Đã chọn
+                                            </span>
+                                          </div>
+                                        )}
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+
+                            <div className="flex justify-between items-center mt-3 pt-3 border-t border-gray-200">
+                              <div className="text-xs text-gray-600">
+                                Hiển thị {getFilteredEmployees().length} nhân viên
+                                {employeeSearchTerm && ` cho "${employeeSearchTerm}"`}
+                                {selectedDepartmentFilter && ` trong ${departments.find(d => d.id.toString() === selectedDepartmentFilter)?.name}`}
+                              </div>
+                              <button
+                                onClick={() => {
+                                  setEmployeeSearchTerm('');
+                                  setSelectedDepartmentFilter('');
+                                }}
+                                className="px-3 py-1.5 text-xs text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors"
+                              >
+                                Xóa bộ lọc
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Email recipients */}
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">Email người nhận bổ sung</label>
+                          <input
+                            type="text"
+                            value={newNotification.recipient_emails?.join(', ') || ''}
+                            onChange={(e) => {
+                              const emails = e.target.value.split(',').map(email => email.trim()).filter(email => email);
+                              setNewNotification({...newNotification, recipient_emails: emails});
+                            }}
+                            className="w-full border border-gray-300 rounded-lg shadow-sm p-4 text-black focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
+                            placeholder="email1@example.com, email2@example.com"
+                          />
+                          <p className="text-xs text-gray-500 mt-1">Các email bổ sung ngoài danh sách nhân viên đã chọn</p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Scheduling */}
+                <div className="bg-gray-50 rounded-xl p-6">
+                  <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                    <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    Lịch gửi
+                  </h4>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Thời gian gửi</label>
+                    <input
+                      type="datetime-local"
+                      value={newNotification.scheduled_send_at}
+                      onChange={(e) => setNewNotification({...newNotification, scheduled_send_at: e.target.value})}
+                      className="w-full border border-gray-300 rounded-lg shadow-sm p-4 text-black focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">Để trống để gửi ngay lập tức sau khi tạo</p>
+                  </div>
+                </div>
+
+                <div className="flex justify-end gap-4 pt-6 border-t border-gray-200">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowAddForm(false);
+                      setSelectedEmployees([]);
+                    }}
+                    className="px-6 py-3 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors font-medium"
+                  >
+                    Hủy
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all duration-200 shadow-lg hover:shadow-xl font-medium flex items-center gap-2"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                    </svg>
+                    Tạo Thông báo
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Notification Form - Inline */}
+      {showEditForm && (
+        <div className="max-w-7xl mx-auto mb-8">
+          <div className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
+            <div className="bg-gradient-to-r from-green-600 to-blue-600 p-6 text-white">
+              <div className="flex justify-between items-center">
+                <div>
+                  <h3 className="text-2xl font-bold">Chỉnh sửa Thông báo</h3>
+                  <p className="text-green-100 mt-1">Cập nhật thông tin thông báo</p>
+                </div>
+                <button
+                  onClick={() => {
+                    setShowEditForm(false);
+                    setEditingNotification(null);
+                    setSelectedEmployees([]);
+                  }}
+                  className="text-white hover:bg-white hover:bg-opacity-20 p-2 rounded-lg transition-colors"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            <div className="p-6">
+              <form onSubmit={handleEditNotification} className="space-y-8">
+                {/* Basic Information */}
+                <div className="bg-gray-50 rounded-xl p-6">
+                  <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                    <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    Thông tin cơ bản
+                  </h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Tiêu đề thông báo</label>
+                      <input
+                        type="text"
+                        value={editNotification.title}
+                        onChange={(e) => setEditNotification({...editNotification, title: e.target.value})}
+                        className="w-full border border-gray-300 rounded-lg shadow-sm p-4 text-black focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
+                        placeholder="Nhập tiêu đề thông báo..."
+                        required
+                      />
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Nội dung thông báo</label>
+                      <textarea
+                        value={editNotification.content}
+                        onChange={(e) => setEditNotification({...editNotification, content: e.target.value})}
+                        className="w-full border border-gray-300 rounded-lg shadow-sm p-4 text-black focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
+                        rows="4"
+                        placeholder="Nhập nội dung thông báo..."
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Loại thông báo</label>
+                      <select
+                        value={editNotification.type}
+                        onChange={(e) => setEditNotification({...editNotification, type: e.target.value})}
+                        className="w-full border border-gray-300 rounded-lg shadow-sm p-4 text-black focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
+                      >
+                        <option value="info">ℹ️ Thông tin</option>
+                        <option value="warning">⚠️ Cảnh báo</option>
+                        <option value="error">❌ Lỗi</option>
+                        <option value="success">✅ Thành công</option>
+                        <option value="announcement">📢 Thông báo</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Độ ưu tiên</label>
+                      <select
+                        value={editNotification.priority}
+                        onChange={(e) => setEditNotification({...editNotification, priority: e.target.value})}
+                        className="w-full border border-gray-300 rounded-lg shadow-sm p-4 text-black focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
+                      >
+                        <option value="low">🟢 Thấp</option>
+                        <option value="normal">🔵 Bình thường</option>
+                        <option value="high">🟠 Cao</option>
+                        <option value="urgent">🔴 Khẩn cấp</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Recipients */}
+                <div className="bg-gray-50 rounded-xl p-6">
+                  <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                    <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                    </svg>
+                    Người nhận
+                  </h4>
+                  <div className="space-y-6">
+                    <div className="flex items-center p-4 bg-white rounded-lg border border-gray-200">
+                      <input
+                        type="checkbox"
+                        checked={editNotification.send_to_all}
+                        onChange={(e) => {
+                          const checked = e.target.checked;
+                          setEditNotification({
+                            ...editNotification,
+                            send_to_all: checked,
+                            recipient_emails: checked ? [] : editNotification.recipient_emails,
+                            recipient_employees: checked ? [] : editNotification.recipient_employees,
+                            recipient_departments: checked ? [] : editNotification.recipient_departments,
+                            recipient_roles: checked ? [] : editNotification.recipient_roles
+                          });
+                        }}
+                        className="h-5 w-5 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                      />
+                      <div className="ml-3">
+                        <label className="text-sm font-medium text-gray-700">Gửi cho tất cả nhân viên</label>
+                        <p className="text-xs text-gray-500">Thông báo sẽ được gửi đến toàn bộ nhân viên trong công ty</p>
+                      </div>
+                    </div>
+
+                    {!editNotification.send_to_all && (
+                      <div className="space-y-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-3">Chọn nhân viên cụ thể</label>
+
+                          {/* Inline Employee Selector */}
+                          <div className="border border-gray-200 rounded-lg p-4 bg-gray-50">
+                            {/* Search and Filter */}
+                            <div className="mb-4 space-y-3">
+                              <div className="flex flex-col sm:flex-row gap-3">
+                                <div className="flex-1">
+                                  <label className="block text-xs font-medium text-gray-600 mb-1">Tìm kiếm nhân viên</label>
+                                  <div className="relative">
+                                    <input
+                                      type="text"
+                                      value={employeeSearchTerm}
+                                      onChange={(e) => setEmployeeSearchTerm(e.target.value)}
+                                      placeholder="Tìm theo tên, email hoặc mã nhân viên..."
+                                      className="w-full border border-gray-300 rounded-md shadow-sm py-2 pl-8 pr-3 text-sm text-black focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                                    />
+                                    <svg className="w-4 h-4 text-gray-400 absolute left-2.5 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                    </svg>
+                                  </div>
+                                </div>
+                                <div className="sm:w-48">
+                                  <label className="block text-xs font-medium text-gray-600 mb-1">Lọc theo phòng ban</label>
+                                  <select
+                                    value={selectedDepartmentFilter}
+                                    onChange={(e) => setSelectedDepartmentFilter(e.target.value)}
+                                    className="w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 text-sm text-black focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                                  >
+                                    <option value="">Tất cả phòng ban</option>
+                                    {departments.map((dept) => (
+                                      <option key={dept.id} value={dept.id}>
+                                        {dept.name}
+                                      </option>
+                                    ))}
+                                  </select>
+                                </div>
+                              </div>
+
+                              {/* Bulk Actions */}
+                              <div className="flex flex-wrap gap-2">
+                                <button
+                                  onClick={handleSelectAllEmployees}
+                                  className="px-3 py-1.5 bg-blue-100 text-blue-700 rounded-md hover:bg-blue-200 transition-colors text-xs font-medium"
+                                >
+                                  Chọn tất cả ({getFilteredEmployees().length})
+                                </button>
+                                <button
+                                  onClick={handleDeselectAllEmployees}
+                                  className="px-3 py-1.5 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors text-xs font-medium"
+                                >
+                                  Bỏ chọn tất cả
+                                </button>
+                                <div className="ml-auto text-xs text-gray-600 flex items-center gap-2">
+                                  <span>Đã chọn: {selectedEmployees.length} nhân viên</span>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Employee List */}
+                            <div className="max-h-64 overflow-y-auto border border-gray-200 rounded-md bg-white">
+                              {getFilteredEmployees().length === 0 ? (
+                                <div className="p-6 text-center text-gray-500">
+                                  <svg className="w-8 h-8 text-gray-400 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                                  </svg>
+                                  <p className="text-sm font-medium">Không tìm thấy nhân viên</p>
+                                  <p className="text-xs">Thử tìm kiếm với từ khóa khác</p>
+                                </div>
+                              ) : (
+                                <div className="divide-y divide-gray-100">
+                                  {getFilteredEmployees().map((employee) => (
+                                    <div
+                                      key={employee.id}
+                                      className={`p-3 hover:bg-gray-50 transition-colors cursor-pointer ${
+                                        selectedEmployees.includes(employee.id) ? 'bg-blue-50 border-l-4 border-blue-500' : ''
+                                      }`}
+                                      onClick={() => handleEmployeeSelection(employee.id)}
+                                    >
+                                      <div className="flex items-center justify-between">
+                                        <div className="flex items-center space-x-3">
+                                          <div className={`w-4 h-4 rounded border-2 flex items-center justify-center ${
+                                            selectedEmployees.includes(employee.id)
+                                              ? 'bg-blue-600 border-blue-600'
+                                              : 'border-gray-300 hover:border-blue-400'
+                                          }`}>
+                                            {selectedEmployees.includes(employee.id) && (
+                                              <svg className="w-2.5 h-2.5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                              </svg>
+                                            )}
+                                          </div>
+                                          <div className="flex-shrink-0">
+                                            <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold text-sm">
+                                              {employee.full_name.charAt(0).toUpperCase()}
+                                            </div>
+                                          </div>
+                                          <div className="flex-1 min-w-0">
+                                            <div className="flex items-center gap-2">
+                                              <p className="text-sm font-medium text-gray-900 truncate">
+                                                {employee.full_name}
+                                              </p>
+                                              {employee.ma_nv && (
+                                                <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                                                  {employee.ma_nv}
+                                                </span>
+                                              )}
+                                            </div>
+                                            <p className="text-xs text-gray-500 truncate">{employee.email}</p>
+                                            <div className="flex items-center gap-1 mt-0.5">
+                                              <span className="text-xs text-gray-500">
+                                                {departments.find(d => d.id === employee.department_id)?.name || 'Chưa phân công'}
+                                              </span>
+                                              {employee.chuc_vu && (
+                                                <>
+                                                  <span className="text-gray-300">•</span>
+                                                  <span className="text-xs text-gray-500">{employee.chuc_vu}</span>
+                                                </>
+                                              )}
+                                            </div>
+                                          </div>
+                                        </div>
+                                        {selectedEmployees.includes(employee.id) && (
+                                          <div className="flex-shrink-0">
+                                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                              ✓ Đã chọn
+                                            </span>
+                                          </div>
+                                        )}
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+
+                            <div className="flex justify-between items-center mt-3 pt-3 border-t border-gray-200">
+                              <div className="text-xs text-gray-600">
+                                Hiển thị {getFilteredEmployees().length} nhân viên
+                                {employeeSearchTerm && ` cho "${employeeSearchTerm}"`}
+                                {selectedDepartmentFilter && ` trong ${departments.find(d => d.id.toString() === selectedDepartmentFilter)?.name}`}
+                              </div>
+                              <button
+                                onClick={() => {
+                                  setEmployeeSearchTerm('');
+                                  setSelectedDepartmentFilter('');
+                                }}
+                                className="px-3 py-1.5 text-xs text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors"
+                              >
+                                Xóa bộ lọc
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Email recipients */}
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">Email người nhận bổ sung</label>
+                          <input
+                            type="text"
+                            value={editNotification.recipient_emails?.join(', ') || ''}
+                            onChange={(e) => {
+                              const emails = e.target.value.split(',').map(email => email.trim()).filter(email => email);
+                              setEditNotification({...editNotification, recipient_emails: emails});
+                            }}
+                            className="w-full border border-gray-300 rounded-lg shadow-sm p-4 text-black focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
+                            placeholder="email1@example.com, email2@example.com"
+                          />
+                          <p className="text-xs text-gray-500 mt-1">Các email bổ sung ngoài danh sách nhân viên đã chọn</p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Scheduling */}
+                <div className="bg-gray-50 rounded-xl p-6">
+                  <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                    <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    Lịch gửi
+                  </h4>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Thời gian gửi</label>
+                    <input
+                      type="datetime-local"
+                      value={editNotification.scheduled_send_at}
+                      onChange={(e) => setEditNotification({...editNotification, scheduled_send_at: e.target.value})}
+                      className="w-full border border-gray-300 rounded-lg shadow-sm p-4 text-black focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">Để trống để gửi ngay lập tức sau khi tạo</p>
+                  </div>
+                </div>
+
+                <div className="flex justify-end gap-4 pt-6 border-t border-gray-200">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowEditForm(false);
+                      setEditingNotification(null);
+                      setSelectedEmployees([]);
+                    }}
+                    className="px-6 py-3 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors font-medium"
+                  >
+                    Hủy
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-6 py-3 bg-gradient-to-r from-green-600 to-blue-600 text-white rounded-lg hover:from-green-700 hover:to-blue-700 transition-all duration-200 shadow-lg hover:shadow-xl font-medium flex items-center gap-2"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                    </svg>
+                    Cập nhật Thông báo
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Notifications List */}
+      <div className="max-w-7xl mx-auto">
+        <div className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
+          <div className="bg-gradient-to-r from-gray-50 to-gray-100 p-6 border-b border-gray-200">
+            <h3 className="text-lg font-semibold text-gray-900">Danh sách thông báo</h3>
+            <p className="text-sm text-gray-600 mt-1">Quản lý tất cả thông báo đã tạo</p>
+          </div>
+
+          <div className="overflow-x-auto">
+            {notifications.length === 0 ? (
+              <div className="p-12 text-center">
+                <div className="w-24 h-24 bg-gradient-to-br from-blue-100 to-purple-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                  <svg className="w-12 h-12 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-5-5V12a7 7 0 00-14 0v5h5m0 0v1a3 3 0 006 0v-1m-6 0H9" />
+                  </svg>
+                </div>
+                <h3 className="text-xl font-semibold text-gray-900 mb-2">Chưa có thông báo nào</h3>
+                <p className="text-gray-600 mb-6">Tạo thông báo đầu tiên để bắt đầu giao tiếp với nhân viên</p>
+                <button
+                  onClick={() => setShowAddForm(true)}
+                  className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-6 py-3 rounded-xl hover:from-blue-700 hover:to-purple-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 font-medium"
+                >
+                  Tạo thông báo đầu tiên
+                </button>
+              </div>
+            ) : (
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-4 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                      Thông báo
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                      Loại & Ưu tiên
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                      Trạng thái
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                      Lịch gửi
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                      Thao tác
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {notifications.map((notification) => (
+                    <tr key={notification.id} className="hover:bg-gray-50 transition-colors">
+                      <td className="px-6 py-4">
+                        <div className="flex items-start space-x-3">
+                          <div className="flex-shrink-0 w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center text-white text-lg">
+                            {getTypeIcon(notification.type)}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm font-medium text-gray-900 truncate">
+                              {notification.title}
+                            </p>
+                            <p className="text-sm text-gray-500 line-clamp-2 max-w-md">
+                              {notification.content}
+                            </p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="space-y-2">
+                          <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                            {notification.type === 'info' ? 'Thông tin' :
+                             notification.type === 'warning' ? 'Cảnh báo' :
+                             notification.type === 'error' ? 'Lỗi' :
+                             notification.type === 'success' ? 'Thành công' :
+                             notification.type === 'announcement' ? 'Thông báo' : notification.type}
+                          </span>
+                          <br />
+                          <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium border ${getPriorityColor(notification.priority)}`}>
+                            {notification.priority === 'low' ? 'Thấp' :
+                             notification.priority === 'normal' ? 'Bình thường' :
+                             notification.priority === 'high' ? 'Cao' :
+                             notification.priority === 'urgent' ? 'Khẩn cấp' : notification.priority}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor(notification.status)}`}>
+                          {notification.status === 'draft' ? '📝 Nháp' :
+                           notification.status === 'scheduled' ? '⏰ Đã lên lịch' :
+                           notification.status === 'sent' ? '✅ Đã gửi' :
+                           notification.status === 'failed' ? '❌ Thất bại' : notification.status}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-900">
+                        {notification.scheduled_send_at
+                          ? new Date(notification.scheduled_send_at).toLocaleString('vi-VN')
+                          : '📤 Gửi ngay'
+                        }
+                      </td>
+                      <td className="px-6 py-4 text-sm font-medium">
+                        <div className="flex items-center space-x-2">
+                          {notification.status === 'draft' && (
+                            <button
+                              onClick={() => handleSendNotification(notification.id)}
+                              disabled={sendingNotification === notification.id}
+                              className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-lg text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50 transition-colors"
+                              title="Gửi ngay"
+                            >
+                              {sendingNotification === notification.id ? (
+                                <svg className="w-4 h-4 mr-1 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                </svg>
+                              ) : (
+                                <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                                </svg>
+                              )}
+                              Gửi
+                            </button>
+                          )}
+                          <button
+                            onClick={() => openEditForm(notification)}
+                            className="inline-flex items-center px-3 py-1.5 border border-gray-300 text-xs font-medium rounded-lg text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+                            title="Chỉnh sửa"
+                          >
+                            <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                            </svg>
+                            Sửa
+                          </button>
+                          <button
+                            onClick={() => handleDeleteNotification(notification.id)}
+                            disabled={deletingNotification === notification.id}
+                            className="inline-flex items-center px-3 py-1.5 border border-red-300 text-xs font-medium rounded-lg text-red-700 bg-white hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50 transition-colors"
+                            title="Xóa"
+                          >
+                            {deletingNotification === notification.id ? (
+                              <svg className="w-4 h-4 mr-1 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                              </svg>
+                            ) : (
+                              <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                              </svg>
+                            )}
+                            Xóa
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
         </div>
       </div>
     </div>
