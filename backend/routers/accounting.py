@@ -382,9 +382,6 @@ async def create_invoice(invoice_data: dict):
                     'sau': item['sau'],
                     'so_luong': item['so_luong'],
                     'don_gia': item['don_gia'],
-                    'dien_tich_ke_hoach': item.get('dien_tich_ke_hoach', 0),
-                    'dien_tich_thuc_te': item.get('dien_tich_thuc_te', 0),
-                    'ti_le': item.get('ti_le', 0),
                     'chiet_khau': item.get('chiet_khau', 0),
                     'thanh_tien': item['thanh_tien']
                 }).execute()
