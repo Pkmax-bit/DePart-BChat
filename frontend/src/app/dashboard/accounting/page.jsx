@@ -11,7 +11,7 @@ const supabase = createClientComponentClient();
 function AccountingLayout({ user, activeTab, onTabChange, children }) {
   const tabs = [
     { id: 'revenue', label: 'Doanh thu', icon: TrendingUp },
-    { id: 'invoices', label: 'Tạo báo giá', icon: FileText },
+    { id: 'invoices', label: 'Hóa đơn', icon: FileText },
     { id: 'products', label: 'Sản phẩm', icon: Package },
     { id: 'materials', label: 'Vật liệu', icon: Settings }
   ];
@@ -23,8 +23,8 @@ function AccountingLayout({ user, activeTab, onTabChange, children }) {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-6">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">Báo giá khách hàng</h1>
-              <p className="text-gray-600 mt-1">Quản lý báo giá và theo dõi khách hàng</p>
+              <h1 className="text-3xl font-bold text-gray-900">Quản lý doanh thu</h1>
+              <p className="text-gray-600 mt-1">Quản lý hóa đơn và theo dõi doanh thu</p>
             </div>
             <div className="flex items-center space-x-4">
               <div className="text-right">
@@ -182,7 +182,6 @@ function InvoicesTab() {
   const [invoiceDate, setInvoiceDate] = useState(new Date().toISOString().split('T')[0]);
   const [invoiceTime, setInvoiceTime] = useState(new Date().toTimeString().split(' ')[0]);
   const [salesEmployee, setSalesEmployee] = useState('');
-  const [projectName, setProjectName] = useState('');
   const [commissionPercentage, setCommissionPercentage] = useState(5);
   const [employees, setEmployees] = useState([]);
   const [invoiceItems, setInvoiceItems] = useState([]);
@@ -195,38 +194,9 @@ function InvoicesTab() {
   const [loaiphukienList, setLoaiphukienList] = useState([]);
   const [selectedProductType, setSelectedProductType] = useState('tu_bep'); // 'tu_bep' hoặc 'phu_kien_bep'
 
-  // States cho tạo công trình
-  const [showConstructionForm, setShowConstructionForm] = useState(false);
-  const [savingConstruction, setSavingConstruction] = useState(false);
-  const [constructionForm, setConstructionForm] = useState({
-    ten_cong_trinh: '',
-    dia_chi: '',
-    khach_hang: '',
-    so_dien_thoai: '',
-    id_sale: '',
-    ngay_bat_dau: '',
-    ngay_hoan_thanh: '',
-    ngan_sach: 0,
-    mo_ta: '',
-    trang_thai: 'báo giá'
-  });
-
-  // States cho danh sách công trình
-  const [constructions, setConstructions] = useState([]);
-  const [selectedConstruction, setSelectedConstruction] = useState('');
-  const [loadingConstructions, setLoadingConstructions] = useState(false);
-
-  // States cho cấu trúc cây chi phí
-  const [showCostTree, setShowCostTree] = useState(false);
-  const [costTreeData, setCostTreeData] = useState([]);
-  const [selectedCostCategory, setSelectedCostCategory] = useState('');
-  const [costTreeItems, setCostTreeItems] = useState([]);
-  const [loadingCostTree, setLoadingCostTree] = useState(false);
-
   useEffect(() => {
     fetchData();
     fetchEmployees();
-    fetchConstructions();
   }, []);
 
   const fetchEmployees = async () => {
@@ -238,31 +208,6 @@ function InvoicesTab() {
       }
     } catch (error) {
       console.error('Error fetching employees:', error);
-    }
-  };
-
-  const fetchConstructions = async () => {
-    setLoadingConstructions(true);
-    try {
-      const response = await fetch('http://localhost:8001/api/v1/accounting/cong_trinh/', {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setConstructions(data || []);
-      } else {
-        console.error('Error fetching constructions:', response.statusText);
-        setConstructions([]);
-      }
-    } catch (error) {
-      console.error('Network error fetching constructions:', error);
-      setConstructions([]);
-    } finally {
-      setLoadingConstructions(false);
     }
   };
 
@@ -291,31 +236,6 @@ function InvoicesTab() {
       console.error('Error fetching data:', error);
     } finally {
       setLoading(false);
-    }
-  };
-
-  const fetchCostTreeData = async () => {
-    setLoadingCostTree(true);
-    try {
-      const response = await fetch('http://localhost:8001/api/v1/accounting/loaichiphi/', {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setCostTreeData(data || []);
-      } else {
-        console.error('Error fetching cost tree data:', response.statusText);
-        setCostTreeData([]);
-      }
-    } catch (error) {
-      console.error('Network error fetching cost tree data:', error);
-      setCostTreeData([]);
-    } finally {
-      setLoadingCostTree(false);
     }
   };
 
@@ -775,73 +695,6 @@ function InvoicesTab() {
     return invoiceItems.reduce((sum, item) => sum + (item.thanh_tien || 0), 0);
   };
 
-  const handleConstructionSubmit = async (e) => {
-    e.preventDefault();
-    if (!constructionForm.ten_cong_trinh.trim() || !constructionForm.dia_chi.trim() || !constructionForm.khach_hang.trim()) {
-      alert('Vui lòng nhập đầy đủ thông tin bắt buộc (tên công trình, địa chỉ, khách hàng)');
-      return;
-    }
-
-    setSavingConstruction(true);
-    try {
-      const response = await fetch('http://localhost:8001/api/v1/accounting/cong_trinh/', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          ten_cong_trinh: constructionForm.ten_cong_trinh,
-          dia_chi: constructionForm.dia_chi,
-          khach_hang: constructionForm.khach_hang,
-          so_dien_thoai: constructionForm.so_dien_thoai,
-          id_sale: constructionForm.id_sale,
-          ngay_bat_dau: constructionForm.ngay_bat_dau || null,
-          ngay_hoan_thanh: constructionForm.ngay_hoan_thanh || null,
-          ngan_sach_du_kien: constructionForm.ngan_sach,
-          mo_ta: constructionForm.mo_ta,
-          status: constructionForm.trang_thai
-        })
-      });
-
-      if (response.ok) {
-        const newConstruction = await response.json();
-        alert('Công trình đã được tạo thành công!');
-        // Tự động điền thông tin vào phần thông tin hóa đơn
-        setCustomerName(constructionForm.khach_hang);
-        if (constructionForm.id_sale) {
-          setSalesEmployee(constructionForm.id_sale);
-        }
-        // Tự động chọn công trình vừa tạo và hiển thị tên dự án
-        setSelectedConstruction(newConstruction.id);
-        setProjectName(constructionForm.ten_cong_trinh);
-        // Reset form
-        setConstructionForm({
-          ten_cong_trinh: '',
-          dia_chi: '',
-          khach_hang: '',
-          so_dien_thoai: '',
-          id_sale: '',
-          ngay_bat_dau: '',
-          ngay_hoan_thanh: '',
-          ngan_sach: 0,
-          mo_ta: '',
-          trang_thai: 'báo giá'
-        });
-        setShowConstructionForm(false);
-        // Fetch lại danh sách công trình để cập nhật
-        fetchConstructions();
-      } else {
-        const errorData = await response.json();
-        alert(`Có lỗi xảy ra khi tạo công trình: ${errorData.detail || 'Lỗi không xác định'}`);
-      }
-    } catch (error) {
-      console.error('Error creating construction:', error);
-      alert('Có lỗi xảy ra khi tạo công trình');
-    } finally {
-      setSavingConstruction(false);
-    }
-  };
-
   const saveInvoice = async () => {
     if (!customerName.trim()) {
       alert('Vui lòng nhập tên khách hàng');
@@ -956,166 +809,6 @@ function InvoicesTab() {
 
   return (
     <div className="space-y-6">
-      {/* Tạo công trình */}
-      <div className="bg-white rounded-lg shadow-sm border p-6">
-        <div className="flex justify-between items-center mb-4">
-          <div>
-            <h3 className="text-lg font-semibold text-gray-900">Tạo công trình</h3>
-            <p className="text-gray-600 mt-1">Nhập thông tin công trình để tạo báo giá</p>
-          </div>
-          <button
-            onClick={() => setShowConstructionForm(!showConstructionForm)}
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center space-x-2"
-          >
-            <Plus className="w-4 h-4" />
-            <span>{showConstructionForm ? 'Ẩn form' : 'Tạo công trình'}</span>
-          </button>
-        </div>
-
-        {showConstructionForm && (
-          <form onSubmit={handleConstructionSubmit} className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Tên công trình *</label>
-                <input
-                  type="text"
-                  value={constructionForm.ten_cong_trinh}
-                  onChange={(e) => setConstructionForm({...constructionForm, ten_cong_trinh: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-green-100 text-black"
-                  placeholder="Nhập tên công trình"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Địa chỉ công trình *</label>
-                <input
-                  type="text"
-                  value={constructionForm.dia_chi}
-                  onChange={(e) => setConstructionForm({...constructionForm, dia_chi: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-green-100 text-black"
-                  placeholder="Nhập địa chỉ công trình"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Khách hàng *</label>
-                <input
-                  type="text"
-                  value={constructionForm.khach_hang}
-                  onChange={(e) => setConstructionForm({...constructionForm, khach_hang: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-green-100 text-black"
-                  placeholder="Nhập tên khách hàng"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Nhân viên sale</label>
-                <select
-                  value={constructionForm.id_sale || ''}
-                  onChange={(e) => setConstructionForm({...constructionForm, id_sale: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-green-100 text-black"
-                >
-                  <option value="">Chọn nhân viên sale</option>
-                  {employees.map(employee => (
-                    <option key={employee.ma_nv} value={employee.ma_nv}>
-                      {employee.ho_ten} ({employee.ma_nv})
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Ngày bắt đầu</label>
-                <input
-                  type="date"
-                  value={constructionForm.ngay_bat_dau}
-                  onChange={(e) => setConstructionForm({...constructionForm, ngay_bat_dau: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-green-100 text-black"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Ngày dự kiến hoàn thành</label>
-                <input
-                  type="date"
-                  value={constructionForm.ngay_hoan_thanh}
-                  onChange={(e) => setConstructionForm({...constructionForm, ngay_hoan_thanh: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-green-100 text-black"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Ngân sách dự kiến (VND)</label>
-                <input
-                  type="number"
-                  min="0"
-                  step="100000"
-                  value={constructionForm.ngan_sach}
-                  onChange={(e) => setConstructionForm({...constructionForm, ngan_sach: parseInt(e.target.value) || 0})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-yellow-100 text-black"
-                  placeholder="Nhập ngân sách dự kiến"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Trạng thái</label>
-                <select
-                  value={constructionForm.trang_thai}
-                  onChange={(e) => setConstructionForm({...constructionForm, trang_thai: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-green-100 text-black"
-                >
-                  <option value="báo giá">Báo giá</option>
-                  <option value="đang thực hiện">Đang thực hiện</option>
-                  <option value="hoàn thành">Hoàn thành</option>
-                  <option value="tạm dừng">Tạm dừng</option>
-                </select>
-              </div>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Mô tả công trình</label>
-              <textarea
-                value={constructionForm.mo_ta}
-                onChange={(e) => setConstructionForm({...constructionForm, mo_ta: e.target.value})}
-                rows={3}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-yellow-100 text-black"
-                placeholder="Nhập mô tả chi tiết về công trình"
-              />
-            </div>
-            <div className="flex justify-end space-x-3">
-              <button
-                type="button"
-                onClick={() => {
-                  setShowConstructionForm(false);
-                  setConstructionForm({
-                    ten_cong_trinh: '',
-                    dia_chi: '',
-                    khach_hang: '',
-                    so_dien_thoai: '',
-                    id_sale: '',
-                    ngay_bat_dau: '',
-                    ngay_hoan_thanh: '',
-                    ngan_sach: 0,
-                    mo_ta: '',
-                    trang_thai: 'báo giá'
-                  });
-                }}
-                className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
-              >
-                Hủy
-              </button>
-              <button
-                type="submit"
-                disabled={savingConstruction}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center space-x-2"
-              >
-                {savingConstruction ? (
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                ) : (
-                  <Save className="w-4 h-4" />
-                )}
-                <span>{savingConstruction ? 'Đang lưu...' : 'Lưu công trình'}</span>
-              </button>
-            </div>
-          </form>
-        )}
-      </div>
-
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
@@ -1140,51 +833,6 @@ function InvoicesTab() {
       {/* Invoice Info */}
       <div className="bg-white rounded-lg shadow-sm border p-6">
         <h3 className="text-lg font-semibold text-gray-900 mb-4">Thông tin hóa đơn</h3>
-        
-        {/* Chọn công trình */}
-        <div className="mb-4">
-          <label className="block text-sm font-medium text-gray-700 mb-2">Chọn công trình</label>
-          <select
-            value={selectedConstruction || ''}
-            onChange={(e) => {
-              const constructionId = e.target.value;
-              const construction = constructions.find(c => c.id === constructionId);
-              setSelectedConstruction(constructionId);
-              
-              if (construction) {
-                // Auto-fill thông tin từ công trình đã chọn
-                setCustomerName(construction.name_customer || '');
-                setSalesEmployee(construction.Id_sale || '');
-                setProjectName(construction.name_congtrinh || '');
-              } else {
-                // Reset nếu không chọn công trình
-                setCustomerName('');
-                setSalesEmployee('');
-                setProjectName('');
-              }
-            }}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-black"
-          >
-            <option value="">Chọn công trình (tùy chọn)</option>
-            {constructions.map(construction => (
-              <option key={construction.id} value={construction.id}>
-                {construction.name_congtrinh} - {construction.name_customer}
-              </option>
-            ))}
-          </select>
-          <p className="text-xs text-gray-500 mt-1">Chọn công trình để tự động điền tên khách hàng và nhân viên sale</p>
-        </div>
-        
-        {/* Hiển thị tên dự án nếu đã chọn công trình */}
-        {selectedConstruction && projectName && (
-          <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-            <div className="flex items-center space-x-2">
-              <span className="text-sm font-medium text-blue-900">Dự án:</span>
-              <span className="text-sm font-semibold text-blue-700">{projectName}</span>
-            </div>
-          </div>
-        )}
-        
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Tên khách hàng</label>
@@ -1991,117 +1639,6 @@ function InvoicesTab() {
             </div>
           </div>
         ) : null}
-      </div>
-
-      {/* Cấu trúc cây chi phí cho báo giá */}
-      <div className="bg-white rounded-lg shadow-sm border p-6">
-        <div className="flex justify-between items-center mb-4">
-          <div>
-            <h3 className="text-lg font-semibold text-gray-900">Cấu trúc cây chi phí</h3>
-            <p className="text-gray-600 mt-1">Thêm chi phí cho báo giá (status: báo giá)</p>
-          </div>
-          <button
-            onClick={() => {
-              setShowCostTree(!showCostTree);
-              if (!showCostTree && costTreeData.length === 0) {
-                fetchCostTreeData();
-              }
-            }}
-            className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 flex items-center space-x-2"
-          >
-            <Plus className="w-4 h-4" />
-            <span>{showCostTree ? 'Ẩn cây chi phí' : 'Thêm chi phí'}</span>
-          </button>
-        </div>
-
-        {showCostTree && (
-          <div className="space-y-4">
-            {loadingCostTree ? (
-              <div className="flex items-center justify-center py-8">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600"></div>
-                <span className="ml-2 text-gray-600">Đang tải dữ liệu chi phí...</span>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {/* Chọn danh mục chi phí */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Chọn danh mục chi phí</label>
-                  <select
-                    value={selectedCostCategory}
-                    onChange={(e) => setSelectedCostCategory(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white text-black"
-                  >
-                    <option value="">Chọn danh mục chi phí</option>
-                    {costTreeData.map(category => (
-                      <option key={category.id} value={category.id}>{category.tenloai}</option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* Hiển thị cây chi phí */}
-                {selectedCostCategory && (
-                  <div className="border border-gray-200 rounded-lg p-4">
-                    <h4 className="font-medium text-gray-900 mb-3">Chi phí đã chọn</h4>
-                    <div className="space-y-2">
-                      {costTreeItems.length === 0 ? (
-                        <p className="text-gray-500 text-sm">Chưa có chi phí nào được thêm</p>
-                      ) : (
-                        costTreeItems.map((item, index) => (
-                          <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                            <div>
-                              <span className="font-medium text-gray-900">{item.name}</span>
-                              <span className="text-sm text-gray-600 ml-2">({item.amount.toLocaleString('vi-VN')} VND)</span>
-                            </div>
-                            <button
-                              onClick={() => {
-                                setCostTreeItems(costTreeItems.filter((_, i) => i !== index));
-                              }}
-                              className="text-red-600 hover:text-red-900 p-1"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          </div>
-                        ))
-                      )}
-                    </div>
-
-                    {/* Thêm chi phí mới */}
-                    <div className="mt-4 pt-4 border-t">
-                      <button
-                        onClick={() => {
-                          const selectedCategory = costTreeData.find(cat => cat.id === selectedCostCategory);
-                          if (selectedCategory) {
-                            setCostTreeItems([...costTreeItems, {
-                              name: selectedCategory.tenloai,
-                              amount: 0,
-                              categoryId: selectedCategory.id
-                            }]);
-                          }
-                        }}
-                        className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center space-x-2"
-                      >
-                        <Plus className="w-4 h-4" />
-                        <span>Thêm chi phí</span>
-                      </button>
-                    </div>
-                  </div>
-                )}
-
-                {/* Tổng chi phí */}
-                {costTreeItems.length > 0 && (
-                  <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                    <div className="flex justify-between items-center">
-                      <span className="font-medium text-green-900">Tổng chi phí:</span>
-                      <span className="text-lg font-bold text-green-600">
-                        {costTreeItems.reduce((sum, item) => sum + item.amount, 0).toLocaleString('vi-VN')} VND
-                      </span>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        )}
       </div>
     </div>
   );
