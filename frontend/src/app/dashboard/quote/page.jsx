@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { Plus, Edit, Trash2, TrendingUp, TrendingDown, DollarSign, Package, Receipt, CreditCard, FileText, Info, Calendar, BarChart3, History, Settings, RotateCcw, Save, RefreshCw, Download, Users, Wrench, Eye, EyeOff, X, Check, Building2, Phone, Mail, MapPin, User, CheckCircle } from 'lucide-react';
@@ -12,6 +13,7 @@ function QuoteLayout({ user, activeTab, onTabChange, children }) {
   const tabs = [
     { id: 'revenue', label: 'Báo giá', icon: TrendingUp },
     { id: 'invoices', label: 'Đơn hàng', icon: FileText },
+    { id: 'expenses', label: 'Chi phí', icon: DollarSign },
     { id: 'products', label: 'Sản phẩm', icon: Package },
     { id: 'materials', label: 'Vật liệu', icon: Settings }
   ];
@@ -170,6 +172,7 @@ export default function QuotePage() {
 }
 
 function InvoicesTab() {
+  const router = useRouter();
   const [sanphamList, setSanphamList] = useState([]);
   const [chitietsanphamList, setChitietsanphamList] = useState([]);
   const [loainhomList, setLoainhomList] = useState([]);
@@ -220,10 +223,25 @@ function InvoicesTab() {
   const [editingProjectInline, setEditingProjectInline] = useState(null);
   const [showInlineEditForm, setShowInlineEditForm] = useState(false);
 
+  // States cho cost management
+  const [expenseCategories, setExpenseCategories] = useState([]);
+  const [projectExpenses, setProjectExpenses] = useState([]);
+  const [showCostForm, setShowCostForm] = useState(false);
+  const [editingExpense, setEditingExpense] = useState(null);
+  const [costForm, setCostForm] = useState({
+    id_lcp: '',
+    giathanh: '',
+    mo_ta: 'dự toán',
+    parent_id: '',
+    created_at: new Date().toISOString().split('T')[0]
+  });
+  const [availableParents, setAvailableParents] = useState([]);
+
   useEffect(() => {
     fetchData();
     fetchEmployees();
     fetchProjects();
+    fetchExpenseCategories();
   }, []);
 
   const fetchEmployees = async () => {
@@ -250,6 +268,35 @@ function InvoicesTab() {
     }
   };
 
+  const fetchExpenseCategories = async () => {
+    try {
+      const response = await fetch('http://localhost:8001/api/v1/accounting/loaichiphi/');
+      if (response.ok) {
+        const data = await response.json();
+        setExpenseCategories(data || []);
+      }
+    } catch (error) {
+      console.error('Error fetching expense categories:', error);
+    }
+  };
+
+  const fetchProjectExpenses = async (projectId) => {
+    if (!projectId) {
+      setProjectExpenses([]);
+      return;
+    }
+    try {
+      const response = await fetch(`http://localhost:8001/api/v1/accounting/quanly_chiphi/project/${projectId}`);
+      if (response.ok) {
+        const data = await response.json();
+        setProjectExpenses(data.expenses || []);
+      }
+    } catch (error) {
+      console.error('Error fetching project expenses:', error);
+      setProjectExpenses([]);
+    }
+  };
+
   const handleProjectSelection = async (projectId) => {
     setSelectedProject(projectId);
     if (projectId) {
@@ -271,6 +318,9 @@ function InvoicesTab() {
           mo_ta: selectedProj.mo_ta || '',
           bao_gia: selectedProj.bao_gia || ''
         });
+
+        // Fetch project expenses
+        await fetchProjectExpenses(projectId);
 
         // Fetch existing quote data for this project
         try {
@@ -371,6 +421,7 @@ function InvoicesTab() {
         dia_chi: '',
         bao_gia: ''
       });
+      setProjectExpenses([]);
     }
   };
 
@@ -1025,106 +1076,146 @@ function InvoicesTab() {
     return invoiceItems.reduce((sum, item) => sum + (item.thanh_tien || 0), 0);
   };
 
+  const saveProjectExpense = async () => {
+    if (!selectedProject) {
+      alert('Vui lòng chọn công trình trước khi thêm chi phí');
+      return;
+    }
+
+    if (!costForm.id_lcp) {
+      alert('Vui lòng chọn loại chi phí');
+      return;
+    }
+
+    try {
+      const expenseData = {
+        id_lcp: parseInt(costForm.id_lcp),
+        giathanh: parseFloat(costForm.giathanh) || null,
+        mo_ta: costForm.mo_ta || 'dự toán',
+        parent_id: costForm.parent_id ? parseInt(costForm.parent_id) : null,
+        created_at: costForm.created_at,
+        id_congtrinh: parseInt(selectedProject)
+      };
+
+      const url = editingExpense
+        ? `http://localhost:8001/api/v1/accounting/quanly_chiphi/${editingExpense.id}`
+        : 'http://localhost:8001/api/v1/accounting/quanly_chiphi/';
+
+      const method = editingExpense ? 'PUT' : 'POST';
+
+      const response = await fetch(url, {
+        method,
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(expenseData)
+      });
+
+      if (response.ok) {
+        alert(editingExpense ? 'Cập nhật chi phí thành công!' : 'Thêm chi phí thành công!');
+        // Refresh project expenses
+        await fetchProjectExpenses(selectedProject);
+        // Reset form
+        setCostForm({
+          id_lcp: '',
+          giathanh: '',
+          mo_ta: 'dự toán',
+          parent_id: '',
+          created_at: new Date().toISOString().split('T')[0]
+        });
+        setEditingExpense(null);
+        setShowCostForm(false);
+      } else {
+        const errorData = await response.json();
+        alert(`Có lỗi xảy ra: ${errorData.detail || 'Lỗi không xác định'}`);
+      }
+    } catch (error) {
+      console.error('Error saving expense:', error);
+      alert('Có lỗi xảy ra khi lưu chi phí');
+    }
+  };
+
+  const deleteProjectExpense = async (expenseId) => {
+    if (!confirm('Bạn có chắc chắn muốn xóa chi phí này?')) return;
+
+    try {
+      const response = await fetch(`http://localhost:8001/api/v1/accounting/quanly_chiphi/${expenseId}`, {
+        method: 'DELETE'
+      });
+
+      if (response.ok) {
+        alert('Xóa chi phí thành công!');
+        // Refresh project expenses
+        await fetchProjectExpenses(selectedProject);
+      } else {
+        alert('Có lỗi xảy ra khi xóa chi phí');
+      }
+    } catch (error) {
+      console.error('Error deleting expense:', error);
+      alert('Có lỗi xảy ra khi xóa chi phí');
+    }
+  };
+
+  const editProjectExpense = (expense) => {
+    setEditingExpense(expense);
+    setCostForm({
+      id_lcp: expense.id_lcp?.toString() || '',
+      giathanh: expense.giathanh ? expense.giathanh.toString() : '',
+      mo_ta: expense.mo_ta || 'dự toán',
+      parent_id: expense.parent_id?.toString() || '',
+      created_at: expense.created_at ? new Date(expense.created_at).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]
+    });
+    setShowCostForm(true);
+  };
+
   const saveInvoice = async () => {
     if (!customerName.trim()) {
       alert('Vui lòng nhập tên khách hàng');
       return;
     }
-    
+
     if (!salesEmployee) {
       alert('Vui lòng chọn nhân viên bán hàng');
       return;
     }
 
-    if (!congTrinh.name_congtrinh.trim()) {
-      alert('Vui lòng nhập tên công trình');
+    if (!selectedProject) {
+      alert('Vui lòng chọn công trình');
       return;
     }
 
-    if (!congTrinh.name_customer.trim()) {
-      alert('Vui lòng nhập tên khách hàng trong thông tin công trình');
-      return;
-    }
-    
     if (invoiceItems.length === 0) {
       alert('Vui lòng thêm ít nhất một sản phẩm');
       return;
     }
 
-    // Kiểm tra xem các bộ phận được chọn có đầy đủ các loại (nhôm, kính, tay nắm) không
-    const invalidItems = invoiceItems.filter(item => 
-      selectedBophans.includes(item.id_bophan) && (
-        !(item.id_nhom || globalNhom) || !(item.id_kinh || globalKinh) || !(item.id_taynam || globalTaynam) || !item.id_bophan || !item.sanpham
-      )
-    );
-
-    if (invalidItems.length > 0) {
-      alert('Vui lòng chọn đầy đủ các loại (nhôm, kính, tay nắm) cho tất cả bộ phận đã tích chọn');
-      return;
-    }
-
-    // Kiểm tra phụ kiện bếp có đầy đủ thông tin không
-    const invalidPhukienItems = invoiceItems.filter(item => 
-      item.loai_san_pham === 'phu_kien_bep' && (
-        !item.id_loaiphukien || !item.id_phukien || !item.so_luong || item.don_gia <= 0
-      )
-    );
-
-    if (invalidPhukienItems.length > 0) {
-      alert('Vui lòng chọn đầy đủ thông tin cho tất cả phụ kiện bếp (loại phụ kiện, tên phụ kiện, số lượng, đơn giá)');
-      return;
-    }
-
     try {
       const invoiceData = {
+        customer_name: customerName,
         sales_employee_id: salesEmployee,
         commission_percentage: commissionPercentage,
-        invoice_date: `${invoiceDate}T${invoiceTime}`,
-        id_congtrinh: selectedProject || null,  // Add selected project ID
-        cong_trinh: {
-          name_congtrinh: congTrinh.name_congtrinh,
-          name_customer: congTrinh.name_customer,
-          sdt: congTrinh.sdt,
-          email: congTrinh.email,
-          Id_sale: congTrinh.Id_sale,
-          ngan_sach_du_kien: parseFloat(congTrinh.ngan_sach_du_kien) || 0,
-          dia_chi: congTrinh.dia_chi,
-          mo_ta: congTrinh.mo_ta,
-          bao_gia: parseFloat(congTrinh.bao_gia) || 0
-        },
-        items: invoiceItems.map(item => {
-          if (item.loai_san_pham === 'phu_kien_bep') {
-            return {
-              loai_san_pham: 'phu_kien_bep',
-              id_loaiphukien: item.id_loaiphukien,
-              id_phukien: item.id_phukien,
-              so_luong: item.so_luong,
-              don_gia: item.don_gia,
-              chiet_khau: item.chiet_khau,
-              thanh_tien: item.thanh_tien
-            };
-          } else {
-            return {
-              loai_san_pham: 'tu_bep',
-              id_nhom: item.id_nhom,
-              id_kinh: item.id_kinh,
-              id_taynam: item.id_taynam,
-              id_bophan: item.id_bophan,
-              sanpham_id: item.sanpham?.id,
-              ngang: item.ngang,
-              cao: item.cao,
-              sau: item.sau,
-              so_luong: item.so_luong,
-              don_gia: item.don_gia,
-              dien_tich_ke_hoach: item.dien_tich_ke_hoach,
-              dien_tich_thuc_te: item.dien_tich_thuc_te,
-              ti_le: item.ti_le,
-              chiet_khau: item.chiet_khau,
-              thanh_tien: item.thanh_tien
-            };
-          }
-        }),
-        total_amount: calculateTotal()
+        invoice_date: `${invoiceDate}T${invoiceTime}:00`,
+        id_congtrinh: parseInt(selectedProject),
+        items: invoiceItems.map(item => ({
+          loai_san_pham: item.loai_san_pham,
+          id_nhom: item.id_nhom || null,
+          id_kinh: item.id_kinh || null,
+          id_taynam: item.id_taynam || null,
+          id_bophan: item.id_bophan || null,
+          sanpham_id: item.sanpham?.id || null,
+          ngang: item.ngang || 0,
+          cao: item.cao || 0,
+          sau: item.sau || 0,
+          so_luong: item.so_luong || 1,
+          don_gia: item.don_gia || 0,
+          dien_tich_ke_hoach: item.dien_tich_ke_hoach || 0,
+          dien_tich_thuc_te: item.dien_tich_thuc_te || 0,
+          ti_le: item.ti_le || 0,
+          chiet_khau: item.chiet_khau || 0,
+          thanh_tien: item.thanh_tien || 0,
+          id_loaiphukien: item.id_loaiphukien || null,
+          id_phukien: item.id_phukien || null
+        }))
       };
 
       const response = await fetch('http://localhost:8001/api/v1/quote/invoices_quote/', {
@@ -1136,23 +1227,55 @@ function InvoicesTab() {
       });
 
       if (response.ok) {
-        alert('Hóa đơn đã được lưu thành công!');
+        const result = await response.json();
+        alert('Đơn hàng báo giá đã được lưu thành công!');
+        
+        // Update bao_gia in cong_trinh
+        const totalAmount = calculateTotal();
+        try {
+          await fetch(`http://localhost:8001/api/v1/quote/cong_trinh/${selectedProject}`, {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              bao_gia: totalAmount
+            })
+          });
+        } catch (error) {
+          console.error('Error updating bao_gia:', error);
+        }
+        
         // Reset form
         setCustomerName('');
         setSalesEmployee('');
         setCommissionPercentage(5);
         setInvoiceItems([]);
+        setSelectedProductType('tu_bep');
+        setSelectedBophans([]);
+        setGlobalNhom('');
+        setGlobalKinh('');
+        setGlobalTaynam('');
         setInvoiceDate(new Date().toISOString().split('T')[0]);
         setInvoiceTime(new Date().toTimeString().split(' ')[0]);
+        setSelectedProject('');
+        setProjectExpenses([]);
       } else {
         const errorData = await response.json();
-        alert(`Có lỗi xảy ra khi lưu hóa đơn: ${errorData.detail || 'Lỗi không xác định'}`);
+        alert(`Có lỗi xảy ra khi lưu đơn hàng: ${errorData.detail || 'Lỗi không xác định'}`);
       }
     } catch (error) {
       console.error('Error saving invoice:', error);
-      alert('Có lỗi xảy ra khi lưu hóa đơn');
+      alert('Có lỗi xảy ra khi lưu đơn hàng');
     }
   };
+
+  // Update useEffect to fetch available parents when cost form is shown
+  useEffect(() => {
+    if (showCostForm && selectedProject) {
+      fetchAvailableParents();
+    }
+  }, [showCostForm, selectedProject]);
 
   if (loading) {
     return <div className="p-6">Đang tải danh sách sản phẩm...</div>;
@@ -2485,6 +2608,231 @@ function InvoicesTab() {
             <Package className="w-12 h-12 text-gray-400 mx-auto mb-4" />
             <p className="text-gray-500">Chưa có bộ phận nào được chọn</p>
             <p className="text-sm text-gray-400 mt-1">Hãy tích chọn các bộ phận cần sản xuất ở trên</p>
+          </div>
+        )}
+
+        {/* Cost Management Section */}
+        {selectedProject && (
+          <div className="bg-white rounded-lg shadow-sm border p-6 mt-6">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold text-gray-900 flex items-center">
+                <DollarSign className="w-5 h-5 mr-2 text-green-600" />
+                Quản lý chi phí dự án
+              </h3>
+              <button
+                onClick={() => setShowCostForm(true)}
+                className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 flex items-center space-x-2"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Thêm chi phí</span>
+              </button>
+            </div>
+
+            {/* Cost Form Modal */}
+            {showCostForm && (
+              <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+                  <div className="p-6">
+                    <div className="flex justify-between items-center mb-4">
+                      <h3 className="text-lg font-semibold text-gray-900">
+                        {editingExpense ? 'Chỉnh sửa chi phí' : 'Thêm chi phí mới'}
+                      </h3>
+                      <button
+                        onClick={() => {
+                          setShowCostForm(false);
+                          setEditingExpense(null);
+                          setCostForm({
+                            id_lcp: '',
+                            giathanh: '',
+                            mo_ta: 'dự toán',
+                            parent_id: '',
+                            created_at: new Date().toISOString().split('T')[0]
+                          });
+                        }}
+                        className="text-gray-400 hover:text-gray-600"
+                      >
+                        <X className="w-6 h-6" />
+                      </button>
+                    </div>
+
+                    <form onSubmit={(e) => {
+                      e.preventDefault();
+                      saveProjectExpense();
+                    }} className="space-y-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">Loại chi phí *</label>
+                          <select
+                            value={costForm.id_lcp}
+                            onChange={(e) => setCostForm({...costForm, id_lcp: e.target.value})}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent text-black"
+                            required
+                          >
+                            <option value="">Chọn loại chi phí</option>
+                            {expenseCategories.map(cat => (
+                              <option key={cat.id} value={cat.id}>{cat.tenchiphi}</option>
+                            ))}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">Số tiền (VND)</label>
+                          <input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            value={costForm.giathanh}
+                            onChange={(e) => setCostForm({...costForm, giathanh: e.target.value})}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent text-black"
+                            placeholder="Nhập số tiền"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">Ngày chi phí</label>
+                          <input
+                            type="date"
+                            value={costForm.created_at}
+                            onChange={(e) => setCostForm({...costForm, created_at: e.target.value})}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent text-black"
+                            required
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">Chi phí cha</label>
+                          <select
+                            value={costForm.parent_id}
+                            onChange={(e) => setCostForm({...costForm, parent_id: e.target.value})}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent text-black"
+                          >
+                            <option value="">Không có chi phí cha</option>
+                            {availableParents.map(parent => (
+                              <option key={parent.id} value={parent.id}>
+                                {parent.mo_ta || 'N/A'} - {(parent.giathanh || 0).toLocaleString('vi-VN')} VND
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Mô tả</label>
+                        <input
+                          type="text"
+                          value={costForm.mo_ta}
+                          onChange={(e) => setCostForm({...costForm, mo_ta: e.target.value})}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent text-black"
+                          placeholder="Nhập mô tả chi phí"
+                        />
+                      </div>
+                      <div className="flex justify-end space-x-3">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowCostForm(false);
+                            setEditingExpense(null);
+                            setCostForm({
+                              id_lcp: '',
+                              giathanh: '',
+                              mo_ta: 'dự toán',
+                              parent_id: '',
+                              created_at: new Date().toISOString().split('T')[0]
+                            });
+                          }}
+                          className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
+                        >
+                          Hủy
+                        </button>
+                        <button
+                          type="submit"
+                          className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+                        >
+                          {editingExpense ? 'Cập nhật' : 'Thêm chi phí'}
+                        </button>
+                      </div>
+                    </form>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Project Expenses List */}
+            <div className="space-y-4">
+              {projectExpenses.length === 0 ? (
+                <div className="text-center py-12 bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl border-2 border-dashed border-gray-300">
+                  <DollarSign className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                  <p className="text-gray-500 text-lg font-medium">Chưa có chi phí nào cho dự án này</p>
+                  <p className="text-gray-400 text-sm mt-1">Thêm chi phí đầu tiên để theo dõi</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {projectExpenses.map(expense => (
+                    <div key={expense.id} className="bg-gradient-to-r from-green-50 to-blue-50 rounded-lg border border-green-200 hover:border-green-300 hover:shadow-md transition-all duration-200 overflow-hidden">
+                      <div className="p-4">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center space-x-4 flex-1">
+                            <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
+                              <DollarSign className="w-6 h-6 text-green-600" />
+                            </div>
+                            <div className="flex-1">
+                              <h4 className="font-semibold text-gray-900 text-lg">
+                                {expense.loaichiphi?.tenchiphi || 'N/A'}
+                              </h4>
+                              <p className="text-sm text-gray-600">{expense.mo_ta || 'N/A'}</p>
+                              <p className="text-xs text-gray-500">
+                                {expense.created_at ? new Date(expense.created_at).toLocaleDateString('vi-VN') : 'N/A'}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex items-center space-x-4">
+                            <div className="text-right">
+                              <p className="text-lg font-bold text-green-600">
+                                {(expense.giathanh || 0).toLocaleString('vi-VN')} VND
+                              </p>
+                              <p className="text-sm text-gray-600">
+                                {expense.loaichiphi?.loaichiphi || 'N/A'}
+                              </p>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <button
+                                onClick={() => editProjectExpense(expense)}
+                                className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors duration-200"
+                                title="Sửa chi phí"
+                              >
+                                <Edit className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={() => deleteProjectExpense(expense.id)}
+                                className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors duration-200"
+                                title="Xóa chi phí"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Cost Summary */}
+            {projectExpenses.length > 0 && (
+              <div className="mt-6 pt-4 border-t border-gray-200">
+                <div className="flex justify-between items-center">
+                  <div>
+                    <h4 className="text-lg font-semibold text-gray-900">Tổng chi phí dự án</h4>
+                    <p className="text-sm text-gray-600">
+                      {projectExpenses.length} khoản chi phí
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-2xl font-bold text-green-600">
+                      {projectExpenses.reduce((sum, expense) => sum + (expense.giathanh || 0), 0).toLocaleString('vi-VN')} VND
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
@@ -5568,37 +5916,162 @@ function ExpensesManagementTab() {
   const [expenseCategories, setExpenseCategories] = useState([]);
   const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7));
   const [loading, setLoading] = useState(true);
+  const [projects, setProjects] = useState([]);
+  const [selectedProject, setSelectedProject] = useState('');
+  const [showExpenseForm, setShowExpenseForm] = useState(false);
+  const [editingExpense, setEditingExpense] = useState(null);
+  const [expenseForm, setExpenseForm] = useState({
+    id_lcp: '',
+    giathanh: '',
+    mo_ta: 'dự toán',
+    parent_id: '',
+    created_at: new Date().toISOString().split('T')[0]
+  });
+  const [availableParents, setAvailableParents] = useState([]);
 
   useEffect(() => {
-    loadData();
+    fetchProjects();
+    fetchExpenseCategories();
   }, []);
 
-  const loadData = async () => {
-    setLoading(true);
+  useEffect(() => {
+    if (selectedProject) {
+      loadProjectExpenses();
+    } else {
+      setExpenses([]);
+      setLoading(false);
+    }
+  }, [selectedProject, selectedMonth]);
+
+  const fetchProjects = async () => {
     try {
-      const [expensesRes, categoriesRes] = await Promise.all([
-        fetch(`http://localhost:8001/api/v1/accounting/quanly_chiphi/?month=${selectedMonth}`),
-        fetch('http://localhost:8001/api/v1/accounting/loaichiphi/')
-      ]);
-
-      if (expensesRes.ok) {
-        const expensesData = await expensesRes.json();
-        setExpenses(expensesData);
-      }
-
-      if (categoriesRes.ok) {
-        const categoriesData = await categoriesRes.json();
-        setExpenseCategories(categoriesData);
+      const response = await fetch('http://localhost:8001/api/v1/quote/cong_trinh/');
+      if (response.ok) {
+        const data = await response.json();
+        setProjects(data || []);
       }
     } catch (error) {
-      console.error('Error loading data:', error);
+      console.error('Error fetching projects:', error);
+    }
+  };
+
+  const fetchExpenseCategories = async () => {
+    try {
+      const response = await fetch('http://localhost:8001/api/v1/accounting/loaichiphi/');
+      if (response.ok) {
+        const data = await response.json();
+        setExpenseCategories(data || []);
+      }
+    } catch (error) {
+      console.error('Error fetching expense categories:', error);
+    }
+  };
+
+  const loadProjectExpenses = async () => {
+    if (!selectedProject) return;
+    
+    setLoading(true);
+    try {
+      const response = await fetch(`http://localhost:8001/api/v1/accounting/chiphi_quote/project/${selectedProject}`);
+      if (response.ok) {
+        const data = await response.json();
+        setExpenses(data.expenses || []);
+      }
+    } catch (error) {
+      console.error('Error loading project expenses:', error);
+      setExpenses([]);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleExpenseUpdate = () => {
-    loadData();
+  const saveProjectExpense = async () => {
+    if (!selectedProject) {
+      alert('Vui lòng chọn công trình trước khi thêm chi phí');
+      return;
+    }
+
+    if (!expenseForm.id_lcp) {
+      alert('Vui lòng chọn loại chi phí');
+      return;
+    }
+
+    try {
+      const expenseData = {
+        id_lcp: parseInt(expenseForm.id_lcp),
+        giathanh: parseFloat(expenseForm.giathanh) || null,
+        mo_ta: expenseForm.mo_ta || 'dự toán',
+        parent_id: expenseForm.parent_id ? parseInt(expenseForm.parent_id) : null,
+        created_at: expenseForm.created_at,
+        id_congtrinh: parseInt(selectedProject)
+      };
+
+      const url = editingExpense
+        ? `http://localhost:8001/api/v1/accounting/chiphi_quote/${editingExpense.id}`
+        : 'http://localhost:8001/api/v1/accounting/chiphi_quote/';
+
+      const method = editingExpense ? 'PUT' : 'POST';
+
+      const response = await fetch(url, {
+        method,
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(expenseData)
+      });
+
+      if (response.ok) {
+        alert(editingExpense ? 'Cập nhật chi phí thành công!' : 'Thêm chi phí thành công!');
+        loadProjectExpenses();
+        setExpenseForm({
+          id_lcp: '',
+          giathanh: '',
+          mo_ta: 'dự toán',
+          parent_id: '',
+          created_at: new Date().toISOString().split('T')[0]
+        });
+        setEditingExpense(null);
+        setShowExpenseForm(false);
+      } else {
+        const errorData = await response.json();
+        alert(`Có lỗi xảy ra: ${errorData.detail || 'Lỗi không xác định'}`);
+      }
+    } catch (error) {
+      console.error('Error saving expense:', error);
+      alert('Có lỗi xảy ra khi lưu chi phí');
+    }
+  };
+
+  const deleteProjectExpense = async (expenseId) => {
+    if (!confirm('Bạn có chắc chắn muốn xóa chi phí này?')) return;
+
+    try {
+      const response = await fetch(`http://localhost:8001/api/v1/accounting/chiphi_quote/${expenseId}`, {
+        method: 'DELETE'
+      });
+
+      if (response.ok) {
+        alert('Xóa chi phí thành công!');
+        loadProjectExpenses();
+      } else {
+        alert('Có lỗi xảy ra khi xóa chi phí');
+      }
+    } catch (error) {
+      console.error('Error deleting expense:', error);
+      alert('Có lỗi xảy ra khi xóa chi phí');
+    }
+  };
+
+  const editProjectExpense = (expense) => {
+    setEditingExpense(expense);
+    setExpenseForm({
+      id_lcp: expense.id_lcp?.toString() || '',
+      giathanh: expense.giathanh ? expense.giathanh.toString() : '',
+      mo_ta: expense.mo_ta || 'dự toán',
+      parent_id: expense.parent_id?.toString() || '',
+      created_at: expense.created_at ? new Date(expense.created_at).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]
+    });
+    setShowExpenseForm(true);
   };
 
   if (loading) {
@@ -5615,8 +6088,8 @@ function ExpensesManagementTab() {
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">Quản lý Chi phí</h2>
-          <p className="text-gray-600 mt-1">Theo dõi và quản lý các khoản chi phí</p>
+          <h2 className="text-2xl font-bold text-gray-900">Quản lý Chi phí Công trình</h2>
+          <p className="text-gray-600 mt-1">Thêm và quản lý chi phí cho công trình đã chọn</p>
         </div>
         <div className="flex items-center space-x-4">
           <div className="text-right">
@@ -5628,77 +6101,218 @@ function ExpensesManagementTab() {
         </div>
       </div>
 
-      {/* Month Selector */}
+      {/* Project Selection */}
       <div className="bg-white rounded-lg shadow-sm border p-6">
-        <div className="flex items-center space-x-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Chọn tháng</label>
-            <input
-              type="month"
-              value={selectedMonth}
-              onChange={(e) => setSelectedMonth(e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent text-black"
-            />
-          </div>
-          <div className="flex items-end">
-            <button
-              onClick={loadData}
-              className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 flex items-center space-x-2"
-            >
-              <RefreshCw className="w-4 h-4" />
-              <span>Tải lại</span>
-            </button>
-          </div>
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">Chọn công trình</h3>
+        <div className="max-w-md">
+          <label className="block text-sm font-medium text-gray-700 mb-2">Công trình</label>
+          <select
+            value={selectedProject}
+            onChange={(e) => setSelectedProject(e.target.value)}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent text-black"
+          >
+            <option value="">Chọn công trình để xem chi phí</option>
+            {projects.map(project => (
+              <option key={project.id} value={project.id}>
+                {project.name_congtrinh} - {project.name_customer}
+              </option>
+            ))}
+          </select>
+          {!selectedProject && (
+            <p className="text-sm text-gray-600 mt-2">
+              💡 Chọn công trình để xem và quản lý chi phí của công trình đó
+            </p>
+          )}
         </div>
       </div>
 
-      {/* Expenses Table */}
-      <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
-        <div className="px-6 py-4 border-b">
-          <h3 className="text-lg font-semibold text-gray-900">Danh sách chi phí tháng {selectedMonth}</h3>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Loại chi phí</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tên chi phí</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Số tiền</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ngày</th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {expenses.map(expense => (
-                <tr key={expense.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className="inline-flex px-2 py-1 text-xs font-medium bg-red-100 text-red-800 rounded-full">
-                      {expense.loaichiphi?.ten_loai || 'N/A'}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center">
-                      <Receipt className="w-4 h-4 text-gray-400 mr-2" />
-                      <span className="text-sm font-medium text-gray-900">{expense.ten_chi_phi || expense.mo_ta}</span>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-red-600">
-                    {(expense.giathanh || 0).toLocaleString('vi-VN')} VND
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {expense.created_at ? new Date(expense.created_at).toLocaleDateString('vi-VN') : 'N/A'}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        {expenses.length === 0 && (
-          <div className="text-center py-12">
-            <Receipt className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-            <p className="text-gray-500">Không có chi phí nào trong tháng này</p>
+      {/* Add Expense Button */}
+      {selectedProject && (
+        <div className="bg-white rounded-lg shadow-sm border p-6">
+          <div className="flex justify-between items-center">
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900">Thêm chi phí mới</h3>
+              <p className="text-gray-600 mt-1">Thêm loại chi phí và chi phí cho công trình đã chọn</p>
+            </div>
+            <button
+              onClick={() => {
+                setShowExpenseForm(true);
+                setEditingExpense(null);
+                setExpenseForm({
+                  id_lcp: '',
+                  giathanh: '',
+                  mo_ta: 'dự toán',
+                  parent_id: '',
+                  created_at: new Date().toISOString().split('T')[0]
+                });
+              }}
+              className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 flex items-center space-x-2"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Thêm chi phí</span>
+            </button>
           </div>
-        )}
-      </div>
+        </div>
+      )}
+
+      {/* Expense Form */}
+      {showExpenseForm && selectedProject && (
+        <div className="bg-white rounded-lg shadow-sm border p-6">
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-lg font-semibold text-gray-900">
+              {editingExpense ? 'Sửa chi phí' : 'Thêm chi phí mới'}
+            </h3>
+            <button
+              onClick={() => setShowExpenseForm(false)}
+              className="text-gray-400 hover:text-gray-600"
+            >
+              <X className="w-6 h-6" />
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Loại chi phí *</label>
+              <select
+                value={expenseForm.id_lcp}
+                onChange={(e) => setExpenseForm({...expenseForm, id_lcp: e.target.value})}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent text-black"
+                required
+              >
+                <option value="">Chọn loại chi phí</option>
+                {expenseCategories.map(cat => (
+                  <option key={cat.id} value={cat.id}>
+                    {cat.tenchiphi}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Số tiền (VND)</label>
+              <input
+                type="number"
+                min="0"
+                step="1000"
+                value={expenseForm.giathanh}
+                onChange={(e) => setExpenseForm({...expenseForm, giathanh: e.target.value})}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent text-black"
+                placeholder="Nhập số tiền"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Mô tả</label>
+              <input
+                type="text"
+                value={expenseForm.mo_ta}
+                onChange={(e) => setExpenseForm({...expenseForm, mo_ta: e.target.value})}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent text-black"
+                placeholder="Nhập mô tả chi phí"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Ngày</label>
+              <input
+                type="date"
+                value={expenseForm.created_at}
+                onChange={(e) => setExpenseForm({...expenseForm, created_at: e.target.value})}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent text-black"
+              />
+            </div>
+          </div>
+
+          <div className="flex justify-end space-x-3 mt-6">
+            <button
+              onClick={() => setShowExpenseForm(false)}
+              className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
+            >
+              Hủy
+            </button>
+            <button
+              onClick={saveProjectExpense}
+              className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 flex items-center space-x-2"
+            >
+              <Save className="w-4 h-4" />
+              <span>{editingExpense ? 'Cập nhật' : 'Lưu'}</span>
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Expenses List */}
+      {selectedProject && (
+        <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
+          <div className="px-6 py-4 border-b">
+            <h3 className="text-lg font-semibold text-gray-900">Danh sách chi phí công trình</h3>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Loại chi phí</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Mô tả</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Số tiền</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ngày</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Thao tác</th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {expenses.map(expense => (
+                  <tr key={expense.id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className="inline-flex px-2 py-1 text-xs font-medium bg-red-100 text-red-800 rounded-full">
+                        {expense.loaichiphi?.ten_loai || 'N/A'}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center">
+                        <Receipt className="w-4 h-4 text-gray-400 mr-2" />
+                        <span className="text-sm font-medium text-gray-900">{expense.ten_chi_phi || expense.mo_ta}</span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-red-600">
+                      {(expense.giathanh || 0).toLocaleString('vi-VN')} VND
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {expense.created_at ? new Date(expense.created_at).toLocaleDateString('vi-VN') : 'N/A'}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                      <div className="flex items-center space-x-2">
+                        <button
+                          onClick={() => editProjectExpense(expense)}
+                          className="text-blue-600 hover:text-blue-900"
+                        >
+                          <Edit className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => deleteProjectExpense(expense.id)}
+                          className="text-red-600 hover:text-red-900"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {expenses.length === 0 && (
+            <div className="text-center py-12">
+              <Receipt className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+              <p className="text-gray-500">Chưa có chi phí nào cho công trình này</p>
+              <p className="text-gray-400 text-sm mt-1">Nhấn "Thêm chi phí" để bắt đầu</p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {!selectedProject && (
+        <div className="bg-gray-50 rounded-lg border-2 border-dashed border-gray-300 p-12 text-center">
+          <Building2 className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+          <h3 className="text-lg font-medium text-gray-900 mb-2">Chọn công trình để xem chi phí</h3>
+          <p className="text-gray-600">Vui lòng chọn một công trình từ danh sách ở trên để xem và quản lý chi phí.</p>
+        </div>
+      )}
     </div>
   );
 }

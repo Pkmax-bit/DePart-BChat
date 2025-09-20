@@ -1789,7 +1789,7 @@ function RevenueTab({ salesData, products, setSalesData }) {
   const loadInvoices = async () => {
     setLoading(true);
     try {
-      const response = await fetch(`http://localhost:8001/api/v1/accounting/invoices?month=${selectedMonth}`, {
+      const response = await fetch(`http://localhost:8001/api/v1/quote/invoices?month=${selectedMonth}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -1798,7 +1798,7 @@ function RevenueTab({ salesData, products, setSalesData }) {
 
       if (response.ok) {
         const data = await response.json();
-        setInvoices(data.invoices || []);
+        setInvoices(data.quotes || []);
       } else {
         const errorText = await response.text();
         console.error('Error loading invoices:', {

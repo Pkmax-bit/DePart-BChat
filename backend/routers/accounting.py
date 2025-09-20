@@ -621,185 +621,6 @@ async def get_invoices(month: str = None):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error fetching invoices: {str(e)}")
 
-@router.get("/invoices_reality/")
-async def get_invoices_reality(month: str = None):
-    """Lấy danh sách hóa đơn thực tế, có thể lọc theo tháng"""
-    try:
-        query = supabase.table('invoices_reality').select('*')
-
-        if month:
-            # Lọc theo tháng (định dạng YYYY-MM)
-            start_date = f"{month}-01"
-            # Tính ngày cuối tháng
-            year, month_num = map(int, month.split('-'))
-            if month_num == 12:
-                end_date = f"{year + 1}-01-01"
-            else:
-                end_date = f"{year}-{month_num + 1:02d}-01"
-
-            query = query.gte('invoice_date', start_date).lt('invoice_date', end_date)
-
-        result = query.order('invoice_date', desc=True).execute()
-
-        # Lấy chi tiết cho mỗi hóa đơn
-        invoices_with_items = []
-        for invoice in result.data:
-            # Lấy thông tin công trình nếu có
-            cong_trinh_info = None
-            if invoice.get('id_congtrinh'):
-                try:
-                    cong_trinh_result = supabase.table('cong_trinh').select('*').eq('id', invoice['id_congtrinh']).execute()
-                    if cong_trinh_result.data:
-                        cong_trinh_info = cong_trinh_result.data[0]
-                except Exception as e:
-                    print(f"Error fetching cong_trinh for invoice {invoice['id']}: {e}")
-
-            # Lấy items của invoice này
-            items_result = supabase.table('invoice_items_reality').select('*').eq('invoice_id', invoice['id']).execute()
-
-            # Lấy thông tin chi tiết cho mỗi item
-            items_with_details = []
-            for item in items_result.data:
-                item_with_details = dict(item)
-
-                # Lấy thông tin sản phẩm
-                if item.get('sanpham_id'):
-                    try:
-                        product_id = item['sanpham_id']
-                        if product_id:
-                            product_result = supabase.table('sanpham').select('*').eq('id', product_id).execute()
-                            if product_result.data:
-                                product = product_result.data[0]
-
-                                # Lấy tên loại nhôm
-                                if product.get('id_nhom'):
-                                    try:
-                                        nhom_id = product['id_nhom']
-                                        if nhom_id:
-                                            nhom_result = supabase.table('loainhom').select('tenloai').eq('id', nhom_id).execute()
-                                            if nhom_result.data:
-                                                product['ten_nhom'] = nhom_result.data[0]['tenloai']
-                                    except:
-                                        pass
-
-                                # Lấy tên loại kính
-                                if product.get('id_kinh'):
-                                    try:
-                                        kinh_id = product['id_kinh']
-                                        if kinh_id:
-                                            kinh_result = supabase.table('loaikinh').select('tenloai').eq('id', kinh_id).execute()
-                                            if kinh_result.data:
-                                                product['ten_kinh'] = kinh_result.data[0]['tenloai']
-                                    except:
-                                        pass
-
-                                # Lấy tên loại tay nắm
-                                if product.get('id_taynam'):
-                                    try:
-                                        taynam_id = product['id_taynam']
-                                        if taynam_id:
-                                            taynam_result = supabase.table('loaitaynam').select('tenloai').eq('id', taynam_id).execute()
-                                            if taynam_result.data:
-                                                product['ten_taynam'] = taynam_result.data[0]['tenloai']
-                                    except:
-                                        pass
-
-                                # Lấy tên bộ phận
-                                if product.get('id_bophan'):
-                                    try:
-                                        bophan_id = product['id_bophan']
-                                        if bophan_id:
-                                            bophan_result = supabase.table('bophan').select('tenloai').eq('id', bophan_id).execute()
-                                            if bophan_result.data:
-                                                product['ten_bophan'] = bophan_result.data[0]['tenloai']
-                                    except:
-                                        pass
-
-                                item_with_details['sanpham'] = product
-                    except (ValueError, TypeError):
-                        pass
-
-                # Xử lý phụ kiện bếp nếu có
-                if item.get('id_phukien') and item.get('loai_san_pham') == 'phu_kien_bep':
-                    try:
-                        phukien_id = item['id_phukien']
-                        if phukien_id:
-                            phukien_result = supabase.table('phukienbep').select('*').eq('id', phukien_id).execute()
-                            if phukien_result.data:
-                                phukien = phukien_result.data[0]
-
-                                # Lấy tên loại phụ kiện bếp
-                                if phukien.get('id_loaiphukien'):
-                                    try:
-                                        loaiphukien_result = supabase.table('loaiphukienbep').select('tenloai').eq('id', phukien['id_loaiphukien']).execute()
-                                        if loaiphukien_result.data:
-                                            phukien['ten_loai_phukien'] = loaiphukien_result.data[0]['tenloai']
-                                    except:
-                                        pass
-
-                                item_with_details['phukien'] = phukien
-                    except (ValueError, TypeError):
-                        pass
-
-                # Nếu không có sanpham_id hoặc không tìm thấy sản phẩm, lấy thông tin từ item trực tiếp
-                if not item_with_details.get('sanpham') and not item_with_details.get('phukien'):
-                    # Lấy tên loại nhôm từ item
-                    if item.get('id_nhom'):
-                        try:
-                            nhom_id = item['id_nhom']
-                            if nhom_id:
-                                nhom_result = supabase.table('loainhom').select('tenloai').eq('id', nhom_id).execute()
-                                if nhom_result.data:
-                                    item_with_details['ten_nhom'] = nhom_result.data[0]['tenloai']
-                        except:
-                            pass
-
-                    # Lấy tên loại kính từ item
-                    if item.get('id_kinh'):
-                        try:
-                            kinh_id = item['id_kinh']
-                            if kinh_id:
-                                kinh_result = supabase.table('loaikinh').select('tenloai').eq('id', kinh_id).execute()
-                                if kinh_result.data:
-                                    item_with_details['ten_kinh'] = kinh_result.data[0]['tenloai']
-                        except:
-                            pass
-
-                    # Lấy tên loại tay nắm từ item
-                    if item.get('id_taynam'):
-                        try:
-                            taynam_id = item['id_taynam']
-                            if taynam_id:
-                                taynam_result = supabase.table('loaitaynam').select('tenloai').eq('id', taynam_id).execute()
-                                if taynam_result.data:
-                                    item_with_details['ten_taynam'] = taynam_result.data[0]['tenloai']
-                        except:
-                            pass
-
-                    # Lấy tên bộ phận từ item
-                    if item.get('id_bophan'):
-                        try:
-                            bophan_id = item['id_bophan']
-                            if bophan_id:
-                                bophan_result = supabase.table('bophan').select('tenloai').eq('id', bophan_id).execute()
-                                if bophan_result.data:
-                                    item_with_details['ten_bophan'] = bophan_result.data[0]['tenloai']
-                        except:
-                            pass
-
-                items_with_details.append(item_with_details)
-
-            invoice_with_items = {
-                **invoice,
-                'items': items_with_details,
-                'cong_trinh': cong_trinh_info
-            }
-            invoices_with_items.append(invoice_with_items)
-
-        return {"invoices": invoices_with_items}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error fetching invoices: {str(e)}")
-
 @router.get("/loaichiphi/")
 async def get_loaichiphi():
     """Lấy danh sách loại chi phí"""
@@ -1864,3 +1685,84 @@ async def verify_expense_totals():
         raise HTTPException(status_code=500, detail="Quá thời gian chờ kiểm tra")
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Lỗi kiểm tra tỷ lệ tổng chi phí: {str(e)}")
+
+# ==================== CHIPHI_QUOTE ENDPOINTS ====================
+
+@router.get("/chiphi_quote/")
+async def get_chiphi_quote():
+    """Lấy danh sách tất cả chi phí báo giá"""
+    try:
+        result = supabase.table('chiphi_quote').select('*').execute()
+        return result.data
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching chiphi_quote: {str(e)}")
+
+@router.get("/chiphi_quote/project/{project_id}")
+async def get_chiphi_quote_by_project(project_id: int):
+    """Lấy danh sách chi phí báo giá theo công trình"""
+    try:
+        result = supabase.table('chiphi_quote').select('*').eq('id_congtrinh', project_id).execute()
+        return {"expenses": result.data}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching chiphi_quote by project: {str(e)}")
+
+@router.post("/chiphi_quote/")
+async def create_chiphi_quote(expense_data: dict):
+    """Tạo chi phí báo giá mới"""
+    try:
+        # Prepare data for insertion
+        data_to_insert = {
+            'id_lcp': expense_data.get('id_lcp'),
+            'giathanh': expense_data.get('giathanh'),
+            'mo_ta': expense_data.get('mo_ta', 'dự toán'),
+            'hinhanh': expense_data.get('hinhanh'),
+            'created_at': expense_data.get('created_at', datetime.now().isoformat()),
+            'parent_id': expense_data.get('parent_id'),
+            'ti_le': expense_data.get('ti_le'),
+            'status': expense_data.get('status'),
+            'id_congtrinh': expense_data.get('id_congtrinh')
+        }
+
+        result = supabase.table('chiphi_quote').insert(data_to_insert).execute()
+        return result.data[0]
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error creating chiphi_quote: {str(e)}")
+
+@router.put("/chiphi_quote/{expense_id}")
+async def update_chiphi_quote(expense_id: int, expense_data: dict):
+    """Cập nhật chi phí báo giá"""
+    try:
+        # Prepare data for update
+        data_to_update = {}
+        if 'id_lcp' in expense_data:
+            data_to_update['id_lcp'] = expense_data['id_lcp']
+        if 'giathanh' in expense_data:
+            data_to_update['giathanh'] = expense_data['giathanh']
+        if 'mo_ta' in expense_data:
+            data_to_update['mo_ta'] = expense_data['mo_ta']
+        if 'hinhanh' in expense_data:
+            data_to_update['hinhanh'] = expense_data['hinhanh']
+        if 'parent_id' in expense_data:
+            data_to_update['parent_id'] = expense_data['parent_id']
+        if 'ti_le' in expense_data:
+            data_to_update['ti_le'] = expense_data['ti_le']
+        if 'status' in expense_data:
+            data_to_update['status'] = expense_data['status']
+        if 'id_congtrinh' in expense_data:
+            data_to_update['id_congtrinh'] = expense_data['id_congtrinh']
+
+        data_to_update['updated_at'] = datetime.now().isoformat()
+
+        result = supabase.table('chiphi_quote').update(data_to_update).eq('id', expense_id).execute()
+        return result.data[0]
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error updating chiphi_quote: {str(e)}")
+
+@router.delete("/chiphi_quote/{expense_id}")
+async def delete_chiphi_quote(expense_id: int):
+    """Xóa chi phí báo giá"""
+    try:
+        result = supabase.table('chiphi_quote').delete().eq('id', expense_id).execute()
+        return {"message": "Chi phí báo giá đã được xóa thành công"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error deleting chiphi_quote: {str(e)}")
