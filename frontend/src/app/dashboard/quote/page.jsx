@@ -1,10 +1,10 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
-import { Plus, Edit, Trash2, TrendingUp, TrendingDown, DollarSign, Package, Receipt, CreditCard, FileText, Info, Calendar, BarChart3, History, Settings, RotateCcw, Save, RefreshCw, Download, Users, Wrench, Eye, EyeOff, X, Check, Building2, Phone, Mail, MapPin, User, CheckCircle } from 'lucide-react';
+import { Plus, Edit, Trash2, TrendingUp, TrendingDown, DollarSign, Package, Receipt, CreditCard, FileText, Info, Calendar, BarChart3, History, Settings, RotateCcw, Save, RefreshCw, Download, Users, Wrench, Eye, EyeOff, X, Check, Building2, Phone, Mail, MapPin, User, CheckCircle, ArrowRight } from 'lucide-react';
 import * as XLSX from 'xlsx';
 
 const supabase = createClientComponentClient();
@@ -231,7 +231,7 @@ function InvoicesTab() {
   const [costForm, setCostForm] = useState({
     id_lcp: '',
     giathanh: '',
-    mo_ta: 'dự toán',
+    mo_ta: '',
     parent_id: '',
     created_at: new Date().toISOString().split('T')[0]
   });
@@ -1168,6 +1168,128 @@ function InvoicesTab() {
     setShowCostForm(true);
   };
 
+  // Function to render hierarchical expenses
+  const renderHierarchicalExpenses = (expenses) => {
+    // Separate parent and child expenses
+    const parentExpenses = expenses.filter(expense => !expense.parent_id);
+    const childExpenses = expenses.filter(expense => expense.parent_id);
+
+    // Group children by parent_id
+    const childrenByParent = {};
+    childExpenses.forEach(child => {
+      if (!childrenByParent[child.parent_id]) {
+        childrenByParent[child.parent_id] = [];
+      }
+      childrenByParent[child.parent_id].push(child);
+    });
+
+    return (
+      <div className="space-y-4">
+        {parentExpenses.map(parent => (
+          <div key={parent.id} className="space-y-2">
+            {/* Parent Expense */}
+            <div className="bg-gradient-to-r from-green-50 to-blue-50 rounded-lg border border-green-200 hover:border-green-300 hover:shadow-md transition-all duration-200 overflow-hidden">
+              <div className="p-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-4 flex-1">
+                    <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
+                      <DollarSign className="w-6 h-6 text-green-600" />
+                    </div>
+                    <div className="flex-1">
+                      <h4 className="font-semibold text-gray-900 text-lg">
+                        {parent.loaichiphi?.tenchiphi || 'N/A'}
+                      </h4>
+                      <p className="text-sm text-gray-600">{parent.mo_ta || 'N/A'}</p>
+                      <p className="text-xs text-gray-500">
+                        {parent.created_at ? new Date(parent.created_at).toLocaleDateString('vi-VN') : 'N/A'}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center space-x-4">
+                    <div className="text-right">
+                      <p className="text-lg font-bold text-green-600">
+                        {(parent.giathanh || 0).toLocaleString('vi-VN')} VND
+                      </p>
+                      <p className="text-sm text-gray-600">
+                        {parent.loaichiphi?.loaichiphi || 'N/A'}
+                      </p>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <button
+                        onClick={() => editProjectExpense(parent)}
+                        className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors duration-200"
+                        title="Sửa chi phí"
+                      >
+                        <Edit className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => deleteProjectExpense(parent.id)}
+                        className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors duration-200"
+                        title="Xóa chi phí"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Child Expenses */}
+            {childrenByParent[parent.id] && childrenByParent[parent.id].map(child => (
+              <div key={child.id} className="ml-8 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200 hover:border-blue-300 hover:shadow-md transition-all duration-200 overflow-hidden">
+                <div className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-4 flex-1">
+                      <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                        <ArrowRight className="w-4 h-4 text-blue-600" />
+                      </div>
+                      <div className="flex-1">
+                        <h5 className="font-medium text-gray-900 text-base">
+                          {child.loaichiphi?.tenchiphi || 'N/A'}
+                        </h5>
+                        <p className="text-sm text-gray-600">{child.mo_ta || 'N/A'}</p>
+                        <p className="text-xs text-gray-500">
+                          {child.created_at ? new Date(child.created_at).toLocaleDateString('vi-VN') : 'N/A'}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center space-x-4">
+                      <div className="text-right">
+                        <p className="text-base font-semibold text-blue-600">
+                          {(child.giathanh || 0).toLocaleString('vi-VN')} VND
+                        </p>
+                        <p className="text-sm text-gray-600">
+                          {child.loaichiphi?.loaichiphi || 'N/A'}
+                        </p>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <button
+                          onClick={() => editProjectExpense(child)}
+                          className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors duration-200"
+                          title="Sửa chi phí"
+                        >
+                          <Edit className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => deleteProjectExpense(child.id)}
+                          className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors duration-200"
+                          title="Xóa chi phí"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ))}
+      </div>
+    );
+  };
+
   const saveInvoice = async () => {
     if (!customerName.trim()) {
       alert('Vui lòng nhập tên khách hàng');
@@ -1276,6 +1398,24 @@ function InvoicesTab() {
       fetchAvailableParents();
     }
   }, [showCostForm, selectedProject]);
+
+  const fetchAvailableParents = async () => {
+    try {
+      const response = await fetch(`http://localhost:8001/api/v1/quote/chiphi_quote/?id_congtrinh=${selectedProject}`);
+      if (response.ok) {
+        const data = await response.json();
+        // Filter expenses that don't have a parent_id (top-level expenses)
+        const parentExpenses = data.filter(expense => !expense.parent_id);
+        setAvailableParents(parentExpenses);
+      } else {
+        console.error('Error fetching available parents:', response.statusText);
+        setAvailableParents([]);
+      }
+    } catch (error) {
+      console.error('Error fetching available parents:', error);
+      setAvailableParents([]);
+    }
+  };
 
   if (loading) {
     return <div className="p-6">Đang tải danh sách sản phẩm...</div>;
@@ -2762,56 +2902,7 @@ function InvoicesTab() {
                   <p className="text-gray-400 text-sm mt-1">Thêm chi phí đầu tiên để theo dõi</p>
                 </div>
               ) : (
-                <div className="space-y-3">
-                  {projectExpenses.map(expense => (
-                    <div key={expense.id} className="bg-gradient-to-r from-green-50 to-blue-50 rounded-lg border border-green-200 hover:border-green-300 hover:shadow-md transition-all duration-200 overflow-hidden">
-                      <div className="p-4">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center space-x-4 flex-1">
-                            <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
-                              <DollarSign className="w-6 h-6 text-green-600" />
-                            </div>
-                            <div className="flex-1">
-                              <h4 className="font-semibold text-gray-900 text-lg">
-                                {expense.loaichiphi?.tenchiphi || 'N/A'}
-                              </h4>
-                              <p className="text-sm text-gray-600">{expense.mo_ta || 'N/A'}</p>
-                              <p className="text-xs text-gray-500">
-                                {expense.created_at ? new Date(expense.created_at).toLocaleDateString('vi-VN') : 'N/A'}
-                              </p>
-                            </div>
-                          </div>
-                          <div className="flex items-center space-x-4">
-                            <div className="text-right">
-                              <p className="text-lg font-bold text-green-600">
-                                {(expense.giathanh || 0).toLocaleString('vi-VN')} VND
-                              </p>
-                              <p className="text-sm text-gray-600">
-                                {expense.loaichiphi?.loaichiphi || 'N/A'}
-                              </p>
-                            </div>
-                            <div className="flex items-center space-x-2">
-                              <button
-                                onClick={() => editProjectExpense(expense)}
-                                className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors duration-200"
-                                title="Sửa chi phí"
-                              >
-                                <Edit className="w-4 h-4" />
-                              </button>
-                              <button
-                                onClick={() => deleteProjectExpense(expense.id)}
-                                className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors duration-200"
-                                title="Xóa chi phí"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                renderHierarchicalExpenses(projectExpenses)
               )}
             </div>
 
@@ -5927,7 +6018,7 @@ function ExpensesManagementTab() {
     parent_id: '',
     created_at: new Date().toISOString().split('T')[0]
   });
-  const [availableParents, setAvailableParents] = useState([]);
+  const [expenseAvailableParents, setExpenseAvailableParents] = useState([]);
 
   useEffect(() => {
     fetchProjects();
@@ -5937,11 +6028,30 @@ function ExpensesManagementTab() {
   useEffect(() => {
     if (selectedProject) {
       loadProjectExpenses();
+      loadExpenseAvailableParents();
     } else {
       setExpenses([]);
+      setExpenseAvailableParents([]);
       setLoading(false);
     }
   }, [selectedProject, selectedMonth]);
+
+  const loadExpenseAvailableParents = async () => {
+    if (!selectedProject) return;
+    
+    try {
+      const response = await fetch(`http://localhost:8001/api/v1/accounting/chiphi_quote/project/${selectedProject}`);
+      if (response.ok) {
+        const data = await response.json();
+        // Filter expenses that can be parents (those without parent_id or with null parent_id)
+        const parents = data.expenses.filter(expense => !expense.parent_id);
+        setExpenseAvailableParents(parents);
+      }
+    } catch (error) {
+      console.error('Error loading available parents:', error);
+      setExpenseAvailableParents([]);
+    }
+  };
 
   const fetchProjects = async () => {
     try {
@@ -6074,6 +6184,128 @@ function ExpensesManagementTab() {
     setShowExpenseForm(true);
   };
 
+  // Function to render hierarchical expenses
+  const renderHierarchicalExpenses = (expenses) => {
+    // Separate parent and child expenses
+    const parentExpenses = expenses.filter(expense => !expense.parent_id);
+    const childExpenses = expenses.filter(expense => expense.parent_id);
+
+    // Group children by parent_id
+    const childrenByParent = {};
+    childExpenses.forEach(child => {
+      if (!childrenByParent[child.parent_id]) {
+        childrenByParent[child.parent_id] = [];
+      }
+      childrenByParent[child.parent_id].push(child);
+    });
+
+    return (
+      <div className="space-y-4">
+        {parentExpenses.map(parent => (
+          <div key={parent.id} className="space-y-2">
+            {/* Parent Expense */}
+            <div className="bg-gradient-to-r from-green-50 to-blue-50 rounded-lg border border-green-200 hover:border-green-300 hover:shadow-md transition-all duration-200 overflow-hidden">
+              <div className="p-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-4 flex-1">
+                    <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
+                      <DollarSign className="w-6 h-6 text-green-600" />
+                    </div>
+                    <div className="flex-1">
+                      <h4 className="font-semibold text-gray-900 text-lg">
+                        {parent.loaichiphi?.tenchiphi || 'N/A'}
+                      </h4>
+                      <p className="text-sm text-gray-600">{parent.mo_ta || 'N/A'}</p>
+                      <p className="text-xs text-gray-500">
+                        {parent.created_at ? new Date(parent.created_at).toLocaleDateString('vi-VN') : 'N/A'}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center space-x-4">
+                    <div className="text-right">
+                      <p className="text-lg font-bold text-green-600">
+                        {(parent.giathanh || 0).toLocaleString('vi-VN')} VND
+                      </p>
+                      <p className="text-sm text-gray-600">
+                        {parent.loaichiphi?.loaichiphi || 'N/A'}
+                      </p>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <button
+                        onClick={() => editProjectExpense(parent)}
+                        className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors duration-200"
+                        title="Sửa chi phí"
+                      >
+                        <Edit className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => deleteProjectExpense(parent.id)}
+                        className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors duration-200"
+                        title="Xóa chi phí"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Child Expenses */}
+            {childrenByParent[parent.id] && childrenByParent[parent.id].map(child => (
+              <div key={child.id} className="ml-8 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200 hover:border-blue-300 hover:shadow-md transition-all duration-200 overflow-hidden">
+                <div className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-4 flex-1">
+                      <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                        <ArrowRight className="w-4 h-4 text-blue-600" />
+                      </div>
+                      <div className="flex-1">
+                        <h5 className="font-medium text-gray-900 text-base">
+                          {child.loaichiphi?.tenchiphi || 'N/A'}
+                        </h5>
+                        <p className="text-sm text-gray-600">{child.mo_ta || 'N/A'}</p>
+                        <p className="text-xs text-gray-500">
+                          {child.created_at ? new Date(child.created_at).toLocaleDateString('vi-VN') : 'N/A'}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center space-x-4">
+                      <div className="text-right">
+                        <p className="text-base font-semibold text-blue-600">
+                          {(child.giathanh || 0).toLocaleString('vi-VN')} VND
+                        </p>
+                        <p className="text-sm text-gray-600">
+                          {child.loaichiphi?.loaichiphi || 'N/A'}
+                        </p>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <button
+                          onClick={() => editProjectExpense(child)}
+                          className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors duration-200"
+                          title="Sửa chi phí"
+                        >
+                          <Edit className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => deleteProjectExpense(child.id)}
+                          className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors duration-200"
+                          title="Xóa chi phí"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ))}
+      </div>
+    );
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -6188,6 +6420,21 @@ function ExpensesManagementTab() {
               </select>
             </div>
             <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Chi phí cha (tùy chọn)</label>
+              <select
+                value={expenseForm.parent_id}
+                onChange={(e) => setExpenseForm({...expenseForm, parent_id: e.target.value})}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent text-black"
+              >
+                <option value="">Không có chi phí cha</option>
+                {expenseAvailableParents.map(parent => (
+                  <option key={parent.id} value={parent.id}>
+                    {parent.loaichiphi?.tenchiphi || 'N/A'} - {parent.mo_ta || 'N/A'}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Số tiền (VND)</label>
               <input
                 type="number"
@@ -6240,69 +6487,26 @@ function ExpensesManagementTab() {
 
       {/* Expenses List */}
       {selectedProject && (
-        <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
-          <div className="px-6 py-4 border-b">
+        <div className="bg-white rounded-lg shadow-sm border p-6">
+          <div className="flex justify-between items-center mb-4">
             <h3 className="text-lg font-semibold text-gray-900">Danh sách chi phí công trình</h3>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Loại chi phí</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Mô tả</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Số tiền</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ngày</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Thao tác</th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {expenses.map(expense => (
-                  <tr key={expense.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className="inline-flex px-2 py-1 text-xs font-medium bg-red-100 text-red-800 rounded-full">
-                        {expense.loaichiphi?.ten_loai || 'N/A'}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center">
-                        <Receipt className="w-4 h-4 text-gray-400 mr-2" />
-                        <span className="text-sm font-medium text-gray-900">{expense.ten_chi_phi || expense.mo_ta}</span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-red-600">
-                      {(expense.giathanh || 0).toLocaleString('vi-VN')} VND
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {expense.created_at ? new Date(expense.created_at).toLocaleDateString('vi-VN') : 'N/A'}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      <div className="flex items-center space-x-2">
-                        <button
-                          onClick={() => editProjectExpense(expense)}
-                          className="text-blue-600 hover:text-blue-900"
-                        >
-                          <Edit className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => deleteProjectExpense(expense.id)}
-                          className="text-red-600 hover:text-red-900"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          {expenses.length === 0 && (
-            <div className="text-center py-12">
-              <Receipt className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-              <p className="text-gray-500">Chưa có chi phí nào cho công trình này</p>
-              <p className="text-gray-400 text-sm mt-1">Nhấn "Thêm chi phí" để bắt đầu</p>
+            <div className="text-sm text-gray-600">
+              Tổng chi phí: <span className="font-bold text-red-600">
+                {expenses.reduce((sum, expense) => sum + (expense.giathanh || 0), 0).toLocaleString('vi-VN')} VND
+              </span>
             </div>
-          )}
+          </div>
+          <div className="space-y-2">
+            {loading ? (
+              <div className="text-center py-4">Đang tải...</div>
+            ) : expenses.length === 0 ? (
+              <div className="text-center py-4 text-gray-500">
+                Chưa có chi phí nào cho công trình này
+              </div>
+            ) : (
+              renderHierarchicalExpenses(expenses)
+            )}
+          </div>
         </div>
       )}
 
