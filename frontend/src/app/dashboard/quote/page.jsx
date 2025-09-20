@@ -7,6 +7,14 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsive
 import { Plus, Edit, Trash2, TrendingUp, TrendingDown, DollarSign, Package, Receipt, CreditCard, FileText, Info, Calendar, BarChart3, History, Settings, RotateCcw, Save, RefreshCw, Download, Users, Wrench, Eye, EyeOff, X, Check, Building2, Phone, Mail, MapPin, User, CheckCircle, ArrowRight } from 'lucide-react';
 import * as XLSX from 'xlsx';
 
+// Import các component đã tách
+import QuoteHeader from '../../../components/quote/QuoteHeader';
+import ProjectSection from '../../../components/quote/ProjectSection';
+import InvoiceInfo from '../../../components/quote/InvoiceInfo';
+import InvoiceItems from '../../../components/quote/InvoiceItems';
+import CostManagement from '../../../components/quote/CostManagement';
+import QuoteSummary from '../../../components/quote/QuoteSummary';
+
 const supabase = createClientComponentClient();
 
 function QuoteLayout({ user, activeTab, onTabChange, children }) {
@@ -232,6 +240,7 @@ function InvoicesTab() {
     id_lcp: '',
     giathanh: '',
     mo_ta: '',
+    status: 'dự toán',
     parent_id: '',
     created_at: new Date().toISOString().split('T')[0]
   });
@@ -289,7 +298,13 @@ function InvoicesTab() {
       const response = await fetch(`http://localhost:8001/api/v1/accounting/quanly_chiphi/project/${projectId}`);
       if (response.ok) {
         const data = await response.json();
-        setProjectExpenses(data.expenses || []);
+        // Process expenses to handle mo_ta logic
+        const processedExpenses = (data.expenses || []).map(expense => ({
+          ...expense,
+          mo_ta: expense.mo_ta === 'dự toán' ? '' : (expense.mo_ta || ''),
+          status: expense.status || 'dự toán'
+        }));
+        setProjectExpenses(processedExpenses);
       }
     } catch (error) {
       console.error('Error fetching project expenses:', error);
@@ -1091,7 +1106,8 @@ function InvoicesTab() {
       const expenseData = {
         id_lcp: parseInt(costForm.id_lcp),
         giathanh: parseFloat(costForm.giathanh) || null,
-        mo_ta: costForm.mo_ta || 'dự toán',
+        mo_ta: costForm.mo_ta || '',
+        status: costForm.status || 'dự toán',
         parent_id: costForm.parent_id ? parseInt(costForm.parent_id) : null,
         created_at: costForm.created_at,
         id_congtrinh: parseInt(selectedProject)
@@ -1119,7 +1135,8 @@ function InvoicesTab() {
         setCostForm({
           id_lcp: '',
           giathanh: '',
-          mo_ta: 'dự toán',
+          mo_ta: '',
+          status: 'dự toán',
           parent_id: '',
           created_at: new Date().toISOString().split('T')[0]
         });
@@ -1161,9 +1178,23 @@ function InvoicesTab() {
     setCostForm({
       id_lcp: expense.id_lcp?.toString() || '',
       giathanh: expense.giathanh ? expense.giathanh.toString() : '',
-      mo_ta: expense.mo_ta || 'dự toán',
+      mo_ta: expense.mo_ta === 'dự toán' ? '' : (expense.mo_ta || ''),
+      status: expense.status || 'dự toán',
       parent_id: expense.parent_id?.toString() || '',
       created_at: expense.created_at ? new Date(expense.created_at).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]
+    });
+    setShowCostForm(true);
+  };
+
+  const addChildExpense = (parentId) => {
+    setEditingExpense(null);
+    setCostForm({
+      id_lcp: '',
+      giathanh: '',
+      mo_ta: '',
+      status: 'dự toán',
+      parent_id: parentId.toString(),
+      created_at: new Date().toISOString().split('T')[0]
     });
     setShowCostForm(true);
   };
@@ -1216,6 +1247,13 @@ function InvoicesTab() {
                     </div>
                     <div className="flex items-center space-x-2">
                       <button
+                        onClick={() => addChildExpense(parent.id)}
+                        className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors duration-200"
+                        title="Thêm chi phí con"
+                      >
+                        <Plus className="w-4 h-4" />
+                      </button>
+                      <button
                         onClick={() => editProjectExpense(parent)}
                         className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors duration-200"
                         title="Sửa chi phí"
@@ -1264,6 +1302,13 @@ function InvoicesTab() {
                         </p>
                       </div>
                       <div className="flex items-center space-x-2">
+                        <button
+                          onClick={() => addChildExpense(child.id)}
+                          className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors duration-200"
+                          title="Thêm chi phí con"
+                        >
+                          <Plus className="w-4 h-4" />
+                        </button>
                         <button
                           onClick={() => editProjectExpense(child)}
                           className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors duration-200"
@@ -1424,468 +1469,29 @@ function InvoicesTab() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex justify-between items-center">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-900">Báo giá Đơn hàng</h2>
-          <p className="text-gray-600 mt-1">Tạo và quản lý đơn hàng báo giá</p>
-        </div>
-        <div className="flex items-center space-x-4">
-          <div className="text-right">
-            <p className="text-sm text-gray-600">Tổng tiền</p>
-            <p className="text-xl font-bold text-green-600">{calculateTotal().toLocaleString('vi-VN')} VND</p>
-          </div>
-          <button
-            onClick={saveInvoice}
-            className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 flex items-center space-x-2"
-          >
-            <FileText className="w-4 h-4" />
-            <span>Lưu Đơn hàng</span>
-          </button>
-        </div>
-      </div>
+      <QuoteHeader calculateTotal={calculateTotal} saveInvoice={saveInvoice} />
 
       {/* Công trình Section */}
-      <div className="bg-white rounded-lg shadow-sm border p-6">
-        <div className="flex justify-between items-center mb-4">
-          <h3 className="text-lg font-semibold text-gray-900">Thông tin công trình</h3>
-          <div className="flex items-center space-x-2">
-            <button
-              onClick={() => setShowProjectInputs(!showProjectInputs)}
-              className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center space-x-2"
-            >
-              <Plus className="w-4 h-4" />
-              <span>{showProjectInputs ? 'Ẩn' : 'Thêm'} thông tin công trình</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Danh sách công trình */}
-        <div className="mb-6">
-          <h4 className="text-md font-medium text-gray-900 mb-4 flex items-center">
-            <Building2 className="w-5 h-5 mr-2 text-blue-600" />
-            Danh sách công trình ({projects.length})
-          </h4>
-          {projects.length === 0 ? (
-            <div className="text-center py-12 bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl border-2 border-dashed border-gray-300">
-              <Building2 className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-              <p className="text-gray-500 text-lg font-medium">Chưa có công trình nào</p>
-              <p className="text-gray-400 text-sm mt-1">Hãy thêm công trình mới để bắt đầu</p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {projects.map(project => (
-                <div key={project.id} className="bg-white rounded-lg border border-gray-200 hover:border-blue-300 hover:shadow-md transition-all duration-200 overflow-hidden">
-                  <div className="p-4">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-4 flex-1">
-                        {/* Icon và tên công trình */}
-                        <div className="flex items-center space-x-3">
-                          <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                            <Building2 className="w-5 h-5 text-blue-600" />
-                          </div>
-                          <div>
-                            <h5 className="font-semibold text-gray-900 text-lg">{project.name_congtrinh}</h5>
-                            <p className="text-sm text-gray-600">{project.name_customer}</p>
-                          </div>
-                        </div>
-
-                        {/* Thông tin chi tiết */}
-                        <div className="hidden md:flex items-center space-x-6 flex-1 ml-6">
-                          {project.sdt && (
-                            <div className="flex items-center space-x-2 text-sm text-gray-600">
-                              <Phone className="w-4 h-4" />
-                              <span>{project.sdt}</span>
-                            </div>
-                          )}
-                          {project.email && (
-                            <div className="flex items-center space-x-2 text-sm text-gray-600">
-                              <Mail className="w-4 h-4" />
-                              <span className="truncate max-w-32">{project.email}</span>
-                            </div>
-                          )}
-                          {project.dia_chi && (
-                            <div className="flex items-center space-x-2 text-sm text-gray-600">
-                              <MapPin className="w-4 h-4" />
-                              <span className="truncate max-w-48">{project.dia_chi}</span>
-                            </div>
-                          )}
-                          {project.ngan_sach_du_kien && (
-                            <div className="bg-green-50 px-3 py-1 rounded-full">
-                              <span className="text-sm font-medium text-green-700">
-                                {parseInt(project.ngan_sach_du_kien).toLocaleString('vi-VN')} VND
-                              </span>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Action buttons */}
-                      <div className="flex items-center space-x-2">
-                        <button
-                          onClick={() => handleProjectSelection(project.id)}
-                          className="bg-blue-50 hover:bg-blue-100 text-blue-700 px-3 py-2 rounded-lg text-sm font-medium transition-colors duration-200 flex items-center space-x-2"
-                        >
-                          <CheckCircle className="w-4 h-4" />
-                          <span className="hidden sm:inline">Chọn</span>
-                        </button>
-                        <button
-                          onClick={() => handleViewProjectQuotes(project.id)}
-                          className="bg-green-50 hover:bg-green-100 text-green-700 px-3 py-2 rounded-lg text-sm font-medium transition-colors duration-200 flex items-center space-x-2"
-                        >
-                          <FileText className="w-4 h-4" />
-                          <span className="hidden sm:inline">Xem đơn hàng</span>
-                        </button>
-                        <button
-                          onClick={() => {
-                            setEditingProjectInline(project);
-                            setShowInlineEditForm(true);
-                            setCongTrinh({
-                              name_congtrinh: project.name_congtrinh,
-                              name_customer: project.name_customer,
-                              sdt: project.sdt,
-                              email: project.email,
-                              Id_sale: project.Id_sale,
-                              ngan_sach_du_kien: project.ngan_sach_du_kien,
-                              dia_chi: project.dia_chi,
-                              mo_ta: project.mo_ta,
-                              bao_gia: project.bao_gia
-                            });
-                          }}
-                          className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors duration-200"
-                          title="Sửa công trình"
-                        >
-                          <Edit className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => {
-                            if (confirm(`Bạn có chắc chắn muốn xóa công trình "${project.name_congtrinh}" không?`)) {
-                              deleteProject(project.id);
-                            }
-                          }}
-                          className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors duration-200"
-                          title="Xóa công trình"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Mobile view - thông tin bổ sung */}
-                    <div className="md:hidden mt-3 pt-3 border-t border-gray-100">
-                      <div className="grid grid-cols-2 gap-3 text-sm">
-                        {project.sdt && (
-                          <div className="flex items-center space-x-2 text-gray-600">
-                            <Phone className="w-4 h-4" />
-                            <span>{project.sdt}</span>
-                          </div>
-                        )}
-                        {project.email && (
-                          <div className="flex items-center space-x-2 text-gray-600">
-                            <Mail className="w-4 h-4" />
-                            <span className="truncate">{project.email}</span>
-                          </div>
-                        )}
-                        {project.dia_chi && (
-                          <div className="col-span-2 flex items-center space-x-2 text-gray-600">
-                            <MapPin className="w-4 h-4" />
-                            <span>{project.dia_chi}</span>
-                          </div>
-                        )}
-                        {project.ngan_sach_du_kien && (
-                          <div className="col-span-2 mt-2">
-                            <div className="bg-green-50 px-3 py-2 rounded-lg inline-block">
-                              <span className="text-sm font-medium text-green-700">
-                                Ngân sách: {parseInt(project.ngan_sach_du_kien).toLocaleString('vi-VN')} VND
-                              </span>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Mô tả nếu có */}
-                    {project.mo_ta && (
-                      <div className="mt-3 pt-3 border-t border-gray-100">
-                        <p className="text-sm text-gray-600 line-clamp-2">{project.mo_ta}</p>
-                      </div>
-                    )}
-
-                    {/* Nhân viên sale */}
-                    {project.Id_sale && employees.find(emp => emp.ma_nv === project.Id_sale) && (
-                      <div className="mt-3 pt-3 border-t border-gray-100">
-                        <div className="flex items-center space-x-2 text-sm">
-                          <User className="w-4 h-4 text-blue-500" />
-                          <span className="text-blue-700 font-medium">
-                            Nhân viên kinh doanh: {employees.find(emp => emp.ma_nv === project.Id_sale)?.ho_ten}
-                          </span>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Inline Edit Form */}
-        {showInlineEditForm && editingProjectInline && (
-          <div className="mb-6 bg-yellow-50 border border-yellow-200 rounded-lg p-6">
-            <div className="flex justify-between items-center mb-4">
-              <h4 className="text-lg font-semibold text-gray-900">Sửa thông tin công trình: {editingProjectInline.name_congtrinh}</h4>
-              <button
-                onClick={() => {
-                  setShowInlineEditForm(false);
-                  setEditingProjectInline(null);
-                }}
-                className="text-gray-400 hover:text-gray-600"
-              >
-                <X className="w-6 h-6" />
-              </button>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Tên công trình *</label>
-                <input
-                  type="text"
-                  value={congTrinh.name_congtrinh}
-                  onChange={(e) => setCongTrinh({...congTrinh, name_congtrinh: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black"
-                  placeholder="Nhập tên công trình"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Tên khách hàng *</label>
-                <input
-                  type="text"
-                  value={congTrinh.name_customer}
-                  onChange={(e) => setCongTrinh({...congTrinh, name_customer: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black"
-                  placeholder="Nhập tên khách hàng"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Số điện thoại</label>
-                <input
-                  type="tel"
-                  value={congTrinh.sdt}
-                  onChange={(e) => setCongTrinh({...congTrinh, sdt: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black"
-                  placeholder="Nhập số điện thoại"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
-                <input
-                  type="email"
-                  value={congTrinh.email}
-                  onChange={(e) => setCongTrinh({...congTrinh, email: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black"
-                  placeholder="Nhập email"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Nhân viên kinh doanh</label>
-                <select
-                  value={congTrinh.Id_sale}
-                  onChange={(e) => setCongTrinh({...congTrinh, Id_sale: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black"
-                >
-                  <option value="">Chọn nhân viên kinh doanh</option>
-                  {employees.map(employee => (
-                    <option key={employee.ma_nv} value={employee.ma_nv}>
-                      {employee.ho_ten} ({employee.ma_nv})
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Ngân sách dự kiến (VND)</label>
-                <input
-                  type="number"
-                  min="0"
-                  step="1000000"
-                  value={congTrinh.ngan_sach_du_kien}
-                  onChange={(e) => setCongTrinh({...congTrinh, ngan_sach_du_kien: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black"
-                  placeholder="Nhập ngân sách dự kiến"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Báo giá (VND)</label>
-                <input
-                  type="number"
-                  min="0"
-                  step="1000000"
-                  value={congTrinh.bao_gia}
-                  onChange={(e) => setCongTrinh({...congTrinh, bao_gia: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black"
-                  placeholder="Nhập báo giá"
-                />
-              </div>
-              <div className="md:col-span-2 lg:col-span-3">
-                <label className="block text-sm font-medium text-gray-700 mb-2">Địa chỉ</label>
-                <input
-                  type="text"
-                  value={congTrinh.dia_chi}
-                  onChange={(e) => setCongTrinh({...congTrinh, dia_chi: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black"
-                  placeholder="Nhập địa chỉ công trình"
-                />
-              </div>
-              <div className="md:col-span-2 lg:col-span-3">
-                <label className="block text-sm font-medium text-gray-700 mb-2">Mô tả</label>
-                <textarea
-                  value={congTrinh.mo_ta}
-                  onChange={(e) => setCongTrinh({...congTrinh, mo_ta: e.target.value})}
-                  rows="3"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black"
-                  placeholder="Nhập mô tả công trình"
-                />
-              </div>
-            </div>
-
-            <div className="flex justify-end space-x-3 mt-6">
-              <button
-                onClick={() => {
-                  setShowInlineEditForm(false);
-                  setEditingProjectInline(null);
-                }}
-                className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
-              >
-                Hủy
-              </button>
-              <button
-                onClick={saveProjectInfo}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center space-x-2"
-              >
-                <Save className="w-4 h-4" />
-                <span>Cập nhật công trình</span>
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Input fields for project info - only show when showProjectInputs is true */}
-        {showProjectInputs && (
-          <>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Tên công trình</label>
-                <input
-                  type="text"
-                  value={congTrinh.name_congtrinh}
-                  onChange={(e) => setCongTrinh({...congTrinh, name_congtrinh: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-blue-50 text-black"
-                  placeholder="Nhập tên công trình"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Tên khách hàng</label>
-                <input
-                  type="text"
-                  value={congTrinh.name_customer}
-                  onChange={(e) => setCongTrinh({...congTrinh, name_customer: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-blue-50 text-black"
-                  placeholder="Nhập tên khách hàng"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Số điện thoại</label>
-                <input
-                  type="tel"
-                  value={congTrinh.sdt}
-                  onChange={(e) => setCongTrinh({...congTrinh, sdt: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-blue-50 text-black"
-                  placeholder="Nhập số điện thoại"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
-                <input
-                  type="email"
-                  value={congTrinh.email}
-                  onChange={(e) => setCongTrinh({...congTrinh, email: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-blue-50 text-black"
-                  placeholder="Nhập email"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Nhân viên kinh doanh</label>
-                <select
-                  value={congTrinh.Id_sale}
-                  onChange={(e) => setCongTrinh({...congTrinh, Id_sale: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-blue-50 text-black"
-                >
-                  <option value="">Chọn nhân viên kinh doanh</option>
-                  {employees.map(employee => (
-                    <option key={employee.ma_nv} value={employee.ma_nv}>
-                      {employee.ho_ten} ({employee.ma_nv})
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Ngân sách dự kiến (VND)</label>
-                <input
-                  type="number"
-                  min="0"
-                  step="1000000"
-                  value={congTrinh.ngan_sach_du_kien}
-                  onChange={(e) => setCongTrinh({...congTrinh, ngan_sach_du_kien: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-green-50 text-black"
-                  placeholder="Nhập ngân sách dự kiến"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Báo giá (VND)</label>
-                <input
-                  type="number"
-                  min="0"
-                  step="1000000"
-                  value={congTrinh.bao_gia}
-                  onChange={(e) => setCongTrinh({...congTrinh, bao_gia: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-green-50 text-black"
-                  placeholder="Nhập báo giá"
-                />
-              </div>
-              <div className="md:col-span-2 lg:col-span-3">
-                <label className="block text-sm font-medium text-gray-700 mb-2">Địa chỉ</label>
-                <input
-                  type="text"
-                  value={congTrinh.dia_chi}
-                  onChange={(e) => setCongTrinh({...congTrinh, dia_chi: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-blue-50 text-black"
-                  placeholder="Nhập địa chỉ công trình"
-                />
-              </div>
-              <div className="md:col-span-2 lg:col-span-3">
-                <label className="block text-sm font-medium text-gray-700 mb-2">Mô tả</label>
-                <textarea
-                  value={congTrinh.mo_ta}
-                  onChange={(e) => setCongTrinh({...congTrinh, mo_ta: e.target.value})}
-                  rows="3"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-blue-50 text-black"
-                  placeholder="Nhập mô tả công trình"
-                />
-              </div>
-            </div>
-
-            <div className="flex justify-end mt-4">
-              <button
-                onClick={saveProjectInfo}
-                className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center space-x-2"
-              >
-                <Save className="w-4 h-4" />
-                <span>Lưu thông tin công trình</span>
-              </button>
-            </div>
-          </>
-        )}
-      </div>
+      <ProjectSection
+        projects={projects}
+        employees={employees}
+        showProjectInputs={showProjectInputs}
+        setShowProjectInputs={setShowProjectInputs}
+        congTrinh={congTrinh}
+        setCongTrinh={setCongTrinh}
+        showInlineEditForm={showInlineEditForm}
+        setShowInlineEditForm={setShowInlineEditForm}
+        editingProjectInline={editingProjectInline}
+        setEditingProjectInline={setEditingProjectInline}
+        showProjectModal={showProjectModal}
+        setShowProjectModal={setShowProjectModal}
+        editingProject={editingProject}
+        selectedProject={selectedProject}
+        handleProjectSelection={handleProjectSelection}
+        handleViewProjectQuotes={handleViewProjectQuotes}
+        deleteProject={deleteProject}
+        saveProjectInfo={saveProjectInfo}
+      />
 
       {/* Chọn công trình */}
       <div className="bg-white rounded-lg shadow-sm border p-6">
@@ -2052,71 +1658,19 @@ function InvoicesTab() {
       )}
 
       {/* Invoice Info */}
-      <div className="bg-white rounded-lg shadow-sm border p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Thông tin đơn hàng</h3>
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Tên khách hàng</label>
-            <input
-              type="text"
-              value={customerName}
-              onChange={(e) => setCustomerName(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-green-100 text-black"
-              placeholder="Nhập tên khách hàng"
-              required
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Nhân viên bán hàng *</label>
-            <select
-              value={salesEmployee}
-              onChange={(e) => setSalesEmployee(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-green-100 text-black"
-              required
-            >
-              <option value="">Chọn nhân viên bán hàng</option>
-              {employees.map(employee => (
-                <option key={employee.ma_nv} value={employee.ma_nv}>
-                  {employee.ho_ten} ({employee.ma_nv})
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">% hoa hồng</label>
-            <input
-              type="number"
-              min="0"
-              max="100"
-              step="0.1"
-              value={commissionPercentage}
-              onChange={(e) => setCommissionPercentage(parseFloat(e.target.value) || 0)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-yellow-100 text-black"
-              placeholder="5"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Ngày đơn hàng</label>
-            <input
-              type="date"
-              value={invoiceDate}
-              onChange={(e) => setInvoiceDate(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-green-100 text-black"
-              required
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Giờ đơn hàng</label>
-            <input
-              type="time"
-              value={invoiceTime}
-              onChange={(e) => setInvoiceTime(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-green-100 text-black"
-              required
-            />
-          </div>
-        </div>
-      </div>
+      <InvoiceInfo
+        customerName={customerName}
+        setCustomerName={setCustomerName}
+        salesEmployee={salesEmployee}
+        setSalesEmployee={setSalesEmployee}
+        commissionPercentage={commissionPercentage}
+        setCommissionPercentage={setCommissionPercentage}
+        invoiceDate={invoiceDate}
+        setInvoiceDate={setInvoiceDate}
+        invoiceTime={invoiceTime}
+        setInvoiceTime={setInvoiceTime}
+        employees={employees}
+      />
 
       {/* Invoice Items */}
       <div className="bg-white rounded-lg shadow-sm border p-6">
@@ -2784,7 +2338,8 @@ function InvoicesTab() {
                           setCostForm({
                             id_lcp: '',
                             giathanh: '',
-                            mo_ta: 'dự toán',
+                            mo_ta: '',
+                            status: 'dự toán',
                             parent_id: '',
                             created_at: new Date().toISOString().split('T')[0]
                           });
@@ -2862,6 +2417,15 @@ function InvoicesTab() {
                           placeholder="Nhập mô tả chi phí"
                         />
                       </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Trạng thái</label>
+                        <input
+                          type="text"
+                          value="dự toán"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-100 text-black"
+                          readOnly
+                        />
+                      </div>
                       <div className="flex justify-end space-x-3">
                         <button
                           type="button"
@@ -2871,7 +2435,8 @@ function InvoicesTab() {
                             setCostForm({
                               id_lcp: '',
                               giathanh: '',
-                              mo_ta: 'dự toán',
+                              mo_ta: '',
+                              status: 'dự toán',
                               parent_id: '',
                               created_at: new Date().toISOString().split('T')[0]
                             });
@@ -2928,129 +2493,13 @@ function InvoicesTab() {
         )}
 
         {/* Summary Section */}
-        {selectedBophans.length > 0 || invoiceItems.filter(item => item.loai_san_pham === 'phu_kien_bep').length > 0 ? (
-          <div className="bg-white rounded-lg shadow-sm border p-6 mt-6">
-            <h3 className="text-lg font-semibold text-black mb-4">Tóm tắt báo giá</h3>
-            <div className="space-y-4">
-              {/* Hiển thị sản phẩm tủ bếp */}
-              {selectedBophans.map(bophanId => {
-                const bophan = bophanList.find(b => b.id === bophanId);
-                if (!bophan) return null;
-
-                // Find the invoice item for this department
-                const item = invoiceItems.find(item => item.id_bophan === bophanId);
-                if (!item || !item.sanpham) return null;
-
-                const totalPrice = item.thanh_tien || 0;
-
-                return (
-                  <div key={bophanId} className="border border-gray-200 rounded-lg p-4 bg-gray-50">
-                    <div className="flex justify-between items-start mb-3">
-                      <div>
-                        <h4 className="font-medium text-black">{item.sanpham.tensp}</h4>
-                        <p className="text-sm text-gray-700">Bộ phận: {bophan.tenloai}</p>
-                        <p className="text-xs text-blue-600">Loại: Tủ bếp</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-lg font-bold text-green-600">
-                          {totalPrice.toLocaleString('vi-VN')} VND
-                        </p>
-                        <p className="text-sm text-gray-600">
-                          Số lượng: {item.so_luong || 0}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                      <div>
-                        <span className="text-gray-700 font-medium">Kích thước thực tế:</span>
-                        <p className="font-medium text-black">{item.ngang} x {item.cao} x {item.sau} mm</p>
-                      </div>
-                      <div>
-                        <span className="text-gray-700 font-medium">Diện tích thực tế:</span>
-                        <p className="font-medium text-black">{(item.dien_tich_thuc_te || 0).toLocaleString('vi-VN')} mm²</p>
-                      </div>
-                      <div>
-                        <span className="text-gray-700 font-medium">Tỉ lệ:</span>
-                        <p className="font-medium text-black">{(item.ti_le * 100 || 0).toFixed(2)}%</p>
-                      </div>
-                      <div>
-                        <span className="text-gray-700 font-medium">Chiết khấu:</span>
-                        <p className="font-medium text-red-600">{item.chiet_khau || 0}%</p>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-
-              {/* Hiển thị phụ kiện bếp */}
-              {invoiceItems.filter(item => item.loai_san_pham === 'phu_kien_bep').map((item, index) => (
-                <div key={item.id} className="border border-gray-200 rounded-lg p-4 bg-blue-50">
-                  <div className="flex justify-between items-start mb-3">
-                    <div>
-                      <h4 className="font-medium text-black">{item.phukien?.tenphukien || 'Phụ kiện'}</h4>
-                      <p className="text-sm text-gray-700">Loại: {item.loaiphukien?.tenloai || 'Phụ kiện bếp'}</p>
-                      <p className="text-xs text-purple-600">Loại: Phụ kiện bếp</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-lg font-bold text-green-600">
-                        {item.thanh_tien.toLocaleString('vi-VN')} VND
-                      </p>
-                      <p className="text-sm text-gray-600">
-                        Số lượng: {item.so_luong}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                    <div>
-                      <span className="text-gray-700 font-medium">Thương hiệu:</span>
-                      <p className="font-medium text-black">{item.phukien?.thuong_hieu || 'N/A'}</p>
-                    </div>
-                    <div>
-                      <span className="text-gray-700 font-medium">Kích thước:</span>
-                      <p className="font-medium text-black">{item.phukien?.kich_thuoc || 'N/A'}</p>
-                    </div>
-                    <div>
-                      <span className="text-gray-700 font-medium">Công suất:</span>
-                      <p className="font-medium text-black">{item.phukien?.cong_suat || 'N/A'}</p>
-                    </div>
-                    <div>
-                      <span className="text-gray-700 font-medium">Chiết khấu:</span>
-                      <p className="font-medium text-red-600">{item.chiet_khau || 0}%</p>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {/* Total Summary */}
-            <div className="mt-6 pt-4 border-t">
-              <div className="flex justify-between items-center">
-                <div>
-                  <h4 className="text-lg font-semibold text-black">Tóm tắt</h4>
-                  <p className="text-sm text-gray-700">
-                    {selectedBophans.length} bộ phận tủ bếp • {invoiceItems.filter(item => item.loai_san_pham === 'phu_kien_bep').length} phụ kiện bếp • {invoiceItems.reduce((sum, item) => sum + (item.so_luong || 0), 0)} sản phẩm
-                  </p>
-                </div>
-                <div className="text-right">
-                  <p className="text-2xl font-bold text-green-600">
-                    {calculateTotal().toLocaleString('vi-VN')} VND
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Save Button */}
-            <div className="mt-6 flex justify-end">
-              <button
-                onClick={saveInvoice}
-                className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 font-medium flex items-center space-x-2"
-              >
-                <Save className="w-5 h-5" />
-                <span>Lưu báo giá</span>
-              </button>
-            </div>
-          </div>
-        ) : null}
+        <QuoteSummary
+          selectedBophans={selectedBophans}
+          invoiceItems={invoiceItems}
+          bophanList={bophanList}
+          calculateTotal={calculateTotal}
+          saveInvoice={saveInvoice}
+        />
       </div>
     </div>
   );
@@ -6014,7 +5463,8 @@ function ExpensesManagementTab() {
   const [expenseForm, setExpenseForm] = useState({
     id_lcp: '',
     giathanh: '',
-    mo_ta: 'dự toán',
+    mo_ta: '',
+    status: 'dự toán',
     parent_id: '',
     created_at: new Date().toISOString().split('T')[0]
   });
@@ -6110,7 +5560,8 @@ function ExpensesManagementTab() {
       const expenseData = {
         id_lcp: parseInt(expenseForm.id_lcp),
         giathanh: parseFloat(expenseForm.giathanh) || null,
-        mo_ta: expenseForm.mo_ta || 'dự toán',
+        mo_ta: expenseForm.mo_ta,
+        status: 'dự toán',
         parent_id: expenseForm.parent_id ? parseInt(expenseForm.parent_id) : null,
         created_at: expenseForm.created_at,
         id_congtrinh: parseInt(selectedProject)
@@ -6136,7 +5587,8 @@ function ExpensesManagementTab() {
         setExpenseForm({
           id_lcp: '',
           giathanh: '',
-          mo_ta: 'dự toán',
+          mo_ta: '',
+          status: 'dự toán',
           parent_id: '',
           created_at: new Date().toISOString().split('T')[0]
         });
@@ -6177,7 +5629,8 @@ function ExpensesManagementTab() {
     setExpenseForm({
       id_lcp: expense.id_lcp?.toString() || '',
       giathanh: expense.giathanh ? expense.giathanh.toString() : '',
-      mo_ta: expense.mo_ta || 'dự toán',
+      mo_ta: '', // Always set to empty string for quote expenses
+      status: 'dự toán', // Always set to 'dự toán'
       parent_id: expense.parent_id?.toString() || '',
       created_at: expense.created_at ? new Date(expense.created_at).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]
     });
@@ -6373,7 +5826,8 @@ function ExpensesManagementTab() {
                 setExpenseForm({
                   id_lcp: '',
                   giathanh: '',
-                  mo_ta: 'dự toán',
+                  mo_ta: '',
+                  status: 'dự toán',
                   parent_id: '',
                   created_at: new Date().toISOString().split('T')[0]
                 });

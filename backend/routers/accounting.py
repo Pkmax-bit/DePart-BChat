@@ -1714,12 +1714,12 @@ async def create_chiphi_quote(expense_data: dict):
         data_to_insert = {
             'id_lcp': expense_data.get('id_lcp'),
             'giathanh': expense_data.get('giathanh'),
-            'mo_ta': expense_data.get('mo_ta', 'dự toán'),
+            'mo_ta': expense_data.get('mo_ta', ''),  # Always empty string, never default to 'dự toán'
             'hinhanh': expense_data.get('hinhanh'),
             'created_at': expense_data.get('created_at', datetime.now().isoformat()),
             'parent_id': expense_data.get('parent_id'),
             'ti_le': expense_data.get('ti_le'),
-            'status': expense_data.get('status'),
+            'status': 'dự toán',  # Always set to 'dự toán'
             'id_congtrinh': expense_data.get('id_congtrinh')
         }
 
@@ -1739,18 +1739,18 @@ async def update_chiphi_quote(expense_id: int, expense_data: dict):
         if 'giathanh' in expense_data:
             data_to_update['giathanh'] = expense_data['giathanh']
         if 'mo_ta' in expense_data:
-            data_to_update['mo_ta'] = expense_data['mo_ta']
+            data_to_update['mo_ta'] = expense_data['mo_ta']  # Keep as provided, but frontend should send empty
         if 'hinhanh' in expense_data:
             data_to_update['hinhanh'] = expense_data['hinhanh']
         if 'parent_id' in expense_data:
             data_to_update['parent_id'] = expense_data['parent_id']
         if 'ti_le' in expense_data:
             data_to_update['ti_le'] = expense_data['ti_le']
-        if 'status' in expense_data:
-            data_to_update['status'] = expense_data['status']
         if 'id_congtrinh' in expense_data:
             data_to_update['id_congtrinh'] = expense_data['id_congtrinh']
 
+        # Always ensure status is 'dự toán'
+        data_to_update['status'] = 'dự toán'
         data_to_update['updated_at'] = datetime.now().isoformat()
 
         result = supabase.table('chiphi_quote').update(data_to_update).eq('id', expense_id).execute()
