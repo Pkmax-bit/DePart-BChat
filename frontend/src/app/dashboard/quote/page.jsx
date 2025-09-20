@@ -203,7 +203,8 @@ function InvoicesTab() {
     Id_sale: '',
     ngan_sach_du_kien: '',
     mo_ta: '',
-    dia_chi: ''
+    dia_chi: '',
+    bao_gia: ''
   });
 
   // States cho danh sách công trình và công trình được chọn
@@ -249,7 +250,7 @@ function InvoicesTab() {
     }
   };
 
-  const handleProjectSelection = (projectId) => {
+  const handleProjectSelection = async (projectId) => {
     setSelectedProject(projectId);
     if (projectId) {
       const selectedProj = projects.find(p => p.id === parseInt(projectId));
@@ -267,13 +268,98 @@ function InvoicesTab() {
           Id_sale: selectedProj.Id_sale || '',
           ngan_sach_du_kien: selectedProj.ngan_sach_du_kien || '',
           dia_chi: selectedProj.dia_chi || '',
-          mo_ta: selectedProj.mo_ta || ''
+          mo_ta: selectedProj.mo_ta || '',
+          bao_gia: selectedProj.bao_gia || ''
         });
+
+        // Fetch existing quote data for this project
+        try {
+          const response = await fetch(`http://localhost:8001/api/v1/quote/invoices_quote/project/${projectId}`);
+          if (response.ok) {
+            const data = await response.json();
+            if (data.quotes && data.quotes.length > 0) {
+              // Get the most recent quote
+              const latestQuote = data.quotes[0];
+              
+              // Pre-fill quote form fields
+              setCustomerName(latestQuote.customer_name || selectedProj.name_customer || '');
+              setSalesEmployee(latestQuote.sales_employee_id || selectedProj.Id_sale || '');
+              setCommissionPercentage(latestQuote.commission_percentage || 5);
+              
+              // Parse invoice date and time
+              if (latestQuote.invoice_date) {
+                const invoiceDateTime = new Date(latestQuote.invoice_date);
+                setInvoiceDate(invoiceDateTime.toISOString().split('T')[0]);
+                setInvoiceTime(invoiceDateTime.toTimeString().split(' ')[0]);
+              }
+              
+              // Pre-fill invoice items
+              if (latestQuote.items && latestQuote.items.length > 0) {
+                const items = latestQuote.items.map(item => ({
+                  id: Date.now() + Math.random(), // Generate new ID for frontend
+                  loai_san_pham: item.loai_san_pham || 'tu_bep',
+                  // For tủ bếp items
+                  id_nhom: item.id_nhom || '',
+                  id_kinh: item.id_kinh || '',
+                  id_taynam: item.id_taynam || '',
+                  id_bophan: item.id_bophan || '',
+                  sanpham: item.sanpham || null,
+                  ngang: item.ngang || 0,
+                  cao: item.cao || 0,
+                  sau: item.sau || 0,
+                  so_luong: item.so_luong || 1,
+                  don_gia: item.don_gia || 0,
+                  dien_tich_ke_hoach: item.dien_tich_ke_hoach || 0,
+                  dien_tich_thuc_te: item.dien_tich_thuc_te || 0,
+                  ti_le: item.ti_le || 0,
+                  chiet_khau: item.chiet_khau || 0,
+                  thanh_tien: item.thanh_tien || 0,
+                  // For phụ kiện bếp items
+                  id_loaiphukien: item.id_loaiphukien || '',
+                  id_phukien: item.id_phukien || '',
+                  loaiphukien: item.loaiphukien || null,
+                  phukien: item.phukien || null
+                }));
+                setInvoiceItems(items);
+                
+                // Set product type based on first item
+                const firstItem = latestQuote.items[0];
+                setSelectedProductType(firstItem.loai_san_pham === 'phu_kien_bep' ? 'phu_kien_bep' : 'tu_bep');
+                
+                // Set selected bophans based on items
+                const bophans = [...new Set(latestQuote.items.map(item => item.id_bophan).filter(Boolean))];
+                setSelectedBophans(bophans);
+                
+                // Try to infer global selections from first tủ bếp item
+                const tuBepItems = latestQuote.items.filter(item => item.loai_san_pham !== 'phu_kien_bep');
+                if (tuBepItems.length > 0) {
+                  const firstTuBepItem = tuBepItems[0];
+                  setGlobalNhom(firstTuBepItem.id_nhom || '');
+                  setGlobalKinh(firstTuBepItem.id_kinh || '');
+                  setGlobalTaynam(firstTuBepItem.id_taynam || '');
+                }
+              }
+              
+              alert('Đã tải dữ liệu báo giá hiện có cho công trình này!');
+            }
+          }
+        } catch (error) {
+          console.error('Error fetching existing quote data:', error);
+        }
       }
     } else {
       // Reset when no project selected
       setCustomerName('');
       setSalesEmployee('');
+      setCommissionPercentage(5);
+      setInvoiceItems([]);
+      setSelectedProductType('tu_bep');
+      setSelectedBophans([]);
+      setGlobalNhom('');
+      setGlobalKinh('');
+      setGlobalTaynam('');
+      setInvoiceDate(new Date().toISOString().split('T')[0]);
+      setInvoiceTime(new Date().toTimeString().split(' ')[0]);
       setCongTrinh({
         name_congtrinh: '',
         name_customer: '',
@@ -282,9 +368,15 @@ function InvoicesTab() {
         Id_sale: '',
         ngan_sach_du_kien: '',
         mo_ta: '',
-        dia_chi: ''
+        dia_chi: '',
+        bao_gia: ''
       });
     }
+  };
+
+  const handleViewProjectQuotes = (projectId) => {
+    // Chuyển hướng đến trang hiển thị đơn hàng báo giá của công trình
+    router.push(`/dashboard/quote/project/${projectId}`);
   };
 
   const saveProjectInfo = async () => {
@@ -307,7 +399,8 @@ function InvoicesTab() {
         Id_sale: congTrinh.Id_sale,
         ngan_sach_du_kien: parseFloat(congTrinh.ngan_sach_du_kien) || 0,
         dia_chi: congTrinh.dia_chi,
-        mo_ta: congTrinh.mo_ta
+        mo_ta: congTrinh.mo_ta,
+        bao_gia: parseFloat(congTrinh.bao_gia) || 0
       };
 
       const url = editingProject
@@ -337,7 +430,8 @@ function InvoicesTab() {
           Id_sale: '',
           ngan_sach_du_kien: '',
           mo_ta: '',
-          dia_chi: ''
+          dia_chi: '',
+          bao_gia: ''
         });
         setEditingProject(null);
         setShowProjectModal(false);
@@ -365,7 +459,8 @@ function InvoicesTab() {
         Id_sale: project.Id_sale || '',
         ngan_sach_du_kien: project.ngan_sach_du_kien || '',
         dia_chi: project.dia_chi || '',
-        mo_ta: project.mo_ta || ''
+        mo_ta: project.mo_ta || '',
+        bao_gia: project.bao_gia || ''
       });
     } else {
       // Creating mode
@@ -378,7 +473,8 @@ function InvoicesTab() {
         Id_sale: '',
         ngan_sach_du_kien: '',
         mo_ta: '',
-        dia_chi: ''
+        dia_chi: '',
+        bao_gia: ''
       });
     }
     setShowProjectModal(true);
@@ -407,7 +503,8 @@ function InvoicesTab() {
             Id_sale: '',
             ngan_sach_du_kien: '',
             mo_ta: '',
-            dia_chi: ''
+            dia_chi: '',
+            bao_gia: ''
           });
         }
       } else {
@@ -618,16 +715,29 @@ function InvoicesTab() {
 
       // Tự động tìm sản phẩm và cập nhật thông tin với các lựa chọn hiện tại
       if (item.id_nhom && item.id_kinh && item.id_taynam && item.id_bophan) {
-        const foundSanpham = sanphamList.find(sp => 
+        let availableProducts = sanphamList.filter(sp => 
           sp.id_nhom === item.id_nhom && 
           sp.id_kinh === item.id_kinh && 
           sp.id_taynam === item.id_taynam && 
           sp.id_bophan === item.id_bophan
         );
         
-        if (foundSanpham) {
-          item.sanpham = foundSanpham;
-          const foundDetail = chitietsanphamList.find(detail => detail.id_sanpham === foundSanpham.id);
+        let selectedProduct = null;
+        
+        // Ưu tiên sản phẩm có cùng tên với sản phẩm hiện tại
+        if (item.sanpham && availableProducts.length > 0) {
+          const currentProductName = item.sanpham.tensp;
+          selectedProduct = availableProducts.find(sp => sp.tensp === currentProductName);
+        }
+        
+        // Nếu không tìm thấy sản phẩm cùng tên, chọn sản phẩm đầu tiên
+        if (!selectedProduct && availableProducts.length > 0) {
+          selectedProduct = availableProducts[0];
+        }
+        
+        if (selectedProduct) {
+          item.sanpham = selectedProduct;
+          const foundDetail = chitietsanphamList.find(detail => detail.id_sanpham === selectedProduct.id);
           if (foundDetail) {
             const isSpecialDepartment = item.id_bophan === 'TN' || item.id_bophan === 'MC' || item.id_bophan === 'TL';
             const minSize = isSpecialDepartment ? 1 : 300;
@@ -712,16 +822,30 @@ function InvoicesTab() {
             calculateInvoiceItem(updatedItem);
           } else {
             // Nếu tất cả các loại đã được chọn, tìm sản phẩm
-            const foundSanpham = sanphamList.find(sp => 
+            let availableProducts = sanphamList.filter(sp => 
               sp.id_nhom === currentNhom && 
               sp.id_kinh === currentKinh && 
               sp.id_taynam === currentTaynam && 
               sp.id_bophan === currentBophan
             );
-            if (foundSanpham) {
-              updatedItem.sanpham = foundSanpham;
+            
+            let selectedProduct = null;
+            
+            // Ưu tiên sản phẩm có cùng tên với sản phẩm hiện tại
+            if (updatedItem.sanpham && availableProducts.length > 0) {
+              const currentProductName = updatedItem.sanpham.tensp;
+              selectedProduct = availableProducts.find(sp => sp.tensp === currentProductName);
+            }
+            
+            // Nếu không tìm thấy sản phẩm cùng tên, chọn sản phẩm đầu tiên
+            if (!selectedProduct && availableProducts.length > 0) {
+              selectedProduct = availableProducts[0];
+            }
+            
+            if (selectedProduct) {
+              updatedItem.sanpham = selectedProduct;
               // Tìm chi tiết sản phẩm
-              const foundDetail = chitietsanphamList.find(detail => detail.id_sanpham === foundSanpham.id);
+              const foundDetail = chitietsanphamList.find(detail => detail.id_sanpham === selectedProduct.id);
               if (foundDetail) {
                 updatedItem.ngang = foundDetail.ngang;
                 // Cho phép bộ phận "Tầng nhôm" (TN) và "Mặc cánh" (MC) có kích thước nhỏ hơn 300mm
@@ -965,7 +1089,8 @@ function InvoicesTab() {
           Id_sale: congTrinh.Id_sale,
           ngan_sach_du_kien: parseFloat(congTrinh.ngan_sach_du_kien) || 0,
           dia_chi: congTrinh.dia_chi,
-          mo_ta: congTrinh.mo_ta
+          mo_ta: congTrinh.mo_ta,
+          bao_gia: parseFloat(congTrinh.bao_gia) || 0
         },
         items: invoiceItems.map(item => {
           if (item.loai_san_pham === 'phu_kien_bep') {
@@ -1141,6 +1266,13 @@ function InvoicesTab() {
                           <span className="hidden sm:inline">Chọn</span>
                         </button>
                         <button
+                          onClick={() => handleViewProjectQuotes(project.id)}
+                          className="bg-green-50 hover:bg-green-100 text-green-700 px-3 py-2 rounded-lg text-sm font-medium transition-colors duration-200 flex items-center space-x-2"
+                        >
+                          <FileText className="w-4 h-4" />
+                          <span className="hidden sm:inline">Xem đơn hàng</span>
+                        </button>
+                        <button
                           onClick={() => {
                             setEditingProjectInline(project);
                             setShowInlineEditForm(true);
@@ -1152,7 +1284,8 @@ function InvoicesTab() {
                               Id_sale: project.Id_sale,
                               ngan_sach_du_kien: project.ngan_sach_du_kien,
                               dia_chi: project.dia_chi,
-                              mo_ta: project.mo_ta
+                              mo_ta: project.mo_ta,
+                              bao_gia: project.bao_gia
                             });
                           }}
                           className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors duration-200"
@@ -1318,6 +1451,18 @@ function InvoicesTab() {
                   placeholder="Nhập ngân sách dự kiến"
                 />
               </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Báo giá (VND)</label>
+                <input
+                  type="number"
+                  min="0"
+                  step="1000000"
+                  value={congTrinh.bao_gia}
+                  onChange={(e) => setCongTrinh({...congTrinh, bao_gia: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black"
+                  placeholder="Nhập báo giá"
+                />
+              </div>
               <div className="md:col-span-2 lg:col-span-3">
                 <label className="block text-sm font-medium text-gray-700 mb-2">Địa chỉ</label>
                 <input
@@ -1430,6 +1575,18 @@ function InvoicesTab() {
                   onChange={(e) => setCongTrinh({...congTrinh, ngan_sach_du_kien: e.target.value})}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-green-50 text-black"
                   placeholder="Nhập ngân sách dự kiến"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Báo giá (VND)</label>
+                <input
+                  type="number"
+                  min="0"
+                  step="1000000"
+                  value={congTrinh.bao_gia}
+                  onChange={(e) => setCongTrinh({...congTrinh, bao_gia: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-green-50 text-black"
+                  placeholder="Nhập báo giá"
                 />
               </div>
               <div className="md:col-span-2 lg:col-span-3">
@@ -1575,6 +1732,18 @@ function InvoicesTab() {
                     onChange={(e) => setCongTrinh({...congTrinh, ngan_sach_du_kien: e.target.value})}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black"
                     placeholder="Nhập ngân sách dự kiến"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Báo giá (VND)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="1000000"
+                    value={congTrinh.bao_gia}
+                    onChange={(e) => setCongTrinh({...congTrinh, bao_gia: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black"
+                    placeholder="Nhập báo giá"
                   />
                 </div>
                 <div className="md:col-span-2">
@@ -1960,31 +2129,46 @@ function InvoicesTab() {
                           : "Chọn sản phẩm hoặc để tự động chọn"
                         }
                       </option>
-                      {sanphamList
-                        .filter(sp => {
-                          // Lọc sản phẩm theo các loại đã chọn
-                          const currentNhom = item.id_nhom || globalNhom;
-                          const currentKinh = item.id_kinh || globalKinh;
-                          const currentTaynam = item.id_taynam || globalTaynam;
-                          const currentBophan = item.id_bophan;
-                          
+                      {(() => {
+                        // Ưu tiên sản phẩm có cùng tên trước
+                        const currentNhom = item.id_nhom || globalNhom;
+                        const currentKinh = item.id_kinh || globalKinh;
+                        const currentTaynam = item.id_taynam || globalTaynam;
+                        const currentBophan = item.id_bophan;
+                        
+                        // Lọc sản phẩm theo các loại đã chọn
+                        let filteredProducts = sanphamList.filter(sp => {
                           return (!currentNhom || sp.id_nhom === currentNhom) &&
                                  (!currentKinh || sp.id_kinh === currentKinh) &&
                                  (!currentTaynam || sp.id_taynam === currentTaynam) &&
                                  (!currentBophan || sp.id_bophan === currentBophan);
-                        })
-                        .map(sanpham => {
+                        });
+                        
+                        // Nếu có sản phẩm hiện tại, ưu tiên sản phẩm có cùng tên
+                        if (item.sanpham) {
+                          const currentProductName = item.sanpham.tensp;
+                          const sameNameProducts = filteredProducts.filter(sp => sp.tensp === currentProductName);
+                          if (sameNameProducts.length > 0) {
+                            // Đưa sản phẩm cùng tên lên đầu
+                            const otherProducts = filteredProducts.filter(sp => sp.tensp !== currentProductName);
+                            filteredProducts = [...sameNameProducts, ...otherProducts];
+                          }
+                        }
+                        
+                        return filteredProducts.map(sanpham => {
                           const detail = chitietsanphamList.find(d => d.id_sanpham === sanpham.id);
                           const nhomName = loainhomList.find(n => n.id === (detail?.id_nhom || sanpham.id_nhom))?.tenloai || 'N/A';
                           const kinhName = loaikinhList.find(k => k.id === (detail?.id_kinh || sanpham.id_kinh))?.tenloai || 'N/A';
                           const taynamName = loaitaynamList.find(t => t.id === (detail?.id_taynam || sanpham.id_taynam))?.tenloai || 'N/A';
                           const displayName = sanpham.tensp;
+                          const isSameName = item.sanpham && item.sanpham.tensp === sanpham.tensp;
                           return (
                             <option key={sanpham.id} value={sanpham.id}>
-                              {displayName}
+                              {isSameName ? `⭐ ${displayName}` : displayName}
                             </option>
                           );
-                        })}
+                        });
+                      })()}
                     </select>
                     {(!(item.id_nhom || globalNhom) || !(item.id_kinh || globalKinh) || !(item.id_taynam || globalTaynam)) && (
                       <p className="text-red-500 text-xs mt-1">⚠️ Chưa chọn đầy đủ các loại</p>
@@ -2573,10 +2757,38 @@ function QuotesTab({ salesData, products, setSalesData }) {
   const [quotes, setQuotes] = useState([]);
   const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7));
   const [loading, setLoading] = useState(false);
+  const [projects, setProjects] = useState([]);
+  const [employees, setEmployees] = useState([]);
 
   useEffect(() => {
     loadQuotes();
+    loadProjects();
+    loadEmployees();
   }, [selectedMonth]);
+
+  const loadEmployees = async () => {
+    try {
+      const response = await fetch('/api/v1/payroll/employees');
+      if (response.ok) {
+        const data = await response.json();
+        setEmployees(data);
+      }
+    } catch (error) {
+      console.error('Error fetching employees:', error);
+    }
+  };
+
+  const loadProjects = async () => {
+    try {
+      const response = await fetch('http://localhost:8001/api/v1/quote/cong_trinh/');
+      if (response.ok) {
+        const data = await response.json();
+        setProjects(data || []);
+      }
+    } catch (error) {
+      console.error('Error fetching projects:', error);
+    }
+  };
 
   const loadQuotes = async () => {
     setLoading(true);
@@ -3003,6 +3215,105 @@ function QuotesTab({ salesData, products, setSalesData }) {
             </div>
           </div>
         </div>
+      </div>
+
+      {/* Projects Overview */}
+      <div className="bg-white rounded-lg shadow-sm border p-6">
+        <div className="flex justify-between items-center mb-6">
+          <h3 className="text-lg font-semibold text-gray-900 flex items-center">
+            <Building2 className="w-5 h-5 mr-2 text-blue-600" />
+            Danh sách công trình ({projects.length})
+          </h3>
+        </div>
+
+        {projects.length === 0 ? (
+          <div className="text-center py-12 bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl border-2 border-dashed border-gray-300">
+            <Building2 className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+            <p className="text-gray-500 text-lg font-medium">Chưa có công trình nào</p>
+            <p className="text-gray-400 text-sm mt-1">Hãy thêm công trình mới để bắt đầu</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {projects.map(project => (
+              <div key={project.id} className="bg-gradient-to-br from-white to-gray-50 rounded-lg border border-gray-200 hover:border-blue-300 hover:shadow-lg transition-all duration-200 overflow-hidden">
+                <div className="p-6">
+                  <div className="flex items-center space-x-3 mb-4">
+                    <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+                      <Building2 className="w-6 h-6 text-blue-600" />
+                    </div>
+                    <div className="flex-1">
+                      <h4 className="font-semibold text-gray-900 text-lg line-clamp-1">{project.name_congtrinh}</h4>
+                      <p className="text-sm text-gray-600 line-clamp-1">{project.name_customer}</p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    {project.sdt && (
+                      <div className="flex items-center space-x-2 text-sm text-gray-600">
+                        <Phone className="w-4 h-4 text-green-500" />
+                        <span>{project.sdt}</span>
+                      </div>
+                    )}
+                    {project.email && (
+                      <div className="flex items-center space-x-2 text-sm text-gray-600">
+                        <Mail className="w-4 h-4 text-blue-500" />
+                        <span className="truncate">{project.email}</span>
+                      </div>
+                    )}
+                    {project.dia_chi && (
+                      <div className="flex items-center space-x-2 text-sm text-gray-600">
+                        <MapPin className="w-4 h-4 text-red-500" />
+                        <span className="truncate">{project.dia_chi}</span>
+                      </div>
+                    )}
+                    {project.ngan_sach_du_kien && (
+                      <div className="bg-green-50 px-3 py-2 rounded-lg">
+                        <div className="flex items-center space-x-2">
+                          <DollarSign className="w-4 h-4 text-green-600" />
+                          <span className="text-sm font-medium text-green-700">
+                            {parseInt(project.ngan_sach_du_kien).toLocaleString('vi-VN')} VND
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Nhân viên sale */}
+                  {project.Id_sale && employees.find(emp => emp.ma_nv === project.Id_sale) && (
+                    <div className="mt-4 pt-3 border-t border-gray-100">
+                      <div className="flex items-center space-x-2 text-sm">
+                        <User className="w-4 h-4 text-purple-500" />
+                        <span className="text-purple-700 font-medium">
+                          NV: {employees.find(emp => emp.ma_nv === project.Id_sale)?.ho_ten}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Mô tả nếu có */}
+                  {project.mo_ta && (
+                    <div className="mt-3 pt-3 border-t border-gray-100">
+                      <p className="text-sm text-gray-600 line-clamp-2">{project.mo_ta}</p>
+                    </div>
+                  )}
+
+                  {/* Action buttons */}
+                  <div className="mt-4 pt-3 border-t border-gray-100">
+                    <div className="flex items-center justify-between">
+                      <button
+                        onClick={() => window.open(`/dashboard/quote/project/${project.id}`, '_blank')}
+                        className="flex-1 bg-blue-50 hover:bg-blue-100 text-blue-700 px-3 py-2 rounded-lg text-sm font-medium transition-colors duration-200 flex items-center justify-center space-x-2"
+                      >
+                        <FileText className="w-4 h-4" />
+                        <span>Xem đơn hàng</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Month Selector & Actions */}
