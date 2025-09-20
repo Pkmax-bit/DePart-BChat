@@ -43,7 +43,7 @@ def get_profit_data(month=None):
     """Lay du lieu loi nhuan tu database"""
     try:
         # Lay du lieu doanh thu
-        revenue_query = supabase.table('invoices').select('*')
+        revenue_query = supabase.table('invoices_reality').select('*')
         if month:
             start_date = f"{month}-01"
             year, month_num = map(int, month.split('-'))
@@ -79,7 +79,7 @@ def get_profit_data(month=None):
         invoice_items = []
         if invoice_ids:
             try:
-                items_result = supabase.table('invoice_items').select('*').in_('invoice_id', invoice_ids).execute()
+                items_result = supabase.table('invoice_items_reality').select('*').in_('invoice_id', invoice_ids).execute()
                 invoice_items = items_result.data
             except Exception as e:
                 print(f"Error getting invoice items: {e}")

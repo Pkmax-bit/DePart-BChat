@@ -22,28 +22,29 @@ from routers.user_chat import router as user_chat_router
 from routers.accounting import router as accounting_router
 from routers.payroll import router as payroll_router
 from routers.notifications import router as notifications_router
+from routers.quote import router as quote_router
 # Removed: from email_sync_service import start_email_sync_service
-from notification_scheduler import notification_scheduler
+# Removed: from notification_scheduler import notification_scheduler
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    """Handle application startup and shutdown events"""
-    # Startup
-    try:
-        # Start notification scheduler
-        notification_scheduler.start_scheduler()
-        print("✅ Notification scheduler started successfully")
-    except Exception as e:
-        print(f"❌ Error starting notification scheduler: {e}")
-    yield
-    # Shutdown
-    try:
-        notification_scheduler.stop_scheduler()
-        print("✅ Notification scheduler shutdown successfully")
-    except Exception as e:
-        print(f"❌ Error stopping notification scheduler: {e}")
+# @asynccontextmanager
+# async def lifespan(app: FastAPI):
+#     """Handle application startup and shutdown events"""
+#     # Startup
+#     try:
+#         # Start notification scheduler
+#         notification_scheduler.start_scheduler()
+#         print("✅ Notification scheduler started successfully")
+#     except Exception as e:
+#         print(f"❌ Error starting notification scheduler: {e}")
+#     yield
+#     # Shutdown
+#     try:
+#         notification_scheduler.stop_scheduler()
+#         print("✅ Notification scheduler shutdown successfully")
+#     except Exception as e:
+#         print(f"❌ Error stopping notification scheduler: {e}")
 
-app = FastAPI(title="Admin Management API", lifespan=lifespan)
+app = FastAPI(title="Admin Management API")
 
 # Cấu hình CORS để frontend có thể gọi API
 app.add_middleware(
@@ -69,6 +70,7 @@ app.include_router(user_chat_router, prefix="/api/v1")
 app.include_router(accounting_router, prefix="/api/v1")
 app.include_router(payroll_router, prefix="/api/v1")
 app.include_router(notifications_router, prefix="/api/v1")
+app.include_router(quote_router, prefix="/api/v1")
 
 # Removed: Khởi động email sync service khi app start
 # @app.on_event("startup")
