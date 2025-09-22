@@ -214,8 +214,7 @@ function InvoicesTab() {
     Id_sale: '',
     ngan_sach_du_kien: '',
     mo_ta: '',
-    dia_chi: '',
-    bao_gia: ''
+    dia_chi: ''
   });
 
   // States cho danh sách công trình và công trình được chọn
@@ -344,8 +343,7 @@ function InvoicesTab() {
           Id_sale: selectedProj.Id_sale || '',
           ngan_sach_du_kien: selectedProj.ngan_sach_du_kien || '',
           dia_chi: selectedProj.dia_chi || '',
-          mo_ta: selectedProj.mo_ta || '',
-          bao_gia: selectedProj.bao_gia || ''
+          mo_ta: selectedProj.mo_ta || ''
         });
 
         // Fetch project expenses
@@ -447,8 +445,7 @@ function InvoicesTab() {
         Id_sale: '',
         ngan_sach_du_kien: '',
         mo_ta: '',
-        dia_chi: '',
-        bao_gia: ''
+        dia_chi: ''
       });
       setProjectExpenses([]);
     }
@@ -479,8 +476,7 @@ function InvoicesTab() {
         Id_sale: congTrinh.Id_sale,
         ngan_sach_du_kien: parseFloat(congTrinh.ngan_sach_du_kien) || 0,
         dia_chi: congTrinh.dia_chi,
-        mo_ta: congTrinh.mo_ta,
-        bao_gia: parseFloat(congTrinh.bao_gia) || 0
+        mo_ta: congTrinh.mo_ta
       };
 
       const isEditing = editingProject || editingProjectInline;
@@ -513,8 +509,7 @@ function InvoicesTab() {
           Id_sale: '',
           ngan_sach_du_kien: '',
           mo_ta: '',
-          dia_chi: '',
-          bao_gia: ''
+          dia_chi: ''
         });
         setEditingProject(null);
         setShowProjectModal(false);
@@ -542,8 +537,7 @@ function InvoicesTab() {
         Id_sale: project.Id_sale || '',
         ngan_sach_du_kien: project.ngan_sach_du_kien || '',
         dia_chi: project.dia_chi || '',
-        mo_ta: project.mo_ta || '',
-        bao_gia: project.bao_gia || ''
+        mo_ta: project.mo_ta || ''
       });
     } else {
       // Creating mode
@@ -556,8 +550,7 @@ function InvoicesTab() {
         Id_sale: '',
         ngan_sach_du_kien: '',
         mo_ta: '',
-        dia_chi: '',
-        bao_gia: ''
+        dia_chi: ''
       });
     }
     setShowProjectModal(true);
@@ -586,8 +579,7 @@ function InvoicesTab() {
             Id_sale: '',
             ngan_sach_du_kien: '',
             mo_ta: '',
-            dia_chi: '',
-            bao_gia: ''
+            dia_chi: ''
           });
         }
       } else {
@@ -1380,8 +1372,9 @@ function InvoicesTab() {
         customer_name: customerName,
         sales_employee_id: salesEmployee,
         commission_percentage: commissionPercentage,
-        invoice_date: `${invoiceDate}T${invoiceTime}:00`,
+        invoice_date: `${invoiceDate}T${invoiceTime}`,
         id_congtrinh: parseInt(selectedProject),
+        total_amount: calculateTotal(),
         items: invoiceItems.map(item => ({
           loai_san_pham: item.loai_san_pham,
           id_nhom: item.id_nhom || null,
@@ -1415,22 +1408,6 @@ function InvoicesTab() {
       if (response.ok) {
         const result = await response.json();
         alert('Đơn hàng báo giá đã được lưu thành công!');
-        
-        // Update bao_gia in cong_trinh
-        const totalAmount = calculateTotal();
-        try {
-          await fetch(`http://localhost:8001/api/v1/quote/cong_trinh/${selectedProject}`, {
-            method: 'PUT',
-            headers: {
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-              bao_gia: totalAmount
-            })
-          });
-        } catch (error) {
-          console.error('Error updating bao_gia:', error);
-        }
         
         // Reset form
         setCustomerName('');
@@ -1599,18 +1576,6 @@ function InvoicesTab() {
                     onChange={(e) => setCongTrinh({...congTrinh, ngan_sach_du_kien: e.target.value})}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black"
                     placeholder="Nhập ngân sách dự kiến"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Báo giá (VND)</label>
-                  <input
-                    type="number"
-                    min="0"
-                    step="1000000"
-                    value={congTrinh.bao_gia}
-                    onChange={(e) => setCongTrinh({...congTrinh, bao_gia: e.target.value})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black"
-                    placeholder="Nhập báo giá"
                   />
                 </div>
                 <div className="md:col-span-2">

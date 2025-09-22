@@ -358,16 +358,6 @@ async def create_invoice_quote(invoice_data: dict):
 
         invoice_id = invoice_result.data[0]['id']
 
-        # Cập nhật bao_gia trong cong_trinh nếu có id_congtrinh
-        if invoice_data.get('id_congtrinh') and invoice_data.get('bao_gia'):
-            try:
-                supabase.table('cong_trinh').update({
-                    'bao_gia': invoice_data['bao_gia']
-                }).eq('id', invoice_data['id_congtrinh']).execute()
-                print(f"Updated bao_gia for cong_trinh {invoice_data['id_congtrinh']}: {invoice_data['bao_gia']}")
-            except Exception as e:
-                print(f"Error updating bao_gia for cong_trinh: {e}")
-
         # Thêm chi tiết hóa đơn
         for item in invoice_data['items']:
             # Kiểm tra loại sản phẩm
@@ -1763,26 +1753,21 @@ async def get_cong_trinh(user_id: str = None):
 async def create_cong_trinh(cong_trinh_data: dict):
     """Tạo công trình mới"""
     try:
-        # Convert ma_nv to employee id for Id_sale
-        employee_id = None
+        # Validate that the employee exists
         if cong_trinh_data.get('Id_sale'):
-            try:
-                employee_result = supabase.table('employees').select('id').eq('ma_nv', cong_trinh_data['Id_sale']).execute()
-                if employee_result.data:
-                    employee_id = employee_result.data[0]['id']
-            except Exception as e:
-                print(f"Error looking up employee ID for ma_nv {cong_trinh_data['Id_sale']}: {e}")
+            employee_result = supabase.table('employees').select('ma_nv').eq('ma_nv', cong_trinh_data['Id_sale']).execute()
+            if not employee_result.data:
+                raise HTTPException(status_code=400, detail=f"Employee with ma_nv {cong_trinh_data['Id_sale']} not found")
 
         result = supabase.table('cong_trinh').insert({
             'name_congtrinh': cong_trinh_data['name_congtrinh'],
             'name_customer': cong_trinh_data['name_customer'],
             'sdt': cong_trinh_data.get('sdt'),
             'email': cong_trinh_data.get('email'),
-            'Id_sale': employee_id,  # Use employee ID, not ma_nv
+            'Id_sale': cong_trinh_data.get('Id_sale'),  # Store ma_nv directly
             'ngan_sach_du_kien': cong_trinh_data.get('ngan_sach_du_kien'),
             'dia_chi': cong_trinh_data.get('dia_chi'),
             'mo_ta': cong_trinh_data.get('mo_ta'),
-            'bao_gia': cong_trinh_data.get('bao_gia'),  # Add bao_gia field
             'created_at': 'now()'
         }).execute()
         return result.data[0]
@@ -1793,26 +1778,21 @@ async def create_cong_trinh(cong_trinh_data: dict):
 async def update_cong_trinh(cong_trinh_id: int, cong_trinh_data: dict):
     """Cập nhật công trình"""
     try:
-        # Convert ma_nv to employee id for Id_sale
-        employee_id = None
+        # Validate that the employee exists
         if cong_trinh_data.get('Id_sale'):
-            try:
-                employee_result = supabase.table('employees').select('id').eq('ma_nv', cong_trinh_data['Id_sale']).execute()
-                if employee_result.data:
-                    employee_id = employee_result.data[0]['id']
-            except Exception as e:
-                print(f"Error looking up employee ID for ma_nv {cong_trinh_data['Id_sale']}: {e}")
+            employee_result = supabase.table('employees').select('ma_nv').eq('ma_nv', cong_trinh_data['Id_sale']).execute()
+            if not employee_result.data:
+                raise HTTPException(status_code=400, detail=f"Employee with ma_nv {cong_trinh_data['Id_sale']} not found")
 
         result = supabase.table('cong_trinh').update({
             'name_congtrinh': cong_trinh_data['name_congtrinh'],
             'name_customer': cong_trinh_data['name_customer'],
             'sdt': cong_trinh_data.get('sdt'),
             'email': cong_trinh_data.get('email'),
-            'Id_sale': employee_id,  # Use employee ID, not ma_nv
+            'Id_sale': cong_trinh_data.get('Id_sale'),  # Store ma_nv directly
             'ngan_sach_du_kien': cong_trinh_data.get('ngan_sach_du_kien'),
             'dia_chi': cong_trinh_data.get('dia_chi'),
             'mo_ta': cong_trinh_data.get('mo_ta'),
-            'bao_gia': cong_trinh_data.get('bao_gia'),  # Add bao_gia field
             'updated_at': 'now()'
         }).eq('id', cong_trinh_id).execute()
         return result.data[0]

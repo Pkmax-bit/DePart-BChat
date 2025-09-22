@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
-import { ArrowLeft, FileText, Calendar, User, DollarSign, Building2, Eye, Edit, Trash2, TrendingUp, Package, Receipt, BarChart3, Phone, Mail, MapPin, Info, ShoppingCart, Calculator, PieChart } from 'lucide-react';
+import { ArrowLeft, FileText, Calendar, User, DollarSign, Building2, Edit, Trash2, TrendingUp, Package, Receipt, BarChart3, Phone, Mail, MapPin, Info, ShoppingCart, Calculator, PieChart, ChevronDown, ChevronRight, Settings, Palette, Weight, Zap, Shield, Globe, Layers, Ruler, Tag } from 'lucide-react';
 
 const supabase = createClientComponentClient();
 
@@ -85,10 +85,10 @@ export default function ProjectQuotesPage() {
       }
 
       // Load cost tree for this project
-      const costResponse = await fetch(`http://localhost:8001/api/v1/accounting/chiphi_quote/project/${projectId}`);
+      const costResponse = await fetch(`http://localhost:8001/api/v1/quote/quanly_chiphi/hierarchy/`);
       if (costResponse.ok) {
         const costData = await costResponse.json();
-        setCostTree(costData.expenses || []);
+        setCostTree(costData.hierarchy || []);
       }
 
       // Load employees for display
@@ -125,12 +125,192 @@ export default function ProjectQuotesPage() {
     return employee ? employee.ho_ten : employeeId;
   };
 
-  // Calculate project statistics
-  const totalQuotes = quotes.length;
-  const totalRevenue = quotes.reduce((sum, quote) => sum + (quote.total_amount || 0), 0);
-  const totalCost = costTree.reduce((sum, cost) => sum + (cost.giathanh || 0), 0);
-  const profitMargin = totalRevenue > 0 ? ((totalRevenue - totalCost) / totalRevenue * 100).toFixed(1) : 0;
-  const totalProducts = quotes.reduce((sum, quote) => sum + (quote.items ? quote.items.length : 0), 0);
+  // Tree view component for costs
+  const CostTreeNode = ({ cost, level = 0, searchTerm = '', parentName = null }) => {
+    const [isExpanded, setIsExpanded] = useState(level < 2); // Auto expand first 2 levels
+
+    const hasChildren = cost.children && cost.children.length > 0;
+    const matchesSearch = !searchTerm ||
+      (cost.ten_chiphi && cost.ten_chiphi.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (cost.loaichiphi && cost.loaichiphi.tenchiphi && cost.loaichiphi.tenchiphi.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (cost.mo_ta && cost.mo_ta.toLowerCase().includes(searchTerm.toLowerCase()));
+
+    if (!matchesSearch && !hasChildren) return null;
+
+    // Calculate indentation and connection lines
+    const indentClass = level > 0 ? `ml-${Math.min(level * 6, 24)}` : '';
+    const showConnectionLine = level > 0;
+
+    return (
+      <div className={`${indentClass} relative`}>
+        {/* Connection line from parent */}
+        {showConnectionLine && (
+          <div className="absolute -left-4 top-0 w-4 h-8 border-l-2 border-b-2 border-gray-300 rounded-bl-lg"></div>
+        )}
+
+        <div className={`group bg-gradient-to-br from-white to-gray-50 rounded-2xl border border-gray-200 hover:border-green-300 hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1 overflow-hidden ${level === 0 ? 'border-l-4 border-l-green-500' : 'border-l-4 border-l-blue-400'}`}>
+          <div className="p-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-4">
+                {hasChildren && (
+                  <button
+                    onClick={() => setIsExpanded(!isExpanded)}
+                    className="p-1 hover:bg-gray-100 rounded transition-colors"
+                  >
+                    {isExpanded ? (
+                      <ChevronDown className="w-4 h-4 text-gray-500" />
+                    ) : (
+                      <ChevronRight className="w-4 h-4 text-gray-500" />
+                    )}
+                  </button>
+                )}
+                {!hasChildren && <div className="w-6"></div>}
+
+                <div className={`p-3 bg-gradient-to-br rounded-xl shadow-lg group-hover:scale-110 transition-transform duration-300 ${
+                  level === 0
+                    ? 'from-green-500 to-emerald-600'
+                    : level === 1
+                    ? 'from-blue-500 to-indigo-600'
+                    : 'from-purple-500 to-pink-600'
+                }`}>
+                  {level === 0 ? (
+                    <DollarSign className="w-6 h-6 text-white" />
+                  ) : level === 1 ? (
+                    <TrendingUp className="w-6 h-6 text-white" />
+                  ) : (
+                    <Calculator className="w-6 h-6 text-white" />
+                  )}
+                </div>
+                <div className="flex-1">
+                  <div className="flex items-center space-x-2 mb-1">
+                    <h4 className={`font-bold text-gray-900 group-hover:text-green-600 transition-colors ${
+                      level === 0 ? 'text-lg' : level === 1 ? 'text-base' : 'text-sm'
+                    }`}>
+                      {cost.ten_chiphi || `Chi phí #${cost.id}`}
+                    </h4>
+                    {/* Level indicator */}
+                    <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                      level === 0
+                        ? 'bg-green-100 text-green-800'
+                        : level === 1
+                        ? 'bg-blue-100 text-blue-800'
+                        : 'bg-purple-100 text-purple-800'
+                    }`}>
+                      {level === 0 ? 'Cấp 1' : level === 1 ? 'Cấp 2' : `Cấp ${level + 1}`}
+                    </span>
+                  </div>
+
+                  {/* Parent relationship info */}
+                  {parentName && (
+                    <div className="text-xs text-gray-500 mb-2 flex items-center space-x-1">
+                      <ArrowLeft className="w-3 h-3" />
+                      <span>Thuộc: {parentName}</span>
+                    </div>
+                  )}
+
+                  <div className="flex items-center space-x-4 text-sm text-gray-600 mt-2">
+                    {cost.loaichiphi && (
+                      <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                        {cost.loaichiphi.tenchiphi || 'Chi phí chung'}
+                      </span>
+                    )}
+                    {cost.created_at && (
+                      <div className="flex items-center space-x-1">
+                        <Calendar className="w-4 h-4" />
+                        <span>{formatDate(cost.created_at)}</span>
+                      </div>
+                    )}
+                    {hasChildren && (
+                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                        {cost.children.length} chi phí con
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+              <div className="text-right">
+                <div className={`font-bold mb-1 ${
+                  level === 0 ? 'text-2xl text-green-600' : level === 1 ? 'text-xl text-blue-600' : 'text-lg text-purple-600'
+                }`}>
+                  {formatCurrency(cost.giathanh || 0)}
+                </div>
+                <div className="text-sm text-gray-600">
+                  {level === 0 && cost.total_amount ? `Tổng: ${formatCurrency(cost.total_amount)}` : 'VND'}
+                </div>
+                {/* Percentage of parent if applicable */}
+                {level > 0 && parentName && (
+                  <div className="text-xs text-gray-500 mt-1">
+                    Chiếm: {cost.giathanh ? ((cost.giathanh / (cost.parent_total || 1)) * 100).toFixed(1) : 0}%
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {cost.mo_ta && (
+              <div className="mt-4 p-4 bg-green-50 rounded-xl border border-green-200">
+                <p className="text-sm text-green-800 leading-relaxed">
+                  {cost.mo_ta}
+                </p>
+              </div>
+            )}
+
+            {/* Children count and expand hint */}
+            {hasChildren && (
+              <div className="mt-4 flex items-center justify-between text-sm text-gray-600">
+                <div className="flex items-center space-x-2">
+                  <span className="font-medium">Chi phí con ({cost.children.length}):</span>
+                  {cost.children.slice(0, 3).map((child, index) => (
+                    <span key={child.id} className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-gray-100 text-gray-700">
+                      {child.ten_chiphi || `Chi phí ${child.id}`}
+                    </span>
+                  ))}
+                  {cost.children.length > 3 && (
+                    <span className="text-xs text-gray-500">+{cost.children.length - 3} khác</span>
+                  )}
+                </div>
+                <button
+                  onClick={() => setIsExpanded(!isExpanded)}
+                  className="text-blue-600 hover:text-blue-800 font-medium flex items-center space-x-1"
+                >
+                  {isExpanded ? (
+                    <>
+                      <span>Thu gọn</span>
+                      <ChevronDown className="w-4 h-4" />
+                    </>
+                  ) : (
+                    <>
+                      <span>Mở rộng</span>
+                      <ChevronRight className="w-4 h-4" />
+                    </>
+                  )}
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Children container with connection line */}
+        {hasChildren && isExpanded && (
+          <div className="relative mt-4 space-y-4">
+            {/* Vertical connection line */}
+            <div className="absolute left-2 top-0 bottom-0 w-0.5 bg-gray-300"></div>
+            {cost.children.map((child, index) => (
+              <CostTreeNode
+                key={child.id}
+                cost={{
+                  ...child,
+                  parent_total: cost.giathanh || cost.total_amount || 0
+                }}
+                level={level + 1}
+                searchTerm={searchTerm}
+                parentName={cost.ten_chiphi || `Chi phí #${cost.id}`}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  };
 
   // Filter quotes and costs
   const filteredQuotes = quotes.filter(quote => {
@@ -151,6 +331,13 @@ export default function ProjectQuotesPage() {
       (cost.mo_ta && cost.mo_ta.toLowerCase().includes(searchTerm))
     );
   });
+
+  // Calculate statistics
+  const totalQuotes = quotes.length;
+  const totalProducts = quotes.reduce((sum, quote) => sum + (quote.items ? quote.items.length : 0), 0);
+  const totalRevenue = quotes.reduce((sum, quote) => sum + (quote.total_amount || 0), 0);
+  const totalCost = costTree.reduce((sum, cost) => sum + (cost.giathanh || 0), 0);
+  const profitMargin = totalRevenue > 0 ? Math.round(((totalRevenue - totalCost) / totalRevenue) * 100) : 0;
 
   if (loading) {
     return (
@@ -405,18 +592,182 @@ export default function ProjectQuotesPage() {
                             <h5 className="text-sm font-semibold text-gray-700 mb-3">Chi tiết sản phẩm:</h5>
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                               {quote.items.slice(0, 6).map((item, index) => (
-                                <div key={index} className="bg-gradient-to-r from-blue-50 to-indigo-50 p-3 rounded-xl border border-blue-200 hover:shadow-md transition-shadow">
-                                  <div className="text-sm">
-                                    <div className="font-medium text-blue-800 truncate">
+                                <div key={index} className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-xl border border-blue-200 hover:shadow-md transition-shadow">
+                                  <div className="text-sm space-y-2">
+                                    {/* Tên sản phẩm */}
+                                    <div className="font-medium text-blue-800 text-base truncate">
                                       {item.loai_san_pham === 'tu_bep' ? (
-                                        <span>{item.ten_bophan || 'Tủ bếp'}</span>
+                                        <span>{item.ten_bophan || item.ten_sanpham || 'Tủ bếp'}</span>
                                       ) : (
-                                        <span>{item.ten_sanpham || 'Phụ kiện'}</span>
+                                        <span>{item.tenphukien || item.ten_sanpham || 'Phụ kiện'}</span>
                                       )}
                                     </div>
-                                    <div className="text-blue-600 font-semibold mt-1">
-                                      {formatCurrency(item.thanh_tien)}
+
+                                    {/* ID sản phẩm */}
+                                    {item.id && (
+                                      <div className="flex items-center justify-between">
+                                        <span className="text-gray-600">ID:</span>
+                                        <span className="font-mono text-xs bg-blue-100 px-2 py-1 rounded">{item.id}</span>
+                                      </div>
+                                    )}
+
+                                    {/* Tên sản phẩm từ bảng sanpham */}
+                                    {item.tensp && (
+                                      <div className="flex items-center justify-between">
+                                        <span className="text-gray-600">Tên SP:</span>
+                                        <span className="font-medium text-blue-700">{item.tensp}</span>
+                                      </div>
+                                    )}
+
+                                    {/* Thông tin chi tiết theo loại sản phẩm */}
+                                    {item.loai_san_pham === 'tu_bep' ? (
+                                      <>
+                                        {/* Bộ phận */}
+                                        {item.ten_bophan && (
+                                          <div className="flex items-center justify-between">
+                                            <span className="text-gray-600">Bộ phận:</span>
+                                            <span className="font-medium text-green-700">{item.ten_bophan}</span>
+                                          </div>
+                                        )}
+
+                                        {/* Nhôm */}
+                                        {item.ten_nhom && (
+                                          <div className="flex items-center justify-between">
+                                            <span className="text-gray-600">Nhôm:</span>
+                                            <span className="font-medium text-purple-700">{item.ten_nhom}</span>
+                                          </div>
+                                        )}
+
+                                        {/* Kính */}
+                                        {item.ten_kinh && (
+                                          <div className="flex items-center justify-between">
+                                            <span className="text-gray-600">Kính:</span>
+                                            <span className="font-medium text-indigo-700">{item.ten_kinh}</span>
+                                          </div>
+                                        )}
+
+                                        {/* Tay nắm */}
+                                        {item.ten_taynam && (
+                                          <div className="flex items-center justify-between">
+                                            <span className="text-gray-600">Tay nắm:</span>
+                                            <span className="font-medium text-pink-700">{item.ten_taynam}</span>
+                                          </div>
+                                        )}
+
+                                        {/* Kích thước */}
+                                        {item.ngang && item.cao && item.sau && (
+                                          <div className="flex items-center justify-between">
+                                            <span className="text-gray-600">Kích thước:</span>
+                                            <span className="font-medium text-orange-700">{item.ngang}×{item.cao}×{item.sau} cm</span>
+                                          </div>
+                                        )}
+                                      </>
+                                    ) : (
+                                      <>
+                                        {/* Phụ kiện */}
+                                        {item.tenphukien && (
+                                          <div className="flex items-center justify-between">
+                                            <span className="text-gray-600">Phụ kiện:</span>
+                                            <span className="font-medium text-green-700">{item.tenphukien}</span>
+                                          </div>
+                                        )}
+
+                                        {/* Thương hiệu */}
+                                        {item.thuong_hieu && (
+                                          <div className="flex items-center justify-between">
+                                            <span className="text-gray-600">Thương hiệu:</span>
+                                            <span className="font-medium text-purple-700">{item.thuong_hieu}</span>
+                                          </div>
+                                        )}
+
+                                        {/* Model */}
+                                        {item.model && (
+                                          <div className="flex items-center justify-between">
+                                            <span className="text-gray-600">Model:</span>
+                                            <span className="font-medium text-indigo-700">{item.model}</span>
+                                          </div>
+                                        )}
+
+                                        {/* Công suất */}
+                                        {item.cong_suat && (
+                                          <div className="flex items-center justify-between">
+                                            <span className="text-gray-600">Công suất:</span>
+                                            <span className="font-medium text-pink-700">{item.cong_suat}</span>
+                                          </div>
+                                        )}
+
+                                        {/* Kích thước */}
+                                        {item.kich_thuoc && (
+                                          <div className="flex items-center justify-between">
+                                            <span className="text-gray-600">Kích thước:</span>
+                                            <span className="font-medium text-orange-700">{item.kich_thuoc}</span>
+                                          </div>
+                                        )}
+
+                                        {/* Bảo hành */}
+                                        {item.bao_hanh && (
+                                          <div className="flex items-center justify-between">
+                                            <span className="text-gray-600">Bảo hành:</span>
+                                            <span className="font-medium text-red-700">{item.bao_hanh}</span>
+                                          </div>
+                                        )}
+
+                                        {/* Xuất xứ */}
+                                        {item.xuat_xu && (
+                                          <div className="flex items-center justify-between">
+                                            <span className="text-gray-600">Xuất xứ:</span>
+                                            <span className="font-medium text-teal-700">{item.xuat_xu}</span>
+                                          </div>
+                                        )}
+                                      </>
+                                    )}
+
+                                    {/* Thông tin chung */}
+                                    {item.chat_lieu && (
+                                      <div className="flex items-center justify-between">
+                                        <span className="text-gray-600">Chất liệu:</span>
+                                        <span className="font-medium text-cyan-700">{item.chat_lieu}</span>
+                                      </div>
+                                    )}
+
+                                    {item.mau_sac && (
+                                      <div className="flex items-center justify-between">
+                                        <span className="text-gray-600">Màu sắc:</span>
+                                        <span className="font-medium text-lime-700">{item.mau_sac}</span>
+                                      </div>
+                                    )}
+
+                                    {item.trong_luong && (
+                                      <div className="flex items-center justify-between">
+                                        <span className="text-gray-600">Trọng lượng:</span>
+                                        <span className="font-medium text-amber-700">{item.trong_luong} kg</span>
+                                      </div>
+                                    )}
+
+                                    {/* Thông tin thương mại */}
+                                    <div className="border-t border-blue-200 pt-2 mt-2">
+                                      <div className="grid grid-cols-3 gap-2 text-center">
+                                        <div>
+                                          <div className="text-xs text-gray-600">Đơn giá</div>
+                                          <div className="font-semibold text-green-600">{formatCurrency(item.don_gia || 0)}</div>
+                                        </div>
+                                        <div>
+                                          <div className="text-xs text-gray-600">Số lượng</div>
+                                          <div className="font-semibold text-blue-600">{item.so_luong || 1}</div>
+                                        </div>
+                                        <div>
+                                          <div className="text-xs text-gray-600">Thành tiền</div>
+                                          <div className="font-bold text-purple-600">{formatCurrency(item.thanh_tien || 0)}</div>
+                                        </div>
+                                      </div>
                                     </div>
+
+                                    {/* Mô tả */}
+                                    {item.mo_ta && (
+                                      <div className="mt-2 p-2 bg-white/50 rounded text-xs text-gray-700 italic">
+                                        {item.mo_ta}
+                                      </div>
+                                    )}
                                   </div>
                                 </div>
                               ))}
@@ -446,7 +797,6 @@ export default function ProjectQuotesPage() {
                               onClick={() => router.push(`/dashboard/quote?quoteId=${quote.id}`)}
                               className="bg-gradient-to-r from-blue-50 to-indigo-50 hover:from-blue-100 hover:to-indigo-100 text-blue-700 px-4 py-2 rounded-xl text-sm font-medium transition-all duration-300 transform hover:scale-105 shadow-md flex items-center space-x-2 border border-blue-200"
                             >
-                              <Eye className="w-4 h-4" />
                               <span>Xem chi tiết</span>
                             </button>
                             <button
@@ -497,7 +847,7 @@ export default function ProjectQuotesPage() {
                 />
               </div>
 
-              {filteredCosts.length === 0 ? (
+              {costTree.length === 0 ? (
                 <div className="text-center py-16 bg-gradient-to-br from-gray-50 to-gray-100 rounded-2xl border-2 border-dashed border-gray-300">
                   <div className="p-4 bg-gray-200 rounded-full w-20 h-20 mx-auto mb-6 flex items-center justify-center">
                     <Calculator className="w-10 h-10 text-gray-500" />
@@ -513,51 +863,14 @@ export default function ProjectQuotesPage() {
                   </button>
                 </div>
               ) : (
-                <div className="space-y-4">
-                  {filteredCosts.map((cost) => (
-                    <div key={cost.id} className="group bg-gradient-to-br from-white to-gray-50 rounded-2xl border border-gray-200 hover:border-green-300 hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1 overflow-hidden">
-                      <div className="p-6">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center space-x-4">
-                            <div className="p-3 bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl shadow-lg group-hover:scale-110 transition-transform duration-300">
-                              <DollarSign className="w-6 h-6 text-white" />
-                            </div>
-                            <div className="flex-1">
-                              <h4 className="text-lg font-bold text-gray-900 group-hover:text-green-600 transition-colors">
-                                {cost.ten_chiphi || `Chi phí #${cost.id}`}
-                              </h4>
-                              <div className="flex items-center space-x-4 text-sm text-gray-600 mt-2">
-                                <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                  {cost.loai_chiphi || 'Chi phí chung'}
-                                </span>
-                                {cost.created_at && (
-                                  <div className="flex items-center space-x-1">
-                                    <Calendar className="w-4 h-4" />
-                                    <span>{formatDate(cost.created_at)}</span>
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                          <div className="text-right">
-                            <div className="text-2xl font-bold text-green-600 mb-1">
-                              {formatCurrency(cost.giathanh)}
-                            </div>
-                            <div className="text-sm text-gray-600">
-                              VND
-                            </div>
-                          </div>
-                        </div>
-
-                        {cost.mo_ta && (
-                          <div className="mt-4 p-4 bg-green-50 rounded-xl border border-green-200">
-                            <p className="text-sm text-green-800 leading-relaxed">
-                              {cost.mo_ta}
-                            </p>
-                          </div>
-                        )}
-                      </div>
-                    </div>
+                <div className="space-y-6">
+                  {costTree.map((cost) => (
+                    <CostTreeNode
+                      key={cost.id}
+                      cost={cost}
+                      level={0}
+                      searchTerm={costSearch}
+                    />
                   ))}
                 </div>
               )}
@@ -732,6 +1045,7 @@ export default function ProjectQuotesPage() {
           </div>
         </div>
       </div>
+
     </div>
   );
 }

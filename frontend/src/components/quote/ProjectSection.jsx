@@ -403,18 +403,7 @@ const ProjectSection = ({
                   placeholder="Nhập ngân sách dự kiến"
                 />
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Báo giá (VND)</label>
-                <input
-                  type="number"
-                  min="0"
-                  step="1000000"
-                  value={congTrinh.bao_gia}
-                  onChange={(e) => setCongTrinh({...congTrinh, bao_gia: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black"
-                  placeholder="Nhập báo giá"
-                />
-              </div>
+              
               <div className="md:col-span-2 lg:col-span-3">
                 <label className="block text-sm font-medium text-gray-700 mb-2">Địa chỉ</label>
                 <input
@@ -529,18 +518,7 @@ const ProjectSection = ({
                   placeholder="Nhập ngân sách dự kiến"
                 />
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Báo giá (VND)</label>
-                <input
-                  type="number"
-                  min="0"
-                  step="1000000"
-                  value={congTrinh.bao_gia}
-                  onChange={(e) => setCongTrinh({...congTrinh, bao_gia: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-green-50 text-black"
-                  placeholder="Nhập báo giá"
-                />
-              </div>
+              
               <div className="md:col-span-2 lg:col-span-3">
                 <label className="block text-sm font-medium text-gray-700 mb-2">Địa chỉ</label>
                 <input
@@ -686,18 +664,7 @@ const ProjectSection = ({
                     placeholder="Nhập ngân sách dự kiến"
                   />
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Báo giá (VND)</label>
-                  <input
-                    type="number"
-                    min="0"
-                    step="1000000"
-                    value={congTrinh.bao_gia}
-                    onChange={(e) => setCongTrinh({...congTrinh, bao_gia: e.target.value})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black"
-                    placeholder="Nhập báo giá"
-                  />
-                </div>
+               
                 <div className="md:col-span-2">
                   <label className="block text-sm font-medium text-gray-700 mb-2">Địa chỉ</label>
                   <input
