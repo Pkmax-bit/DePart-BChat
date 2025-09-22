@@ -9,6 +9,10 @@ import os
 backend_dir = os.path.join(os.path.dirname(__file__), 'backend')
 sys.path.insert(0, backend_dir)
 
+# Add the parent directory to Python path for calculate_project_budget
+parent_dir = os.path.dirname(__file__)
+sys.path.insert(0, parent_dir)
+
 # Change to backend directory
 os.chdir(backend_dir)
 

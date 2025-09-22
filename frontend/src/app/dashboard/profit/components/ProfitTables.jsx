@@ -26,7 +26,7 @@ export default function ProfitTables({ revenueData, expenseData }) {
                     {new Date(inv.invoice_date).toLocaleDateString('vi-VN')}
                   </td>
                   <td className="px-4 py-2 whitespace-nowrap text-sm font-medium text-green-600">
-                    {(inv.total_amount || 0).toLocaleString('vi-VN')} VND
+                    {(inv.ngan_sach_ke_hoach || 0).toLocaleString('vi-VN')} VND
                   </td>
                 </tr>
               ))}

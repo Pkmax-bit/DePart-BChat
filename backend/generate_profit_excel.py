@@ -200,7 +200,7 @@ def create_profit_summary_sheet(sheet, data, header_font, header_fill, border):
     sheet['A2'].font = Font(bold=True, size=12)
 
     # Tinh tong
-    total_revenue = sum(inv.get('total_amount', 0) for inv in data['revenue'])
+    total_revenue = sum(inv.get('ngan_sach_ke_hoach', 0) for inv in data['revenue'])
     total_expenses = sum(exp.get('giathanh', 0) for exp in data['expenses'])
     total_payroll = sum(p.get('luong_thuc_nhan', 0) for p in data['payroll'])
     total_all_expenses = total_expenses + total_payroll
@@ -356,7 +356,7 @@ def create_revenue_detail_sheet(sheet, data, header_font, header_fill, border):
     total_row = row_idx + 1
     sheet.cell(row=total_row, column=11).value = "TONG DOANH THU:"
     sheet.cell(row=total_row, column=11).font = Font(bold=True)
-    sheet.cell(row=total_row, column=12).value = sum(inv.get('total_amount', 0) for inv in data['revenue'])
+    sheet.cell(row=total_row, column=12).value = sum(inv.get('ngan_sach_ke_hoach', 0) for inv in data['revenue'])
     sheet.cell(row=total_row, column=12).font = Font(bold=True)
     sheet.cell(row=total_row, column=12).number_format = '#,##0'
 
@@ -558,7 +558,7 @@ def main():
         print(f"File duoc luu tai: {output_path}")
 
         # Thong ke
-        total_revenue = sum(inv.get('total_amount', 0) for inv in data['revenue'])
+        total_revenue = sum(inv.get('ngan_sach_ke_hoach', 0) for inv in data['revenue'])
         total_expenses = sum(exp.get('giathanh', 0) for exp in data['expenses'])
         total_payroll = sum(p.get('luong_thuc_nhan', 0) for p in data['payroll'])
         total_all_expenses = total_expenses + total_payroll

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   Building2,
   Phone,
@@ -11,7 +11,8 @@ import {
   Trash2,
   Plus,
   Save,
-  X
+  X,
+  Search
 } from 'lucide-react';
 
 const ProjectSection = ({
@@ -34,6 +35,24 @@ const ProjectSection = ({
   deleteProject,
   saveProjectInfo
 }) => {
+  const [filterName, setFilterName] = useState('');
+  const [filterCustomer, setFilterCustomer] = useState('');
+  const [filterPhone, setFilterPhone] = useState('');
+
+  // Lọc projects dựa trên các bộ lọc
+  const filteredProjects = useMemo(() => {
+    return projects.filter(project => {
+      const nameMatch = filterName === '' || 
+        project.name_congtrinh?.toLowerCase().includes(filterName.toLowerCase());
+      const customerMatch = filterCustomer === '' || 
+        project.name_customer?.toLowerCase().includes(filterCustomer.toLowerCase());
+      const phoneMatch = filterPhone === '' || 
+        String(project.sdt || '').includes(filterPhone);
+      
+      return nameMatch && customerMatch && phoneMatch;
+    });
+  }, [projects, filterName, filterCustomer, filterPhone]);
+
   return (
     <>
       {/* Công trình Section */}
@@ -55,17 +74,79 @@ const ProjectSection = ({
         <div className="mb-6">
           <h4 className="text-md font-medium text-gray-900 mb-4 flex items-center">
             <Building2 className="w-5 h-5 mr-2 text-blue-600" />
-            Danh sách công trình ({projects.length})
+            Danh sách công trình ({filteredProjects.length}{projects.length !== filteredProjects.length ? `/${projects.length}` : ''})
           </h4>
-          {projects.length === 0 ? (
+
+          {/* Bộ lọc */}
+          <div className="mb-4 bg-gray-50 rounded-lg p-4 border border-gray-200">
+            <div className="flex items-center mb-3">
+              <Search className="w-4 h-4 text-gray-500 mr-2" />
+              <span className="text-sm font-medium text-gray-700">Tìm kiếm và lọc công trình</span>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Tên công trình</label>
+                <input
+                  type="text"
+                  value={filterName}
+                  onChange={(e) => setFilterName(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm text-black"
+                  placeholder="Nhập tên công trình..."
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Tên khách hàng</label>
+                <input
+                  type="text"
+                  value={filterCustomer}
+                  onChange={(e) => setFilterCustomer(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm text-black"
+                  placeholder="Nhập tên khách hàng..."
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Số điện thoại</label>
+                <input
+                  type="tel"
+                  value={filterPhone}
+                  onChange={(e) => setFilterPhone(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm text-black"
+                  placeholder="Nhập số điện thoại..."
+                />
+              </div>
+            </div>
+            {(filterName || filterCustomer || filterPhone) && (
+              <div className="mt-3 flex items-center justify-between">
+                <span className="text-sm text-gray-600">
+                  Đang lọc: {filteredProjects.length} kết quả
+                </span>
+                <button
+                  onClick={() => {
+                    setFilterName('');
+                    setFilterCustomer('');
+                    setFilterPhone('');
+                  }}
+                  className="text-sm text-blue-600 hover:text-blue-800 underline"
+                >
+                  Xóa bộ lọc
+                </button>
+              </div>
+            )}
+          </div>
+
+          {filteredProjects.length === 0 ? (
             <div className="text-center py-12 bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl border-2 border-dashed border-gray-300">
               <Building2 className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-              <p className="text-gray-500 text-lg font-medium">Chưa có công trình nào</p>
-              <p className="text-gray-400 text-sm mt-1">Hãy thêm công trình mới để bắt đầu</p>
+              <p className="text-gray-500 text-lg font-medium">
+                {projects.length === 0 ? 'Chưa có công trình nào' : 'Không tìm thấy công trình phù hợp'}
+              </p>
+              <p className="text-gray-400 text-sm mt-1">
+                {projects.length === 0 ? 'Hãy thêm công trình mới để bắt đầu' : 'Hãy thử điều chỉnh bộ lọc'}
+              </p>
             </div>
           ) : (
             <div className="space-y-3">
-              {projects.map(project => (
+              {filteredProjects.map(project => (
                 <div key={project.id} className="bg-white rounded-lg border border-gray-200 hover:border-blue-300 hover:shadow-md transition-all duration-200 overflow-hidden">
                   <div className="p-4">
                     <div className="flex items-center justify-between">
@@ -98,13 +179,20 @@ const ProjectSection = ({
                           {project.dia_chi && (
                             <div className="flex items-center space-x-2 text-sm text-gray-600">
                               <MapPin className="w-4 h-4" />
-                              <span className="truncate max-w-48">{project.dia_chi}</span>
+                              <span className="max-w-96 break-words">{project.dia_chi}</span>
                             </div>
                           )}
                           {project.ngan_sach_du_kien && (
                             <div className="bg-green-50 px-3 py-1 rounded-full">
                               <span className="text-sm font-medium text-green-700">
                                 {parseInt(project.ngan_sach_du_kien).toLocaleString('vi-VN')} VND
+                              </span>
+                            </div>
+                          )}
+                          {project.ngan_sach_ke_hoach && (
+                            <div className="bg-blue-50 px-3 py-1 rounded-full">
+                              <span className="text-sm font-medium text-blue-700">
+                                Kế hoạch: {parseInt(project.ngan_sach_ke_hoach).toLocaleString('vi-VN')} VND
                               </span>
                             </div>
                           )}
@@ -180,7 +268,7 @@ const ProjectSection = ({
                         {project.dia_chi && (
                           <div className="col-span-2 flex items-center space-x-2 text-gray-600">
                             <MapPin className="w-4 h-4" />
-                            <span>{project.dia_chi}</span>
+                            <span className="break-words">{project.dia_chi}</span>
                           </div>
                         )}
                         {project.ngan_sach_du_kien && (
@@ -188,6 +276,15 @@ const ProjectSection = ({
                             <div className="bg-green-50 px-3 py-2 rounded-lg inline-block">
                               <span className="text-sm font-medium text-green-700">
                                 Ngân sách: {parseInt(project.ngan_sach_du_kien).toLocaleString('vi-VN')} VND
+                              </span>
+                            </div>
+                          </div>
+                        )}
+                        {project.ngan_sach_ke_hoach && (
+                          <div className="col-span-2 mt-2">
+                            <div className="bg-blue-50 px-3 py-2 rounded-lg inline-block">
+                              <span className="text-sm font-medium text-blue-700">
+                                Kế hoạch: {parseInt(project.ngan_sach_ke_hoach).toLocaleString('vi-VN')} VND
                               </span>
                             </div>
                           </div>
@@ -490,7 +587,7 @@ const ProjectSection = ({
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-black"
           >
             <option value="">Chọn công trình hoặc nhập thông tin mới</option>
-            {projects.map(project => (
+            {filteredProjects.map(project => (
               <option key={project.id} value={project.id}>
                 {project.name_congtrinh} - {project.name_customer}
               </option>

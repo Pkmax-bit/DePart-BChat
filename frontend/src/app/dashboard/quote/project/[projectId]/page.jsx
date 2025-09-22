@@ -234,7 +234,7 @@ export default function ProjectQuotesPage() {
                       </div>
                       <div className="text-right">
                         <div className="text-2xl font-bold text-green-600">
-                          {formatCurrency(quote.total_amount)}
+                          {formatCurrency(quote.ngan_sach_ke_hoach)}
                         </div>
                         <div className="text-sm text-gray-600 mt-1">
                           Tổng tiền

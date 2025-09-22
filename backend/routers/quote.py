@@ -1,5 +1,13 @@
 from fastapi import APIRouter, HTTPException
 from supabase_client import supabase
+import os
+import sys
+
+# Add parent directory to path for imports
+sys.path.append(os.path.dirname(os.path.dirname(__file__)))
+
+# Import budget calculation functions
+from calculate_project_budget import calculate_project_budget_plan, update_project_budget_on_invoice_change, update_project_budget_on_expense_change
 from typing import List
 from datetime import datetime
 
@@ -338,17 +346,44 @@ async def delete_chitietsanpham(detail_id: int):
 
 @router.post("/invoices_quote/")
 async def create_invoice_quote(invoice_data: dict):
-    """Tạo hóa đơn báo giá mới"""
+    """Tạo hóa đơn báo giá mới hoặc cập nhật nếu đã tồn tại"""
     try:
-        # Tạo hóa đơn chính (báo giá)
-        invoice_result = supabase.table('invoices_quote').insert({
-            'sales_employee_id': invoice_data.get('sales_employee_id'),
-            'invoice_date': invoice_data['invoice_date'],
-            'total_amount': invoice_data['total_amount'],
-            'id_congtrinh': invoice_data.get('id_congtrinh')  # Only store project ID
-        }).execute()
+        # Kiểm tra xem đã có quote với id_congtrinh này chưa
+        existing_quote = None
+        if invoice_data.get('id_congtrinh'):
+            existing_result = supabase.table('invoices_quote').select('*').eq('id_congtrinh', invoice_data['id_congtrinh']).execute()
+            if existing_result.data:
+                existing_quote = existing_result.data[0]
 
-        invoice_id = invoice_result.data[0]['id']
+        # Sử dụng ngan_sach_ke_hoach thay vì total_amount
+        total_amount = invoice_data.get('ngan_sach_ke_hoach') or invoice_data.get('total_amount', 0)
+
+        if existing_quote:
+            # Cập nhật quote hiện có
+            invoice_result = supabase.table('invoices_quote').update({
+                'sales_employee_id': invoice_data.get('sales_employee_id'),
+                'invoice_date': invoice_data['invoice_date'],
+                'total_amount': total_amount,
+                'id_congtrinh': invoice_data.get('id_congtrinh')
+            }).eq('id', existing_quote['id']).execute()
+
+            invoice_id = existing_quote['id']
+
+            # Xóa các items cũ trước khi thêm mới
+            supabase.table('invoice_items_quote').delete().eq('invoice_id', invoice_id).execute()
+            
+            # Xóa các chi phí cũ trước khi thêm mới
+            supabase.table('chiphi_quote').delete().eq('id_congtrinh', invoice_data.get('id_congtrinh')).execute()
+        else:
+            # Tạo hóa đơn mới
+            invoice_result = supabase.table('invoices_quote').insert({
+                'sales_employee_id': invoice_data.get('sales_employee_id'),
+                'invoice_date': invoice_data['invoice_date'],
+                'total_amount': total_amount,
+                'id_congtrinh': invoice_data.get('id_congtrinh')
+            }).execute()
+
+            invoice_id = invoice_result.data[0]['id']
 
         # Cập nhật bao_gia trong cong_trinh nếu có id_congtrinh
         if invoice_data.get('id_congtrinh') and invoice_data.get('bao_gia'):
@@ -399,7 +434,6 @@ async def create_invoice_quote(invoice_data: dict):
         # Tự động tạo hoa hồng cho nhân viên bán hàng (optional for quotes)
         if invoice_data.get('sales_employee_id'):
             sales_employee_id = invoice_data['sales_employee_id']
-            total_amount = invoice_data['total_amount']
             commission_percentage = invoice_data.get('commission_percentage', 5.0)  # Default to 5% if not provided
             commission_amount = total_amount * (commission_percentage / 100.0)
 
@@ -419,9 +453,31 @@ async def create_invoice_quote(invoice_data: dict):
                 'ty_le': commission_percentage
             }).execute()
 
-        return {"message": "Quote created successfully", "invoice_id": invoice_id}
+        # Thêm chi phí vào chiphi_quote nếu có
+        if invoice_data.get('expenses'):
+            for expense in invoice_data['expenses']:
+                supabase.table('chiphi_quote').insert({
+                    'id_congtrinh': invoice_data.get('id_congtrinh'),
+                    'id_lcp': expense.get('id_lcp'),
+                    'giathanh': expense.get('giathanh'),
+                    'mo_ta': expense.get('mo_ta'),
+                    'status': expense.get('status', 'dự toán'),
+                    'parent_id': expense.get('parent_id'),
+                    'created_at': expense.get('created_at')
+                }).execute()
+
+        # Cập nhật ngân sách kế hoạch cho công trình nếu có id_congtrinh
+        if invoice_data.get('id_congtrinh'):
+            try:
+                update_project_budget_on_invoice_change(invoice_data)
+                print(f"Updated ngan_sach_ke_hoach for cong_trinh {invoice_data['id_congtrinh']}")
+            except Exception as e:
+                print(f"Error updating ngan_sach_ke_hoach for cong_trinh: {e}")
+
+        action = "updated" if existing_quote else "created"
+        return {"message": f"Quote {action} successfully", "invoice_id": invoice_id}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error creating quote: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error creating/updating quote: {str(e)}")
 
 @router.get("/invoices_quote/")
 async def get_invoices_quote(month: str = None):

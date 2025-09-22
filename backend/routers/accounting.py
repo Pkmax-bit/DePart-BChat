@@ -2,6 +2,14 @@ from fastapi import APIRouter, HTTPException
 from supabase_client import supabase
 from typing import List
 from datetime import datetime
+import os
+import sys
+
+# Add parent directory to path for imports
+sys.path.append(os.path.dirname(os.path.dirname(__file__)))
+
+# Import budget calculation functions
+from calculate_project_budget import calculate_project_budget_plan, update_project_budget_on_invoice_change, update_project_budget_on_expense_change
 
 router = APIRouter(prefix="/accounting")
 
@@ -1724,6 +1732,15 @@ async def create_chiphi_quote(expense_data: dict):
         }
 
         result = supabase.table('chiphi_quote').insert(data_to_insert).execute()
+
+        # Cập nhật ngân sách kế hoạch cho công trình nếu có id_congtrinh
+        if expense_data.get('id_congtrinh'):
+            try:
+                update_project_budget_on_expense_change(expense_data)
+                print(f"Updated ngan_sach_ke_hoach for cong_trinh {expense_data['id_congtrinh']}")
+            except Exception as e:
+                print(f"Error updating ngan_sach_ke_hoach for cong_trinh: {e}")
+
         return result.data[0]
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error creating chiphi_quote: {str(e)}")
@@ -1754,6 +1771,15 @@ async def update_chiphi_quote(expense_id: int, expense_data: dict):
         data_to_update['updated_at'] = datetime.now().isoformat()
 
         result = supabase.table('chiphi_quote').update(data_to_update).eq('id', expense_id).execute()
+
+        # Cập nhật ngân sách kế hoạch cho công trình nếu có id_congtrinh
+        if expense_data.get('id_congtrinh'):
+            try:
+                update_project_budget_on_expense_change(expense_data)
+                print(f"Updated ngan_sach_ke_hoach for cong_trinh {expense_data['id_congtrinh']}")
+            except Exception as e:
+                print(f"Error updating ngan_sach_ke_hoach for cong_trinh: {e}")
+
         return result.data[0]
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error updating chiphi_quote: {str(e)}")
@@ -1762,7 +1788,22 @@ async def update_chiphi_quote(expense_id: int, expense_data: dict):
 async def delete_chiphi_quote(expense_id: int):
     """Xóa chi phí báo giá"""
     try:
+        # Lấy thông tin expense trước khi xóa để cập nhật ngân sách kế hoạch
+        expense_info = supabase.table('chiphi_quote').select('id_congtrinh').eq('id', expense_id).execute()
+        project_id = expense_info.data[0]['id_congtrinh'] if expense_info.data else None
+
         result = supabase.table('chiphi_quote').delete().eq('id', expense_id).execute()
+
+        # Cập nhật ngân sách kế hoạch cho công trình nếu có id_congtrinh
+        if project_id:
+            try:
+                # Tạo dict giả lập để gọi function cập nhật
+                expense_data = {'id_congtrinh': project_id}
+                update_project_budget_on_expense_change(expense_data)
+                print(f"Updated ngan_sach_ke_hoach for cong_trinh {project_id} after expense deletion")
+            except Exception as e:
+                print(f"Error updating ngan_sach_ke_hoach for cong_trinh: {e}")
+
         return {"message": "Chi phí báo giá đã được xóa thành công"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error deleting chiphi_quote: {str(e)}")
