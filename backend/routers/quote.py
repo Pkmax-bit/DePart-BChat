@@ -1751,7 +1751,7 @@ async def get_cong_trinh(user_id: str = None):
         
         # Filter by user if provided
         if user_id:
-            # user_id is ma_nv, filter by Id_sale which is ma_nv
+            # user_id is actually ma_nv from login, and Id_sale in cong_trinh is also ma_nv
             query = query.eq('Id_sale', user_id)
         
         result = query.order('created_at', desc=True).execute()
@@ -1763,12 +1763,22 @@ async def get_cong_trinh(user_id: str = None):
 async def create_cong_trinh(cong_trinh_data: dict):
     """Tạo công trình mới"""
     try:
+        # Convert ma_nv to employee id for Id_sale
+        employee_id = None
+        if cong_trinh_data.get('Id_sale'):
+            try:
+                employee_result = supabase.table('employees').select('id').eq('ma_nv', cong_trinh_data['Id_sale']).execute()
+                if employee_result.data:
+                    employee_id = employee_result.data[0]['id']
+            except Exception as e:
+                print(f"Error looking up employee ID for ma_nv {cong_trinh_data['Id_sale']}: {e}")
+
         result = supabase.table('cong_trinh').insert({
             'name_congtrinh': cong_trinh_data['name_congtrinh'],
             'name_customer': cong_trinh_data['name_customer'],
             'sdt': cong_trinh_data.get('sdt'),
             'email': cong_trinh_data.get('email'),
-            'Id_sale': cong_trinh_data.get('Id_sale'),  # Keep as ma_nv
+            'Id_sale': employee_id,  # Use employee ID, not ma_nv
             'ngan_sach_du_kien': cong_trinh_data.get('ngan_sach_du_kien'),
             'dia_chi': cong_trinh_data.get('dia_chi'),
             'mo_ta': cong_trinh_data.get('mo_ta'),
@@ -1783,12 +1793,22 @@ async def create_cong_trinh(cong_trinh_data: dict):
 async def update_cong_trinh(cong_trinh_id: int, cong_trinh_data: dict):
     """Cập nhật công trình"""
     try:
+        # Convert ma_nv to employee id for Id_sale
+        employee_id = None
+        if cong_trinh_data.get('Id_sale'):
+            try:
+                employee_result = supabase.table('employees').select('id').eq('ma_nv', cong_trinh_data['Id_sale']).execute()
+                if employee_result.data:
+                    employee_id = employee_result.data[0]['id']
+            except Exception as e:
+                print(f"Error looking up employee ID for ma_nv {cong_trinh_data['Id_sale']}: {e}")
+
         result = supabase.table('cong_trinh').update({
             'name_congtrinh': cong_trinh_data['name_congtrinh'],
             'name_customer': cong_trinh_data['name_customer'],
             'sdt': cong_trinh_data.get('sdt'),
             'email': cong_trinh_data.get('email'),
-            'Id_sale': cong_trinh_data.get('Id_sale'),  # Keep as ma_nv
+            'Id_sale': employee_id,  # Use employee ID, not ma_nv
             'ngan_sach_du_kien': cong_trinh_data.get('ngan_sach_du_kien'),
             'dia_chi': cong_trinh_data.get('dia_chi'),
             'mo_ta': cong_trinh_data.get('mo_ta'),
@@ -1807,6 +1827,17 @@ async def delete_cong_trinh(cong_trinh_id: int):
         return {"message": "Công trình đã được xóa thành công"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error deleting cong_trinh: {str(e)}")
+
+@router.get("/cong_trinh/{cong_trinh_id}")
+async def get_cong_trinh_by_id(cong_trinh_id: int):
+    """Lấy thông tin công trình theo ID"""
+    try:
+        result = supabase.table('cong_trinh').select('*').eq('id', cong_trinh_id).execute()
+        if not result.data:
+            raise HTTPException(status_code=404, detail="Công trình không tồn tại")
+        return result.data[0]
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching cong_trinh: {str(e)}")
 
 @router.get("/dashboard/products_count/{month}")
 async def get_products_count_for_month(month: str, user_id: str = None):
