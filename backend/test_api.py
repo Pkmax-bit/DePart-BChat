@@ -2,11 +2,11 @@ import requests
 import json
 
 # Test API tạo invoice
-url = 'http://localhost:8001/api/v1/quote/invoices_quote/'
+url = 'http://localhost:8001/api/v1/invoices/'
 data = {
     "customer_name": "Test Customer",
     "invoice_date": "2025-09-09T16:04:46",
-    "ngan_sach_ke_hoach": 5400000,  # This will be calculated from items, not used from frontend
+    "total_amount": 5400000,
     "items": [{
         "id_nhom": "NHK",
         "id_kinh": "5LC",

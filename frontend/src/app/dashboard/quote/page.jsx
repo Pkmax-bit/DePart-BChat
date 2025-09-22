@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
-import { Plus, Edit, Trash2, TrendingUp, TrendingDown, DollarSign, Package, Receipt, CreditCard, FileText, Info, Calendar, BarChart3, History, Settings, RotateCcw, Save, RefreshCw, Download, Users, Wrench, Eye, EyeOff, X, Check, Building2, Phone, Mail, MapPin, User, CheckCircle, ArrowRight } from 'lucide-react';
+import { Plus, Edit, Trash2, TrendingUp, TrendingDown, DollarSign, Package, Receipt, CreditCard, FileText, Info, Calendar, BarChart3, History, Settings, RotateCcw, Save, RefreshCw, Download, Users, Wrench, Eye, EyeOff, X, Check, Building2, Phone, Mail, MapPin, User, CheckCircle, ArrowRight, Search, Filter } from 'lucide-react';
 import * as XLSX from 'xlsx';
 
 // Import các component đã tách
@@ -246,7 +246,21 @@ function InvoicesTab() {
   });
   const [availableParents, setAvailableParents] = useState([]);
 
+  // Get user session for filtering
+  const [userSession, setUserSession] = useState(null);
+
   useEffect(() => {
+    // Get user session from localStorage
+    const session = localStorage.getItem('userSession');
+    if (session) {
+      try {
+        const parsedSession = JSON.parse(session);
+        setUserSession(parsedSession);
+      } catch (error) {
+        console.error('Error parsing user session:', error);
+      }
+    }
+
     fetchData();
     fetchEmployees();
     fetchProjects();
@@ -2627,12 +2641,43 @@ function QuotesTab({ salesData, products, setSalesData }) {
   const [loading, setLoading] = useState(false);
   const [projects, setProjects] = useState([]);
   const [employees, setEmployees] = useState([]);
+  const [productCount, setProductCount] = useState(0);
+  const [userProjectsCount, setUserProjectsCount] = useState(0);
+
+  // Filter states
+  const [projectNameFilter, setProjectNameFilter] = useState('');
+  const [customerNameFilter, setCustomerNameFilter] = useState('');
+  const [phoneFilter, setPhoneFilter] = useState('');
+
+  // Get user session for filtering
+  const [userSession, setUserSession] = useState(null);
+  const [currentEmployeeManv, setCurrentEmployeeManv] = useState(null);
 
   useEffect(() => {
-    loadQuotes();
-    loadProjects();
+    // Get user session from localStorage
+    const session = localStorage.getItem('user_session');
+    if (session) {
+      try {
+        const parsedSession = JSON.parse(session);
+        setUserSession(parsedSession);
+        console.log('User session loaded:', parsedSession); // Debug log
+      } catch (error) {
+        console.error('Error parsing user session:', error);
+      }
+    }
+
     loadEmployees();
-  }, [selectedMonth]);
+  }, []);
+
+  // Load data when currentEmployeeManv or selectedMonth changes
+  useEffect(() => {
+    if (currentEmployeeManv) {
+      loadQuotes();
+      loadProjects();
+      loadProductCount();
+      loadUserProjectsCount();
+    }
+  }, [currentEmployeeManv, selectedMonth]);
 
   const loadEmployees = async () => {
     try {
@@ -2646,12 +2691,78 @@ function QuotesTab({ salesData, products, setSalesData }) {
     }
   };
 
+  // Set current employee manv when employees or userSession changes
+  useEffect(() => {
+    if (userSession && userSession.user && userSession.user.email && employees.length > 0) {
+      const currentEmployee = employees.find(emp => emp.email === userSession.user.email);
+      if (currentEmployee) {
+        setCurrentEmployeeManv(currentEmployee.ma_nv);
+        console.log('Current employee found:', currentEmployee.ma_nv, currentEmployee.ho_ten);
+      } else {
+        setCurrentEmployeeManv(null);
+        console.log('No employee found for email:', userSession.user.email);
+      }
+    }
+  }, [userSession, employees]);
+
+  const loadProductCount = async () => {
+    try {
+      // Build URL with user ID filter if current employee manv is available
+      let url = `http://localhost:8001/api/v1/quote/dashboard/products_count/${selectedMonth}`;
+      if (currentEmployeeManv) {
+        url += `?user_id=${encodeURIComponent(currentEmployeeManv)}`;
+      }
+      
+      const response = await fetch(url);
+      if (response.ok) {
+        const data = await response.json();
+        setProductCount(data.total_products || 0);
+      } else {
+        console.error('Error fetching product count:', response.status);
+        setProductCount(0);
+      }
+    } catch (error) {
+      console.error('Error fetching product count:', error);
+      setProductCount(0);
+    }
+  };
+
+  const loadUserProjectsCount = async () => {
+    try {
+      let url = 'http://localhost:8001/api/v1/quote/cong_trinh/';
+      if (currentEmployeeManv) {
+        url += `?user_id=${encodeURIComponent(currentEmployeeManv)}`;
+      }
+      
+      const response = await fetch(url);
+      if (response.ok) {
+        const data = await response.json();
+        setUserProjectsCount(data.length || 0);
+      } else {
+        console.error('Error fetching user projects count:', response.status);
+        setUserProjectsCount(0);
+      }
+    } catch (error) {
+      console.error('Error fetching user projects count:', error);
+      setUserProjectsCount(0);
+    }
+  };
+
   const loadProjects = async () => {
     try {
-      const response = await fetch('http://localhost:8001/api/v1/quote/cong_trinh/');
+      let url = 'http://localhost:8001/api/v1/quote/cong_trinh/';
+      if (currentEmployeeManv) {
+        url += `?user_id=${encodeURIComponent(currentEmployeeManv)}`;
+        console.log('Loading projects with user_id:', currentEmployeeManv);
+      } else {
+        console.log('Loading projects without filter (no currentEmployeeManv)');
+      }
+      
+      const response = await fetch(url);
       if (response.ok) {
         const data = await response.json();
         setProjects(data || []);
+        console.log('Loaded projects:', data.length);
       }
     } catch (error) {
       console.error('Error fetching projects:', error);
@@ -2661,7 +2772,16 @@ function QuotesTab({ salesData, products, setSalesData }) {
   const loadQuotes = async () => {
     setLoading(true);
     try {
-        const response = await fetch(`http://localhost:8001/api/v1/quote/invoices_quote?month=${selectedMonth}`, {
+        // Build URL with month and user ID filter
+        let url = `http://localhost:8001/api/v1/quote/invoices_quote?month=${selectedMonth}`;
+        if (currentEmployeeManv) {
+          url += `&user_id=${encodeURIComponent(currentEmployeeManv)}`;
+          console.log('Loading quotes with user_id:', currentEmployeeManv, 'for month:', selectedMonth);
+        } else {
+          console.log('Loading quotes without filter (no currentEmployeeManv) for month:', selectedMonth);
+        }
+        
+        const response = await fetch(url, {
             method: 'GET',
             headers: {
                 'Content-Type': 'application/json',
@@ -2669,6 +2789,7 @@ function QuotesTab({ salesData, products, setSalesData }) {
         });      if (response.ok) {
         const data = await response.json();
         setQuotes(data.quotes || []);
+        console.log('Loaded quotes:', data.quotes?.length || 0);
       } else {
         const errorText = await response.text();
         console.error('Error loading quotes:', {
@@ -2882,7 +3003,7 @@ function QuotesTab({ salesData, products, setSalesData }) {
     // Header
     excelData.push(['DANH SÁCH ĐƠN HÀNG THÁNG ' + selectedMonth]);
     excelData.push([]);
-    excelData.push(['STT', 'Khách hàng', 'Ngày', 'Giờ', 'Loại sản phẩm', 'Tên sản phẩm', 'Loại/Thông số', 'Kích thước', 'Số lượng', 'Đơn giá', 'Chiết khấu', 'Thành tiền', 'Tổng đơn hàng']);
+    excelData.push(['STT', 'Khách hàng', 'Ngày', 'Giờ', 'Loại sản phẩm', 'Tên sản phẩm', 'Loại/Thông số', 'Kích thước', 'Số lượng', 'Đơn giá', 'Chiết khấu', 'Thành tiền', 'Tổng công trình']);
 
     let rowIndex = 4; // Bắt đầu từ dòng 4 (index 3)
     
@@ -2963,7 +3084,7 @@ function QuotesTab({ salesData, products, setSalesData }) {
       { wch: 15 },  // Đơn giá
       { wch: 12 },  // Chiết khấu
       { wch: 15 },  // Thành tiền
-      { wch: 18 }   // Tổng đơn hàng
+      { wch: 18 }   // Tổng công trình
     ];
     ws['!cols'] = colWidths;
 
@@ -3030,296 +3151,478 @@ function QuotesTab({ salesData, products, setSalesData }) {
 
   const totalRevenue = quotes.reduce((sum, quote) => sum + (quote.total_amount || 0), 0);
 
+  // Filtered projects based on search criteria
+  const filteredProjects = projects.filter(project => {
+    const matchesName = project.name_congtrinh?.toLowerCase().includes(projectNameFilter.toLowerCase());
+    const matchesCustomer = project.name_customer?.toLowerCase().includes(customerNameFilter.toLowerCase());
+    const matchesPhone = project.sdt?.includes(phoneFilter);
+    
+    return matchesName && matchesCustomer && matchesPhone;
+  });
+
   return (
-    <div className="space-y-6">
-      {/* Overview Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <div className="bg-white rounded-lg shadow-sm border p-6">
-          <div className="flex items-center">
-            <div className="p-3 bg-blue-100 rounded-lg">
-              <Receipt className="w-6 h-6 text-blue-600" />
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
+      {/* Hero Section */}
+      <div className="bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-700 text-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+          <div className="text-center">
+            <div className="flex items-center justify-center mb-4">
+              <div className="p-3 bg-white/20 rounded-full backdrop-blur-sm">
+                <BarChart3 className="w-8 h-8" />
+              </div>
             </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">Tổng đơn hàng</p>
-              <p className="text-2xl font-bold text-gray-900">{quotes.length}</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-lg shadow-sm border p-6">
-          <div className="flex items-center">
-            <div className="p-3 bg-green-100 rounded-lg">
-              <TrendingUp className="w-6 h-6 text-green-600" />
-            </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">Tổng sản phẩm</p>
-              <p className="text-2xl font-bold text-gray-900">{quotes.reduce((sum, quote) => sum + (quote.items?.length || 0), 0)}</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-lg shadow-sm border p-6">
-          <div className="flex items-center">
-            <div className="p-3 bg-purple-100 rounded-lg">
-              <DollarSign className="w-6 h-6 text-purple-600" />
-            </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">Tổng giá trị đơn hàng</p>
-              <p className="text-2xl font-bold text-green-600">{totalRevenue.toLocaleString('vi-VN')} VND</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-lg shadow-sm border p-6">
-          <div className="flex items-center">
-            <div className="p-3 bg-orange-100 rounded-lg">
-              <BarChart3 className="w-6 h-6 text-orange-600" />
-            </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">Trung bình/đơn hàng</p>
-              <p className="text-2xl font-bold text-gray-900">
-                {quotes.length > 0 ? (totalRevenue / quotes.length).toLocaleString('vi-VN') : 0} VND
+            <h1 className="text-4xl md:text-5xl font-bold mb-4 bg-gradient-to-r from-white to-blue-100 bg-clip-text text-transparent">
+              Tổng quan Báo giá
+            </h1>
+            {userSession && currentEmployeeManv && (
+              <p className="text-xl text-blue-100 mb-4">
+                Nhân viên: {currentEmployeeManv} - {employees.find(emp => emp.ma_nv === currentEmployeeManv)?.ho_ten || 'N/A'}
               </p>
-            </div>
+            )}
+            <p className="text-xl text-blue-100 max-w-2xl mx-auto">
+              Theo dõi hiệu suất kinh doanh, quản lý dự án và đơn hàng báo giá một cách hiệu quả
+            </p>
           </div>
         </div>
       </div>
 
-      {/* Projects Overview */}
-      <div className="bg-white rounded-lg shadow-sm border p-6">
-        <div className="flex justify-between items-center mb-6">
-          <h3 className="text-lg font-semibold text-gray-900 flex items-center">
-            <Building2 className="w-5 h-5 mr-2 text-blue-600" />
-            Danh sách công trình ({projects.length})
-          </h3>
-        </div>
-
-        {projects.length === 0 ? (
-          <div className="text-center py-12 bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl border-2 border-dashed border-gray-300">
-            <Building2 className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-            <p className="text-gray-500 text-lg font-medium">Chưa có công trình nào</p>
-            <p className="text-gray-400 text-sm mt-1">Hãy thêm công trình mới để bắt đầu</p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {projects.map(project => (
-              <div key={project.id} className="bg-gradient-to-br from-white to-gray-50 rounded-lg border border-gray-200 hover:border-blue-300 hover:shadow-lg transition-all duration-200 overflow-hidden">
-                <div className="p-6">
-                  <div className="flex items-center space-x-3 mb-4">
-                    <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
-                      <Building2 className="w-6 h-6 text-blue-600" />
-                    </div>
-                    <div className="flex-1">
-                      <h4 className="font-semibold text-gray-900 text-lg line-clamp-1">{project.name_congtrinh}</h4>
-                      <p className="text-sm text-gray-600 line-clamp-1">{project.name_customer}</p>
-                    </div>
-                  </div>
-
-                  <div className="space-y-3">
-                    {project.sdt && (
-                      <div className="flex items-center space-x-2 text-sm text-gray-600">
-                        <Phone className="w-4 h-4 text-green-500" />
-                        <span>{project.sdt}</span>
-                      </div>
-                    )}
-                    {project.email && (
-                      <div className="flex items-center space-x-2 text-sm text-gray-600">
-                        <Mail className="w-4 h-4 text-blue-500" />
-                        <span className="truncate">{project.email}</span>
-                      </div>
-                    )}
-                    {project.dia_chi && (
-                      <div className="flex items-center space-x-2 text-sm text-gray-600">
-                        <MapPin className="w-4 h-4 text-red-500" />
-                        <span className="truncate">{project.dia_chi}</span>
-                      </div>
-                    )}
-                    {project.ngan_sach_du_kien && (
-                      <div className="bg-green-50 px-3 py-2 rounded-lg">
-                        <div className="flex items-center space-x-2">
-                          <DollarSign className="w-4 h-4 text-green-600" />
-                          <span className="text-sm font-medium text-green-700">
-                            {parseInt(project.ngan_sach_du_kien).toLocaleString('vi-VN')} VND
-                          </span>
-                        </div>
-                      </div>
-                    )}
-                    {project.ngan_sach_ke_hoach && (
-                      <div className="bg-blue-50 px-3 py-2 rounded-lg">
-                        <div className="flex items-center space-x-2">
-                          <TrendingUp className="w-4 h-4 text-blue-600" />
-                          <span className="text-sm font-medium text-blue-700">
-                            NSKH: {parseInt(project.ngan_sach_ke_hoach).toLocaleString('vi-VN')} VND
-                          </span>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Nhân viên sale */}
-                  {project.Id_sale && employees.find(emp => emp.ma_nv === project.Id_sale) && (
-                    <div className="mt-4 pt-3 border-t border-gray-100">
-                      <div className="flex items-center space-x-2 text-sm">
-                        <User className="w-4 h-4 text-purple-500" />
-                        <span className="text-purple-700 font-medium">
-                          NV: {employees.find(emp => emp.ma_nv === project.Id_sale)?.ho_ten}
-                        </span>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Mô tả nếu có */}
-                  {project.mo_ta && (
-                    <div className="mt-3 pt-3 border-t border-gray-100">
-                      <p className="text-sm text-gray-600 line-clamp-2">{project.mo_ta}</p>
-                    </div>
-                  )}
-
-                  {/* Action buttons */}
-                  <div className="mt-4 pt-3 border-t border-gray-100">
-                    <div className="flex items-center justify-between">
-                      <button
-                        onClick={() => window.open(`/dashboard/quote/project/${project.id}`, '_blank')}
-                        className="flex-1 bg-blue-50 hover:bg-blue-100 text-blue-700 px-3 py-2 rounded-lg text-sm font-medium transition-colors duration-200 flex items-center justify-center space-x-2"
-                      >
-                        <FileText className="w-4 h-4" />
-                        <span>Xem đơn hàng</span>
-                      </button>
-                    </div>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+        {/* Enhanced Overview Stats */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 -mt-16 relative z-10">
+          <div className="bg-white rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 border border-gray-100 overflow-hidden">
+            <div className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600 mb-1">Tổng công trình</p>
+                  <p className="text-3xl font-bold text-gray-900">{userProjectsCount}</p>
+                  <div className="flex items-center mt-2">
+                    <TrendingUp className="w-4 h-4 text-green-500 mr-1" />
+                    <span className="text-sm text-green-600 font-medium">Tháng hiện tại</span>
                   </div>
                 </div>
+                <div className="p-4 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl shadow-lg">
+                  <Receipt className="w-8 h-8 text-white" />
+                </div>
               </div>
-            ))}
+            </div>
+            <div className="h-1 bg-gradient-to-r from-blue-500 to-blue-600"></div>
           </div>
-        )}
-      </div>
 
-      {/* Month Selector & Actions */}
-      <div className="bg-white rounded-lg shadow-sm border p-6">
-        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0">
-          <div className="flex items-center space-x-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Chọn tháng</label>
-              <input
-                type="month"
-                value={selectedMonth}
-                onChange={(e) => setSelectedMonth(e.target.value)}
-                className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black"
-              />
+          <div className="bg-white rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 border border-gray-100 overflow-hidden">
+            <div className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600 mb-1">Tổng sản phẩm</p>
+                  <p className="text-3xl font-bold text-gray-900">{productCount}</p>
+                  <div className="flex items-center mt-2">
+                    <Package className="w-4 h-4 text-blue-500 mr-1" />
+                    <span className="text-sm text-blue-600 font-medium">Sản phẩm đa dạng</span>
+                  </div>
+                </div>
+                <div className="p-4 bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl shadow-lg">
+                  <Package className="w-8 h-8 text-white" />
+                </div>
+              </div>
             </div>
-            <div className="flex items-end">
-              <button
-                onClick={loadQuotes}
-                className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 flex items-center space-x-2"
-              >
-                <RefreshCw className="w-4 h-4" />
-                <span>Tải lại</span>
-              </button>
-            </div>
+            <div className="h-1 bg-gradient-to-r from-green-500 to-emerald-600"></div>
           </div>
-          
-          <div className="flex items-center space-x-2">
-            <button
-              onClick={exportToExcel}
-              disabled={quotes.length === 0}
-              className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center space-x-2"
-            >
-              <Download className="w-4 h-4" />
-              <span>Xuất Excel</span>
-            </button>
-            <button
-              onClick={printAllQuotes}
-              disabled={quotes.length === 0}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center space-x-2"
-            >
-              <FileText className="w-4 h-4" />
-              <span>In tất cả</span>
-            </button>
+
+          <div className="bg-white rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 border border-gray-100 overflow-hidden">
+            <div className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600 mb-1">Tổng giá trị</p>
+                  <p className="text-3xl font-bold text-green-600">{totalRevenue.toLocaleString('vi-VN')}</p>
+                  <div className="flex items-center mt-2">
+                    <DollarSign className="w-4 h-4 text-green-500 mr-1" />
+                    <span className="text-sm text-green-600 font-medium">VND</span>
+                  </div>
+                </div>
+                <div className="p-4 bg-gradient-to-br from-purple-500 to-pink-600 rounded-xl shadow-lg">
+                  <DollarSign className="w-8 h-8 text-white" />
+                </div>
+              </div>
+            </div>
+            <div className="h-1 bg-gradient-to-r from-purple-500 to-pink-600"></div>
+          </div>
+
+          <div className="bg-white rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 border border-gray-100 overflow-hidden">
+            <div className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600 mb-1">Trung bình/đơn</p>
+                  <p className="text-3xl font-bold text-orange-600">
+                    {quotes.length > 0 ? (totalRevenue / quotes.length).toLocaleString('vi-VN') : 0}
+                  </p>
+                  <div className="flex items-center mt-2">
+                    <BarChart3 className="w-4 h-4 text-orange-500 mr-1" />
+                    <span className="text-sm text-orange-600 font-medium">VND</span>
+                  </div>
+                </div>
+                <div className="p-4 bg-gradient-to-br from-orange-500 to-red-600 rounded-xl shadow-lg">
+                  <BarChart3 className="w-8 h-8 text-white" />
+                </div>
+              </div>
+            </div>
+            <div className="h-1 bg-gradient-to-r from-orange-500 to-red-600"></div>
           </div>
         </div>
-      </div>
-      <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
-        <div className="px-6 py-4 border-b">
-          <h3 className="text-lg font-semibold text-gray-900">Danh sách đơn hàng tháng {selectedMonth}</h3>
+
+        {/* Enhanced Month Selector & Actions */}
+        <div className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
+          <div className="bg-gradient-to-r from-gray-800 to-gray-900 px-8 py-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <div className="p-2 bg-white/20 rounded-lg backdrop-blur-sm">
+                  <Calendar className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold text-white">Báo Cáo & Xuất Dữ Liệu</h3>
+                  <p className="text-gray-300 text-sm">Xuất báo cáo và quản lý dữ liệu theo tháng</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="p-8">
+            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-6 lg:space-y-0">
+              <div className="flex items-center space-x-6">
+                <div className="flex items-center space-x-3">
+                  <label className="text-sm font-semibold text-gray-700">Chọn tháng:</label>
+                  <input
+                    type="month"
+                    value={selectedMonth}
+                    onChange={(e) => setSelectedMonth(e.target.value)}
+                    className="px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-black bg-white shadow-sm hover:shadow-md transition-shadow"
+                  />
+                </div>
+                <button
+                  onClick={loadQuotes}
+                  className="bg-gradient-to-r from-gray-600 to-gray-700 text-white px-6 py-3 rounded-xl hover:from-gray-700 hover:to-gray-800 transition-all duration-300 transform hover:scale-105 shadow-lg flex items-center space-x-2 font-medium"
+                >
+                  <RefreshCw className="w-5 h-5" />
+                  <span>Tải Lại Dữ Liệu</span>
+                </button>
+              </div>
+
+              <div className="flex items-center space-x-4">
+                <button
+                  onClick={exportToExcel}
+                  disabled={quotes.length === 0}
+                  className="bg-gradient-to-r from-green-600 to-emerald-600 text-white px-6 py-3 rounded-xl hover:from-green-700 hover:to-emerald-700 disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed transition-all duration-300 transform hover:scale-105 shadow-lg flex items-center space-x-2 font-medium"
+                >
+                  <Download className="w-5 h-5" />
+                  <span>Xuất Excel</span>
+                </button>
+                <button
+                  onClick={printAllQuotes}
+                  disabled={quotes.length === 0}
+                  className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-6 py-3 rounded-xl hover:from-blue-700 hover:to-indigo-700 disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed transition-all duration-300 transform hover:scale-105 shadow-lg flex items-center space-x-2 font-medium"
+                >
+                  <FileText className="w-5 h-5" />
+                  <span>In Tất Cả</span>
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
-        
-        {loading ? (
-          <div className="text-center py-12">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-            <p className="text-gray-600">Đang tải dữ liệu...</p>
+
+        {/* Project Filters */}
+        <div className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
+          <div className="bg-gradient-to-r from-blue-600 to-indigo-600 px-8 py-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <div className="p-2 bg-white/20 rounded-lg backdrop-blur-sm">
+                  <Search className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold text-white">Bộ lọc Công trình</h3>
+                  <p className="text-blue-100 text-sm">Tìm kiếm công trình theo tên, khách hàng và số điện thoại</p>
+                </div>
+              </div>
+              <div className="text-right">
+                <p className="text-2xl font-bold text-white">{filteredProjects.length}</p>
+                <p className="text-blue-100 text-sm">Kết quả lọc</p>
+              </div>
+            </div>
           </div>
-        ) : quotes.length === 0 ? (
-          <div className="text-center py-12">
-            <Receipt className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-            <p className="text-gray-500">Không có đơn hàng nào trong tháng này</p>
+
+          <div className="p-8">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="space-y-2">
+                <label className="block text-sm font-semibold text-gray-700">
+                  Tên công trình
+                </label>
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                  <input
+                    type="text"
+                    placeholder="Nhập tên công trình..."
+                    value={projectNameFilter}
+                    onChange={(e) => setProjectNameFilter(e.target.value)}
+                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black bg-white shadow-sm hover:shadow-md transition-shadow"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="block text-sm font-semibold text-gray-700">
+                  Tên khách hàng
+                </label>
+                <div className="relative">
+                  <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                  <input
+                    type="text"
+                    placeholder="Nhập tên khách hàng..."
+                    value={customerNameFilter}
+                    onChange={(e) => setCustomerNameFilter(e.target.value)}
+                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black bg-white shadow-sm hover:shadow-md transition-shadow"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="block text-sm font-semibold text-gray-700">
+                  Số điện thoại
+                </label>
+                <div className="relative">
+                  <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                  <input
+                    type="text"
+                    placeholder="Nhập số điện thoại..."
+                    value={phoneFilter}
+                    onChange={(e) => setPhoneFilter(e.target.value)}
+                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black bg-white shadow-sm hover:shadow-md transition-shadow"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {(projectNameFilter || customerNameFilter || phoneFilter) && (
+              <div className="mt-6 flex items-center justify-between bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-xl border border-blue-200">
+                <div className="flex items-center space-x-4">
+                  <div className="flex items-center space-x-2">
+                    <Filter className="w-5 h-5 text-blue-600" />
+                    <span className="text-sm font-medium text-blue-700">
+                      Đang lọc: {filteredProjects.length} / {projects.length} công trình
+                    </span>
+                  </div>
+                </div>
+                <button
+                  onClick={() => {
+                    setProjectNameFilter('');
+                    setCustomerNameFilter('');
+                    setPhoneFilter('');
+                  }}
+                  className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-all duration-300 transform hover:scale-105 shadow-md flex items-center space-x-2 font-medium"
+                >
+                  <X className="w-4 h-4" />
+                  <span>Xóa bộ lọc</span>
+                </button>
+              </div>
+            )}
           </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Khách hàng</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ngày</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Số sản phẩm</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tổng giá trị</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Thao tác</th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {quotes.map(quote => (
-                  <tr key={quote.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center">
-                        <Receipt className="w-4 h-4 text-gray-400 mr-2" />
-                        <span className="text-sm font-medium text-gray-900">{quote.customer_name}</span>
+        </div>
+
+        {/* Projects Overview */}
+        <div className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
+          <div className="bg-gradient-to-r from-indigo-600 to-purple-600 px-8 py-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <div className="p-2 bg-white/20 rounded-lg backdrop-blur-sm">
+                  <Building2 className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold text-white">Danh sách Công trình</h3>
+                  <p className="text-indigo-100 text-sm">Quản lý và theo dõi các dự án đang thực hiện</p>
+                </div>
+              </div>
+              <div className="text-right">
+                <p className="text-2xl font-bold text-white">{filteredProjects.length}</p>
+                <p className="text-indigo-100 text-sm">Dự án</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="p-8">
+            {filteredProjects.length === 0 ? (
+              <div className="text-center py-16 bg-gradient-to-br from-gray-50 to-gray-100 rounded-2xl border-2 border-dashed border-gray-300">
+                <div className="p-4 bg-gray-200 rounded-full w-20 h-20 mx-auto mb-6 flex items-center justify-center">
+                  <Building2 className="w-10 h-10 text-gray-500" />
+                </div>
+                <h4 className="text-xl font-semibold text-gray-700 mb-2">
+                  {projects.length === 0 ? 'Chưa có công trình nào' : 'Không tìm thấy công trình phù hợp'}
+                </h4>
+                <p className="text-gray-500 mb-6 max-w-md mx-auto">
+                  {projects.length === 0 
+                    ? 'Hãy bắt đầu bằng việc thêm công trình đầu tiên để theo dõi tiến độ và quản lý báo giá hiệu quả'
+                    : 'Hãy thử điều chỉnh bộ lọc để tìm kiếm công trình bạn cần'
+                  }
+                </p>
+                {projects.length > 0 && (
+                  <button
+                    onClick={() => {
+                      setProjectNameFilter('');
+                      setCustomerNameFilter('');
+                      setPhoneFilter('');
+                    }}
+                    className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-6 py-3 rounded-xl hover:from-blue-700 hover:to-purple-700 transition-all duration-300 transform hover:scale-105 shadow-lg"
+                  >
+                    Xóa bộ lọc
+                  </button>
+                )}
+                {projects.length === 0 && (
+                  <button className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-6 py-3 rounded-xl hover:from-blue-700 hover:to-purple-700 transition-all duration-300 transform hover:scale-105 shadow-lg">
+                    Thêm công trình mới
+                  </button>
+                )}
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                {filteredProjects.map(project => (
+                  <div key={project.id} className="group bg-gradient-to-br from-white to-gray-50 rounded-2xl border border-gray-200 hover:border-indigo-300 hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 overflow-hidden">
+                    <div className="p-6">
+                      {/* Project Header */}
+                      <div className="flex items-start justify-between mb-4">
+                        <div className="flex items-center space-x-3 flex-1">
+                          <div className="p-3 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl shadow-lg group-hover:scale-110 transition-transform duration-300">
+                            <Building2 className="w-6 h-6 text-white" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <h4 className="font-bold text-gray-900 text-lg line-clamp-1 group-hover:text-indigo-600 transition-colors">
+                              {project.name_congtrinh}
+                            </h4>
+                            <p className="text-sm text-gray-600 line-clamp-1">{project.name_customer}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center space-x-1">
+                          <div className="w-3 h-3 bg-green-400 rounded-full animate-pulse"></div>
+                          <span className="text-xs text-gray-500 font-medium">Active</span>
+                        </div>
                       </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {new Date(quote.quote_date).toLocaleDateString('vi-VN')}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {quote.items?.length || 0}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-green-600">
-                      {quote.total_amount?.toLocaleString('vi-VN')} VND
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+
+                      {/* Project Info */}
+                      <div className="space-y-3 mb-6">
+                        {project.sdt && (
+                          <div className="flex items-center space-x-3 p-3 bg-blue-50 rounded-xl hover:bg-blue-100 transition-colors">
+                            <Phone className="w-5 h-5 text-blue-500 flex-shrink-0" />
+                            <span className="text-sm font-medium text-blue-700">{project.sdt}</span>
+                          </div>
+                        )}
+                        {project.email && (
+                          <div className="flex items-center space-x-3 p-3 bg-purple-50 rounded-xl hover:bg-purple-100 transition-colors">
+                            <Mail className="w-5 h-5 text-purple-500 flex-shrink-0" />
+                            <span className="text-sm font-medium text-purple-700 truncate">{project.email}</span>
+                          </div>
+                        )}
+                        {project.dia_chi && (
+                          <div className="flex items-center space-x-3 p-3 bg-red-50 rounded-xl hover:bg-red-100 transition-colors">
+                            <MapPin className="w-5 h-5 text-red-500 flex-shrink-0" />
+                            <span className="text-sm font-medium text-red-700 truncate">{project.dia_chi}</span>
+                          </div>
+                        )}
+
+                        {/* Budget Information */}
+                        <div className="grid grid-cols-1 gap-2">
+                          {project.ngan_sach_du_kien && (
+                            <div className="bg-gradient-to-r from-green-50 to-emerald-50 p-3 rounded-xl border border-green-200">
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center space-x-2">
+                                  <DollarSign className="w-4 h-4 text-green-600" />
+                                  <span className="text-sm font-medium text-green-700">Ngân sách dự kiến</span>
+                                </div>
+                                <span className="text-sm font-bold text-green-600">
+                                  {parseInt(project.ngan_sach_du_kien).toLocaleString('vi-VN')} VND
+                                </span>
+                              </div>
+                            </div>
+                          )}
+                          {project.ngan_sach_ke_hoach && (
+                            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-3 rounded-xl border border-blue-200">
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center space-x-2">
+                                  <TrendingUp className="w-4 h-4 text-blue-600" />
+                                  <span className="text-sm font-medium text-blue-700">Ngân sách kế hoạch</span>
+                                </div>
+                                <span className="text-sm font-bold text-blue-600">
+                                  {parseInt(project.ngan_sach_ke_hoach).toLocaleString('vi-VN')} VND
+                                </span>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Sales Employee */}
+                      {project.Id_sale && employees.find(emp => emp.ma_nv === project.Id_sale) && (
+                        <div className="mb-4 p-3 bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl border border-purple-200">
+                          <div className="flex items-center space-x-2">
+                            <User className="w-4 h-4 text-purple-500" />
+                            <span className="text-sm text-purple-700 font-medium">
+                              NV Kinh Doanh: {employees.find(emp => emp.ma_nv === project.Id_sale)?.ho_ten}
+                            </span>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Description */}
+                      {project.mo_ta && (
+                        <div className="mb-4 p-3 bg-gray-50 rounded-xl border border-gray-200">
+                          <p className="text-sm text-gray-600 line-clamp-2">{project.mo_ta}</p>
+                        </div>
+                      )}
+
+                      {/* Action Button */}
                       <button
-                        onClick={() => printQuote(quote)}
-                        className="text-blue-600 hover:text-blue-900 p-1"
-                        title="In đơn hàng"
+                        onClick={() => window.open(`/dashboard/quote/project/${project.id}`, '_blank')}
+                        className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white py-3 px-4 rounded-xl hover:from-indigo-700 hover:to-purple-700 transition-all duration-300 transform hover:scale-105 shadow-lg flex items-center justify-center space-x-2 font-medium"
                       >
-                        <FileText className="w-4 h-4" />
+                        <FileText className="w-5 h-5" />
+                        <span>Xem Chi Tiết Công Trình</span>
                       </button>
-                    </td>
-                  </tr>
+                    </div>
+                  </div>
                 ))}
-              </tbody>
-            </table>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Enhanced Summary */}
+        {quotes.length > 0 && (
+          <div className="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 rounded-2xl shadow-xl text-white overflow-hidden">
+            <div className="px-8 py-6">
+              <div className="text-center mb-8">
+                <h3 className="text-2xl font-bold mb-2">Tóm Tắt Tháng {selectedMonth}</h3>
+                <p className="text-indigo-100">Hiệu suất kinh doanh tổng quan</p>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <div className="text-center bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20">
+                  <div className="p-3 bg-white/20 rounded-full w-16 h-16 mx-auto mb-4 flex items-center justify-center">
+                    <Receipt className="w-8 h-8 text-white" />
+                  </div>
+                  <p className="text-3xl font-bold mb-1">{userProjectsCount}</p>
+                  <p className="text-indigo-100 font-medium">Tổng công trình</p>
+                </div>
+                <div className="text-center bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20">
+                  <div className="p-3 bg-white/20 rounded-full w-16 h-16 mx-auto mb-4 flex items-center justify-center">
+                    <Package className="w-8 h-8 text-white" />
+                  </div>
+                  <p className="text-3xl font-bold mb-1">{productCount}</p>
+                  <p className="text-indigo-100 font-medium">Tổng sản phẩm</p>
+                </div>
+                <div className="text-center bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20">
+                  <div className="p-3 bg-white/20 rounded-full w-16 h-16 mx-auto mb-4 flex items-center justify-center">
+                    <DollarSign className="w-8 h-8 text-white" />
+                  </div>
+                  <p className="text-3xl font-bold mb-1">{totalRevenue.toLocaleString('vi-VN')}</p>
+                  <p className="text-indigo-100 font-medium">Tổng giá trị (VND)</p>
+                </div>
+              </div>
+            </div>
           </div>
         )}
       </div>
-
-      {/* Summary */}
-      {quotes.length > 0 && (
-        <div className="bg-white rounded-lg shadow-sm border p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Tóm tắt tháng {selectedMonth}</h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="text-center">
-              <p className="text-2xl font-bold text-blue-600">{quotes.length}</p>
-              <p className="text-sm text-gray-600">Tổng đơn hàng</p>
-            </div>
-            <div className="text-center">
-              <p className="text-2xl font-bold text-green-600">{quotes.reduce((sum, quote) => sum + (quote.items?.length || 0), 0)}</p>
-              <p className="text-sm text-gray-600">Tổng sản phẩm</p>
-            </div>
-            <div className="text-center">
-              <p className="text-2xl font-bold text-purple-600">{totalRevenue.toLocaleString('vi-VN')} VND</p>
-              <p className="text-sm text-gray-600">Tổng giá trị</p>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

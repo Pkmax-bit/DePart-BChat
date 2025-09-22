@@ -108,7 +108,8 @@ def login_user(login: LoginRequest):
         return {
             "message": "Đăng nhập thành công",
             "user": {
-                "id": user['ma_nv'],
+                "id": user['ma_nv'],  # Use ma_nv as id since employees table doesn't have id column
+                "ma_nv": user['ma_nv'],  # Include ma_nv separately
                 "email": user['email'],
                 "full_name": user['full_name'],
                 "role_id": user['role_id'],

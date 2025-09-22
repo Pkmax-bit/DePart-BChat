@@ -346,44 +346,17 @@ async def delete_chitietsanpham(detail_id: int):
 
 @router.post("/invoices_quote/")
 async def create_invoice_quote(invoice_data: dict):
-    """Tạo hóa đơn báo giá mới hoặc cập nhật nếu đã tồn tại"""
+    """Tạo hóa đơn báo giá mới"""
     try:
-        # Kiểm tra xem đã có quote với id_congtrinh này chưa
-        existing_quote = None
-        if invoice_data.get('id_congtrinh'):
-            existing_result = supabase.table('invoices_quote').select('*').eq('id_congtrinh', invoice_data['id_congtrinh']).execute()
-            if existing_result.data:
-                existing_quote = existing_result.data[0]
+        # Tạo hóa đơn chính (báo giá)
+        invoice_result = supabase.table('invoices_quote').insert({
+            'sales_employee_id': invoice_data.get('sales_employee_id'),
+            'invoice_date': invoice_data['invoice_date'],
+            'total_amount': invoice_data['total_amount'],
+            'id_congtrinh': invoice_data.get('id_congtrinh')  # Only store project ID
+        }).execute()
 
-        # Sử dụng ngan_sach_ke_hoach thay vì total_amount
-        total_amount = invoice_data.get('ngan_sach_ke_hoach') or invoice_data.get('total_amount', 0)
-
-        if existing_quote:
-            # Cập nhật quote hiện có
-            invoice_result = supabase.table('invoices_quote').update({
-                'sales_employee_id': invoice_data.get('sales_employee_id'),
-                'invoice_date': invoice_data['invoice_date'],
-                'total_amount': total_amount,
-                'id_congtrinh': invoice_data.get('id_congtrinh')
-            }).eq('id', existing_quote['id']).execute()
-
-            invoice_id = existing_quote['id']
-
-            # Xóa các items cũ trước khi thêm mới
-            supabase.table('invoice_items_quote').delete().eq('invoice_id', invoice_id).execute()
-            
-            # Xóa các chi phí cũ trước khi thêm mới
-            supabase.table('chiphi_quote').delete().eq('id_congtrinh', invoice_data.get('id_congtrinh')).execute()
-        else:
-            # Tạo hóa đơn mới
-            invoice_result = supabase.table('invoices_quote').insert({
-                'sales_employee_id': invoice_data.get('sales_employee_id'),
-                'invoice_date': invoice_data['invoice_date'],
-                'total_amount': total_amount,
-                'id_congtrinh': invoice_data.get('id_congtrinh')
-            }).execute()
-
-            invoice_id = invoice_result.data[0]['id']
+        invoice_id = invoice_result.data[0]['id']
 
         # Cập nhật bao_gia trong cong_trinh nếu có id_congtrinh
         if invoice_data.get('id_congtrinh') and invoice_data.get('bao_gia'):
@@ -434,6 +407,7 @@ async def create_invoice_quote(invoice_data: dict):
         # Tự động tạo hoa hồng cho nhân viên bán hàng (optional for quotes)
         if invoice_data.get('sales_employee_id'):
             sales_employee_id = invoice_data['sales_employee_id']
+            total_amount = invoice_data['total_amount']
             commission_percentage = invoice_data.get('commission_percentage', 5.0)  # Default to 5% if not provided
             commission_amount = total_amount * (commission_percentage / 100.0)
 
@@ -453,19 +427,6 @@ async def create_invoice_quote(invoice_data: dict):
                 'ty_le': commission_percentage
             }).execute()
 
-        # Thêm chi phí vào chiphi_quote nếu có
-        if invoice_data.get('expenses'):
-            for expense in invoice_data['expenses']:
-                supabase.table('chiphi_quote').insert({
-                    'id_congtrinh': invoice_data.get('id_congtrinh'),
-                    'id_lcp': expense.get('id_lcp'),
-                    'giathanh': expense.get('giathanh'),
-                    'mo_ta': expense.get('mo_ta'),
-                    'status': expense.get('status', 'dự toán'),
-                    'parent_id': expense.get('parent_id'),
-                    'created_at': expense.get('created_at')
-                }).execute()
-
         # Cập nhật ngân sách kế hoạch cho công trình nếu có id_congtrinh
         if invoice_data.get('id_congtrinh'):
             try:
@@ -474,27 +435,29 @@ async def create_invoice_quote(invoice_data: dict):
             except Exception as e:
                 print(f"Error updating ngan_sach_ke_hoach for cong_trinh: {e}")
 
-        action = "updated" if existing_quote else "created"
-        return {"message": f"Quote {action} successfully", "invoice_id": invoice_id}
+        return {"message": "Quote created successfully", "invoice_id": invoice_id}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error creating/updating quote: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error creating quote: {str(e)}")
 
 @router.get("/invoices_quote/")
-async def get_invoices_quote(month: str = None):
-    """Lấy danh sách báo giá, có thể lọc theo tháng và chỉ hiển thị báo giá của nhân viên có công trình"""
+async def get_invoices_quote(month: str = None, user_id: str = None):
+    """Lấy danh sách báo giá, có thể lọc theo tháng và nhân viên kinh doanh"""
     try:
-        # Lấy danh sách employee IDs có công trình
-        cong_trinh_result = supabase.table('cong_trinh').select('Id_sale').execute()
-        sales_employee_ids = list(set(item['Id_sale'] for item in cong_trinh_result.data if item.get('Id_sale')))
-
-        if not sales_employee_ids:
-            # Nếu không có nhân viên nào có công trình, trả về danh sách rỗng
-            return {"quotes": []}
-
         query = supabase.table('invoices_quote').select('*')
 
-        # Lọc theo nhân viên có công trình
-        query = query.in_('sales_employee_id', sales_employee_ids)
+        # Filter by user if provided
+        if user_id:
+            # user_id is ma_nv, and sales_employee_id in invoices_quote is also ma_nv
+            query = query.eq('sales_employee_id', user_id)
+        else:
+            # If no specific user filter, only show quotes for employees who have projects
+            cong_trinh_result = supabase.table('cong_trinh').select('Id_sale').execute()
+            sales_employee_ids = list(set(item['Id_sale'] for item in cong_trinh_result.data if item.get('Id_sale')))
+            
+            if not sales_employee_ids:
+                return {"quotes": []}
+            
+            query = query.in_('sales_employee_id', sales_employee_ids)
 
         if month:
             # Lọc theo tháng (định dạng YYYY-MM)
@@ -1781,10 +1744,17 @@ async def update_expense_ratios(month: str = None):
         raise HTTPException(status_code=500, detail=f"Lỗi cập nhật tỷ lệ chi phí: {str(e)}")
 
 @router.get("/cong_trinh/")
-async def get_cong_trinh():
+async def get_cong_trinh(user_id: str = None):
     """Lấy danh sách công trình"""
     try:
-        result = supabase.table('cong_trinh').select('*').order('created_at', desc=True).execute()
+        query = supabase.table('cong_trinh').select('*')
+        
+        # Filter by user if provided
+        if user_id:
+            # user_id is ma_nv, filter by Id_sale which is ma_nv
+            query = query.eq('Id_sale', user_id)
+        
+        result = query.order('created_at', desc=True).execute()
         return result.data
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error fetching cong_trinh: {str(e)}")
@@ -1793,22 +1763,12 @@ async def get_cong_trinh():
 async def create_cong_trinh(cong_trinh_data: dict):
     """Tạo công trình mới"""
     try:
-        # Convert ma_nv to employee id for Id_sale
-        employee_id = None
-        if cong_trinh_data.get('Id_sale'):
-            try:
-                employee_result = supabase.table('employees').select('id').eq('ma_nv', cong_trinh_data['Id_sale']).execute()
-                if employee_result.data:
-                    employee_id = employee_result.data[0]['id']
-            except Exception as e:
-                print(f"Error looking up employee ID for ma_nv {cong_trinh_data['Id_sale']}: {e}")
-
         result = supabase.table('cong_trinh').insert({
             'name_congtrinh': cong_trinh_data['name_congtrinh'],
             'name_customer': cong_trinh_data['name_customer'],
             'sdt': cong_trinh_data.get('sdt'),
             'email': cong_trinh_data.get('email'),
-            'Id_sale': employee_id,  # Use employee ID, not ma_nv
+            'Id_sale': cong_trinh_data.get('Id_sale'),  # Keep as ma_nv
             'ngan_sach_du_kien': cong_trinh_data.get('ngan_sach_du_kien'),
             'dia_chi': cong_trinh_data.get('dia_chi'),
             'mo_ta': cong_trinh_data.get('mo_ta'),
@@ -1823,22 +1783,12 @@ async def create_cong_trinh(cong_trinh_data: dict):
 async def update_cong_trinh(cong_trinh_id: int, cong_trinh_data: dict):
     """Cập nhật công trình"""
     try:
-        # Convert ma_nv to employee id for Id_sale
-        employee_id = None
-        if cong_trinh_data.get('Id_sale'):
-            try:
-                employee_result = supabase.table('employees').select('id').eq('ma_nv', cong_trinh_data['Id_sale']).execute()
-                if employee_result.data:
-                    employee_id = employee_result.data[0]['id']
-            except Exception as e:
-                print(f"Error looking up employee ID for ma_nv {cong_trinh_data['Id_sale']}: {e}")
-
         result = supabase.table('cong_trinh').update({
             'name_congtrinh': cong_trinh_data['name_congtrinh'],
             'name_customer': cong_trinh_data['name_customer'],
             'sdt': cong_trinh_data.get('sdt'),
             'email': cong_trinh_data.get('email'),
-            'Id_sale': employee_id,  # Use employee ID, not ma_nv
+            'Id_sale': cong_trinh_data.get('Id_sale'),  # Keep as ma_nv
             'ngan_sach_du_kien': cong_trinh_data.get('ngan_sach_du_kien'),
             'dia_chi': cong_trinh_data.get('dia_chi'),
             'mo_ta': cong_trinh_data.get('mo_ta'),
@@ -1857,3 +1807,43 @@ async def delete_cong_trinh(cong_trinh_id: int):
         return {"message": "Công trình đã được xóa thành công"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error deleting cong_trinh: {str(e)}")
+
+@router.get("/dashboard/products_count/{month}")
+async def get_products_count_for_month(month: str, user_id: str = None):
+    """Lấy tổng số sản phẩm trong invoices_quote cho các công trình trong tháng hiện tại"""
+    try:
+        # Lấy danh sách công trình trong tháng hiện tại
+        start_date = f"{month}-01"
+        year, month_num = map(int, month.split('-'))
+        if month_num == 12:
+            end_date = f"{year + 1}-01-01"
+        else:
+            end_date = f"{year}-{month_num + 1:02d}-01"
+
+        # Query for projects in the current month
+        projects_query = supabase.table('cong_trinh').select('id').gte('created_at', start_date).lt('created_at', end_date)
+        
+        # Filter by user if provided
+        if user_id:
+            # user_id is actually ma_nv from login, and Id_sale in cong_trinh is also ma_nv
+            projects_query = projects_query.eq('Id_sale', user_id)
+        
+        projects_result = projects_query.execute()
+        project_ids = [project['id'] for project in projects_result.data]
+
+        if not project_ids:
+            return {"total_products": 0}
+
+        # Lấy tất cả quotes của các công trình này
+        quotes_result = supabase.table('invoices_quote').select('id').in_('id_congtrinh', project_ids).execute()
+        quote_ids = [quote['id'] for quote in quotes_result.data]
+
+        if not quote_ids:
+            return {"total_products": 0}
+
+        # Đếm tổng số items trong tất cả quotes
+        items_result = supabase.table('invoice_items_quote').select('id', count='exact').in_('invoice_id', quote_ids).execute()
+        
+        return {"total_products": items_result.count or 0}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching products count: {str(e)}")

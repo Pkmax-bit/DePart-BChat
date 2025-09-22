@@ -41,8 +41,8 @@ try:
                 project_name = project['name_congtrinh']
 
                 # Tính tổng invoices_quote cho công trình này
-                invoices_result = supabase.table('invoices_quote').select('ngan_sach_ke_hoach').eq('id_congtrinh', project_id).execute()
-                total_invoices = sum(invoice['ngan_sach_ke_hoach'] or 0 for invoice in invoices_result.data)
+                invoices_result = supabase.table('invoices_quote').select('total_amount').eq('id_congtrinh', project_id).execute()
+                total_invoices = sum(invoice['total_amount'] or 0 for invoice in invoices_result.data)
 
                 # Tính tổng chiphi_quote cho công trình này
                 chiphi_result = supabase.table('chiphi_quote').select('giathanh').eq('id_congtrinh', project_id).execute()
