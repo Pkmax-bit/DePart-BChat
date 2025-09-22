@@ -3,8 +3,8 @@ from supabase_client import supabase
 import os
 import sys
 
-# Add parent directory to path for imports
-sys.path.append(os.path.dirname(os.path.dirname(__file__)))
+# Add project root directory to path for imports
+sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
 # Import budget calculation functions
 from calculate_project_budget import calculate_project_budget_plan, update_project_budget_on_invoice_change, update_project_budget_on_expense_change
@@ -1818,6 +1818,15 @@ async def get_cong_trinh_by_id(cong_trinh_id: int):
         return result.data[0]
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error fetching cong_trinh: {str(e)}")
+
+@router.get("/chiphi_quote/project/{project_id}")
+async def get_chiphi_quote_by_project(project_id: int):
+    """Lấy danh sách chi phí báo giá theo công trình"""
+    try:
+        result = supabase.table('chiphi_quote').select('*').eq('id_congtrinh', project_id).execute()
+        return {"expenses": result.data}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching chiphi_quote by project: {str(e)}")
 
 @router.get("/dashboard/products_count/{month}")
 async def get_products_count_for_month(month: str, user_id: str = None):

@@ -5,8 +5,8 @@ from datetime import datetime
 import os
 import sys
 
-# Add parent directory to path for imports
-sys.path.append(os.path.dirname(os.path.dirname(__file__)))
+# Add project root directory to path for imports
+sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
 # Import budget calculation functions
 from calculate_project_budget import calculate_project_budget_plan, update_project_budget_on_invoice_change, update_project_budget_on_expense_change
@@ -1707,10 +1707,64 @@ async def get_chiphi_quote():
 
 @router.get("/chiphi_quote/project/{project_id}")
 async def get_chiphi_quote_by_project(project_id: int):
-    """Lấy danh sách chi phí báo giá theo công trình"""
+    """Lấy danh sách chi phí báo giá theo công trình với thông tin loại chi phí"""
     try:
+        # Get chiphi_quote data
         result = supabase.table('chiphi_quote').select('*').eq('id_congtrinh', project_id).execute()
-        return {"expenses": result.data}
+
+        # Get all loaichiphi data for mapping
+        loaichiphi_result = supabase.table('loaichiphi').select('*').execute()
+        loaichiphi_map = {item['id']: item for item in loaichiphi_result.data}
+
+        # Join data and build tree structure
+        expenses_map = {}
+        root_expenses = []
+
+        # First pass: create expense objects with loaichiphi info
+        for item in result.data:
+            expense = dict(item)
+            if item.get('id_lcp') and item['id_lcp'] in loaichiphi_map:
+                expense['loaichiphi'] = {
+                    'id': loaichiphi_map[item['id_lcp']]['id'],
+                    'tenchiphi': loaichiphi_map[item['id_lcp']].get('tenchiphi', ''),
+                    'loaichiphi': loaichiphi_map[item['id_lcp']].get('loaichiphi', ''),
+                    'giathanh': loaichiphi_map[item['id_lcp']].get('giathanh')
+                }
+                # Add ten_chiphi for easier access in frontend
+                expense['ten_chiphi'] = loaichiphi_map[item['id_lcp']].get('tenchiphi', '')
+            else:
+                expense['loaichiphi'] = None
+                expense['ten_chiphi'] = f'Chi phí #{item["id"]}'
+
+            expense['children'] = []
+            expenses_map[item['id']] = expense
+
+        # Second pass: build hierarchy
+        for expense in expenses_map.values():
+            parent_id = expense.get('parent_id')
+            if parent_id and parent_id in expenses_map:
+                expenses_map[parent_id]['children'].append(expense)
+            else:
+                root_expenses.append(expense)
+
+        # Calculate totals for each level (similar to quanly_chiphi hierarchy)
+        def calculate_totals(expense):
+            # For parent expenses, giathanh should be sum of direct children
+            if expense['children']:
+                # Filter children from the same month as parent (if needed)
+                total_direct_children = sum(child['giathanh'] or 0 for child in expense['children'])
+                expense['giathanh'] = total_direct_children
+            # total_amount is the sum of all descendants
+            total = expense['giathanh'] or 0
+            for child in expense['children']:
+                total += calculate_totals(child)
+            expense['total_amount'] = total
+            return total
+
+        for expense in root_expenses:
+            calculate_totals(expense)
+
+        return {"expenses": root_expenses}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error fetching chiphi_quote by project: {str(e)}")
 

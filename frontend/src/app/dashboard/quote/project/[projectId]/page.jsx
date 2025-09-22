@@ -85,10 +85,10 @@ export default function ProjectQuotesPage() {
       }
 
       // Load cost tree for this project
-      const costResponse = await fetch(`http://localhost:8001/api/v1/quote/quanly_chiphi/hierarchy/`);
+      const costResponse = await fetch(`http://localhost:8001/api/v1/accounting/chiphi_quote/project/${projectId}`);
       if (costResponse.ok) {
         const costData = await costResponse.json();
-        setCostTree(costData.hierarchy || []);
+        setCostTree(costData.expenses || []);
       }
 
       // Load employees for display
@@ -125,122 +125,88 @@ export default function ProjectQuotesPage() {
     return employee ? employee.ho_ten : employeeId;
   };
 
-  // Tree view component for costs
+  // Tree view component for costs - handles hierarchical chiphi_quote structure
   const CostTreeNode = ({ cost, level = 0, searchTerm = '', parentName = null }) => {
-    const [isExpanded, setIsExpanded] = useState(level < 2); // Auto expand first 2 levels
+    const [isExpanded, setIsExpanded] = useState(level < 2); // Auto-expand first 2 levels
 
-    const hasChildren = cost.children && cost.children.length > 0;
     const matchesSearch = !searchTerm ||
       (cost.ten_chiphi && cost.ten_chiphi.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (cost.loaichiphi && cost.loaichiphi.tenchiphi && cost.loaichiphi.tenchiphi.toLowerCase().includes(searchTerm.toLowerCase())) ||
       (cost.mo_ta && cost.mo_ta.toLowerCase().includes(searchTerm.toLowerCase()));
 
-    if (!matchesSearch && !hasChildren) return null;
+    if (!matchesSearch) return null;
 
-    // Calculate indentation and connection lines
-    const indentClass = level > 0 ? `ml-${Math.min(level * 6, 24)}` : '';
-    const showConnectionLine = level > 0;
+    const hasChildren = cost.children && cost.children.length > 0;
+    const displayAmount = cost.total_amount || cost.giathanh || 0;
 
     return (
-      <div className={`${indentClass} relative`}>
-        {/* Connection line from parent */}
-        {showConnectionLine && (
-          <div className="absolute -left-4 top-0 w-4 h-8 border-l-2 border-b-2 border-gray-300 rounded-bl-lg"></div>
-        )}
-
-        <div className={`group bg-gradient-to-br from-white to-gray-50 rounded-2xl border border-gray-200 hover:border-green-300 hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1 overflow-hidden ${level === 0 ? 'border-l-4 border-l-green-500' : 'border-l-4 border-l-blue-400'}`}>
+      <div className="relative">
+        <div className={`group bg-gradient-to-br from-white to-gray-50 rounded-2xl border border-gray-200 hover:border-green-300 hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1 overflow-hidden ${level > 0 ? 'ml-6' : ''}`}>
           <div className="p-6">
             <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-4 flex-1">
+                {/* Expand/Collapse button for parent nodes */}
                 {hasChildren && (
                   <button
                     onClick={() => setIsExpanded(!isExpanded)}
-                    className="p-1 hover:bg-gray-100 rounded transition-colors"
+                    className="flex items-center justify-center w-8 h-8 bg-green-100 hover:bg-green-200 rounded-lg transition-colors"
                   >
                     {isExpanded ? (
-                      <ChevronDown className="w-4 h-4 text-gray-500" />
+                      <ChevronDown className="w-4 h-4 text-green-600" />
                     ) : (
-                      <ChevronRight className="w-4 h-4 text-gray-500" />
+                      <ChevronRight className="w-4 h-4 text-green-600" />
                     )}
                   </button>
                 )}
-                {!hasChildren && <div className="w-6"></div>}
+
+                {/* Indentation for child nodes */}
+                {!hasChildren && level > 0 && (
+                  <div className="w-8 h-8 flex items-center justify-center">
+                    <div className="w-px h-6 bg-gray-300"></div>
+                  </div>
+                )}
 
                 <div className={`p-3 bg-gradient-to-br rounded-xl shadow-lg group-hover:scale-110 transition-transform duration-300 ${
                   level === 0
                     ? 'from-green-500 to-emerald-600'
-                    : level === 1
-                    ? 'from-blue-500 to-indigo-600'
-                    : 'from-purple-500 to-pink-600'
+                    : 'from-blue-500 to-indigo-600'
                 }`}>
-                  {level === 0 ? (
-                    <DollarSign className="w-6 h-6 text-white" />
-                  ) : level === 1 ? (
-                    <TrendingUp className="w-6 h-6 text-white" />
-                  ) : (
-                    <Calculator className="w-6 h-6 text-white" />
-                  )}
+                  <Calculator className="w-6 h-6 text-white" />
                 </div>
                 <div className="flex-1">
                   <div className="flex items-center space-x-2 mb-1">
-                    <h4 className={`font-bold text-gray-900 group-hover:text-green-600 transition-colors ${
-                      level === 0 ? 'text-lg' : level === 1 ? 'text-base' : 'text-sm'
-                    }`}>
+                    <h4 className={`font-bold text-gray-900 group-hover:text-green-600 transition-colors text-lg`}>
                       {cost.ten_chiphi || `Chi phí #${cost.id}`}
                     </h4>
-                    {/* Level indicator */}
-                    <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                      level === 0
-                        ? 'bg-green-100 text-green-800'
-                        : level === 1
-                        ? 'bg-blue-100 text-blue-800'
-                        : 'bg-purple-100 text-purple-800'
-                    }`}>
-                      {level === 0 ? 'Cấp 1' : level === 1 ? 'Cấp 2' : `Cấp ${level + 1}`}
-                    </span>
-                  </div>
-
-                  {/* Parent relationship info */}
-                  {parentName && (
-                    <div className="text-xs text-gray-500 mb-2 flex items-center space-x-1">
-                      <ArrowLeft className="w-3 h-3" />
-                      <span>Thuộc: {parentName}</span>
-                    </div>
-                  )}
-
-                  <div className="flex items-center space-x-4 text-sm text-gray-600 mt-2">
-                    {cost.loaichiphi && (
-                      <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                        {cost.loaichiphi.tenchiphi || 'Chi phí chung'}
+                    {hasChildren && (
+                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                        {cost.children.length} mục con
                       </span>
                     )}
+                  </div>
+
+                  <div className="flex items-center space-x-4 text-sm text-gray-600 mt-2">
                     {cost.created_at && (
                       <div className="flex items-center space-x-1">
                         <Calendar className="w-4 h-4" />
                         <span>{formatDate(cost.created_at)}</span>
                       </div>
                     )}
-                    {hasChildren && (
-                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                        {cost.children.length} chi phí con
-                      </span>
+                    {level > 0 && parentName && (
+                      <div className="flex items-center space-x-1">
+                        <Layers className="w-4 h-4" />
+                        <span>Thuộc: {parentName}</span>
+                      </div>
                     )}
                   </div>
                 </div>
               </div>
               <div className="text-right">
-                <div className={`font-bold mb-1 ${
-                  level === 0 ? 'text-2xl text-green-600' : level === 1 ? 'text-xl text-blue-600' : 'text-lg text-purple-600'
-                }`}>
-                  {formatCurrency(cost.giathanh || 0)}
+                <div className={`font-bold mb-1 text-2xl text-green-600`}>
+                  {formatCurrency(displayAmount)}
                 </div>
-                <div className="text-sm text-gray-600">
-                  {level === 0 && cost.total_amount ? `Tổng: ${formatCurrency(cost.total_amount)}` : 'VND'}
-                </div>
-                {/* Percentage of parent if applicable */}
-                {level > 0 && parentName && (
-                  <div className="text-xs text-gray-500 mt-1">
-                    Chiếm: {cost.giathanh ? ((cost.giathanh / (cost.parent_total || 1)) * 100).toFixed(1) : 0}%
+                {cost.total_amount && cost.total_amount !== cost.giathanh && (
+                  <div className="text-sm text-gray-500">
+                    Tổng: {formatCurrency(cost.total_amount)}
                   </div>
                 )}
               </div>
@@ -254,60 +220,24 @@ export default function ProjectQuotesPage() {
               </div>
             )}
 
-            {/* Children count and expand hint */}
-            {hasChildren && (
-              <div className="mt-4 flex items-center justify-between text-sm text-gray-600">
-                <div className="flex items-center space-x-2">
-                  <span className="font-medium">Chi phí con ({cost.children.length}):</span>
-                  {cost.children.slice(0, 3).map((child, index) => (
-                    <span key={child.id} className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-gray-100 text-gray-700">
-                      {child.ten_chiphi || `Chi phí ${child.id}`}
-                    </span>
+            {/* Children */}
+            {hasChildren && isExpanded && (
+              <div className="mt-6 space-y-4">
+                <div className="border-l-2 border-green-200 pl-4 ml-6">
+                  {cost.children.map((child) => (
+                    <CostTreeNode
+                      key={child.id}
+                      cost={child}
+                      level={level + 1}
+                      searchTerm={searchTerm}
+                      parentName={cost.ten_chiphi || `Chi phí #${cost.id}`}
+                    />
                   ))}
-                  {cost.children.length > 3 && (
-                    <span className="text-xs text-gray-500">+{cost.children.length - 3} khác</span>
-                  )}
                 </div>
-                <button
-                  onClick={() => setIsExpanded(!isExpanded)}
-                  className="text-blue-600 hover:text-blue-800 font-medium flex items-center space-x-1"
-                >
-                  {isExpanded ? (
-                    <>
-                      <span>Thu gọn</span>
-                      <ChevronDown className="w-4 h-4" />
-                    </>
-                  ) : (
-                    <>
-                      <span>Mở rộng</span>
-                      <ChevronRight className="w-4 h-4" />
-                    </>
-                  )}
-                </button>
               </div>
             )}
           </div>
         </div>
-
-        {/* Children container with connection line */}
-        {hasChildren && isExpanded && (
-          <div className="relative mt-4 space-y-4">
-            {/* Vertical connection line */}
-            <div className="absolute left-2 top-0 bottom-0 w-0.5 bg-gray-300"></div>
-            {cost.children.map((child, index) => (
-              <CostTreeNode
-                key={child.id}
-                cost={{
-                  ...child,
-                  parent_total: cost.giathanh || cost.total_amount || 0
-                }}
-                level={level + 1}
-                searchTerm={searchTerm}
-                parentName={cost.ten_chiphi || `Chi phí #${cost.id}`}
-              />
-            ))}
-          </div>
-        )}
       </div>
     );
   };
@@ -327,7 +257,6 @@ export default function ProjectQuotesPage() {
     const searchTerm = costSearch.toLowerCase();
     return (
       (cost.ten_chiphi && cost.ten_chiphi.toLowerCase().includes(searchTerm)) ||
-      (cost.loai_chiphi && cost.loai_chiphi.toLowerCase().includes(searchTerm)) ||
       (cost.mo_ta && cost.mo_ta.toLowerCase().includes(searchTerm))
     );
   });
@@ -336,7 +265,17 @@ export default function ProjectQuotesPage() {
   const totalQuotes = quotes.length;
   const totalProducts = quotes.reduce((sum, quote) => sum + (quote.items ? quote.items.length : 0), 0);
   const totalRevenue = quotes.reduce((sum, quote) => sum + (quote.total_amount || 0), 0);
-  const totalCost = costTree.reduce((sum, cost) => sum + (cost.giathanh || 0), 0);
+
+  // Calculate total cost recursively from tree structure
+  const calculateTotalCost = (costs) => {
+    return costs.reduce((sum, cost) => {
+      const costAmount = cost.total_amount || cost.giathanh || 0;
+      const childrenSum = cost.children ? calculateTotalCost(cost.children) : 0;
+      return sum + costAmount + childrenSum;
+    }, 0);
+  };
+  const totalCost = calculateTotalCost(costTree);
+
   const profitMargin = totalRevenue > 0 ? Math.round(((totalRevenue - totalCost) / totalRevenue) * 100) : 0;
 
   if (loading) {
@@ -853,7 +792,7 @@ export default function ProjectQuotesPage() {
                     <Calculator className="w-10 h-10 text-gray-500" />
                   </div>
                   <h4 className="text-xl font-semibold text-gray-700 mb-2">
-                    Chưa có chi phí nào
+                    Chưa có chi phí nào cho công trình này
                   </h4>
                   <p className="text-gray-500 mb-6 max-w-md mx-auto">
                     Hãy thêm các khoản chi phí đầu tiên cho công trình này để theo dõi chi phí hiệu quả
@@ -864,7 +803,7 @@ export default function ProjectQuotesPage() {
                 </div>
               ) : (
                 <div className="space-y-6">
-                  {costTree.map((cost) => (
+                  {filteredCosts.map((cost) => (
                     <CostTreeNode
                       key={cost.id}
                       cost={cost}
