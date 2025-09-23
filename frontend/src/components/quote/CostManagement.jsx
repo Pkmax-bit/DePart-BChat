@@ -1,5 +1,6 @@
 import React from 'react';
 import { DollarSign, Plus, Edit, Trash2, X, Save, Building2 } from 'lucide-react';
+import CurrencyInput from '../CurrencyInput';
 
 const CostManagement = ({
   selectedProject,
@@ -86,13 +87,9 @@ const CostManagement = ({
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">Số tiền (VND)</label>
-                        <input
-                          type="number"
-                          step="0.01"
-                          min="0"
+                        <CurrencyInput
                           value={costForm.giathanh}
-                          onChange={(e) => setCostForm({...costForm, giathanh: e.target.value})}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent text-black"
+                          onChange={(value) => setCostForm({...costForm, giathanh: value})}
                           placeholder="Nhập số tiền"
                         />
                       </div>

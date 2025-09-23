@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'; // Import client mới
-import { LogOut, ChevronFirst, ChevronLast, Bot, DollarSign, Receipt, BarChart3, Calculator } from "lucide-react";
+import { LogOut, ChevronFirst, ChevronLast, Bot, DollarSign, Receipt, BarChart3, Calculator, FileText } from "lucide-react";
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
@@ -52,6 +52,7 @@ export default function DashboardLayout({ children }) {
   // Function để xác định tab active dựa trên pathname
   const getActiveTab = () => {
     if (pathname === '/dashboard') return 'chatflows';
+    if (pathname.startsWith('/dashboard/quote')) return 'quote';
     if (pathname.startsWith('/dashboard/accounting')) return 'revenue';
     if (pathname.startsWith('/dashboard/profit')) return 'profit';
     if (pathname.startsWith('/dashboard/payroll')) return 'payroll';
@@ -90,6 +91,18 @@ export default function DashboardLayout({ children }) {
                  <Bot className="w-6 h-6 mr-3 text-blue-700 flex-shrink-0" />
                  <span className={`overflow-hidden transition-all font-heading text-blue-900 ${sidebarExpanded ? "w-52 ml-3" : "w-0"}`}>Chatflows</span>
              </li>
+             <Link href="/dashboard/quote">
+               <li className={`relative flex items-center py-2 px-3 my-1 font-medium rounded-md cursor-pointer transition-colors ${
+                 activeTab === 'quote' 
+                   ? 'bg-gradient-to-tr from-blue-200 to-blue-100 text-blue-800' 
+                   : 'text-gray-600 hover:bg-blue-50 group'
+               }`}>
+                 <FileText className={`w-6 h-6 mr-3 text-gray-700 group-hover:text-blue-600 group-hover:scale-110 transition-all duration-200 flex-shrink-0 ${
+                   activeTab === 'quote' ? 'text-blue-700' : ''
+                 }`} />
+                 <span className={`overflow-hidden transition-all font-heading text-gray-800 ${sidebarExpanded ? "w-52 ml-3" : "w-0"}`}>Quote</span>
+               </li>
+             </Link>
              <Link href="/dashboard/accounting">
                <li className={`relative flex items-center py-2 px-3 my-1 font-medium rounded-md cursor-pointer transition-colors ${
                  activeTab === 'revenue' 

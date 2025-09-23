@@ -14,6 +14,7 @@ import {
   X,
   Search
 } from 'lucide-react';
+import CurrencyInput from '../CurrencyInput';
 
 const ProjectSection = ({
   projects,
@@ -393,13 +394,9 @@ const ProjectSection = ({
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Ngân sách dự kiến (VND)</label>
-                <input
-                  type="number"
-                  min="0"
-                  step="1000000"
+                <CurrencyInput
                   value={congTrinh.ngan_sach_du_kien}
-                  onChange={(e) => setCongTrinh({...congTrinh, ngan_sach_du_kien: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black"
+                  onChange={(value) => setCongTrinh({...congTrinh, ngan_sach_du_kien: value})}
                   placeholder="Nhập ngân sách dự kiến"
                 />
               </div>
@@ -508,13 +505,9 @@ const ProjectSection = ({
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Ngân sách dự kiến (VND)</label>
-                <input
-                  type="number"
-                  min="0"
-                  step="1000000"
+                <CurrencyInput
                   value={congTrinh.ngan_sach_du_kien}
-                  onChange={(e) => setCongTrinh({...congTrinh, ngan_sach_du_kien: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-green-50 text-black"
+                  onChange={(value) => setCongTrinh({...congTrinh, ngan_sach_du_kien: value})}
                   placeholder="Nhập ngân sách dự kiến"
                 />
               </div>
@@ -654,13 +647,9 @@ const ProjectSection = ({
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Ngân sách dự kiến (VND)</label>
-                  <input
-                    type="number"
-                    min="0"
-                    step="1000000"
+                  <CurrencyInput
                     value={congTrinh.ngan_sach_du_kien}
-                    onChange={(e) => setCongTrinh({...congTrinh, ngan_sach_du_kien: e.target.value})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black"
+                    onChange={(value) => setCongTrinh({...congTrinh, ngan_sach_du_kien: value})}
                     placeholder="Nhập ngân sách dự kiến"
                   />
                 </div>

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Package, RefreshCw, Trash2, Save, DollarSign, Edit, X, Building2, ArrowRight } from 'lucide-react';
+import CurrencyInput from '../CurrencyInput';
 
 const InvoiceItems = ({
   selectedProductType,
@@ -509,14 +510,11 @@ const InvoiceItems = ({
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">Đơn giá (VND)</label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        min="0"
+                      <CurrencyInput
                         value={item.don_gia}
-                        onChange={(e) => updateInvoiceItem(item.id, 'don_gia', parseFloat(e.target.value) || 0)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-yellow-100 text-black"
+                        onChange={(value) => updateInvoiceItem(item.id, 'don_gia', value)}
                         placeholder="Nhập đơn giá"
+                        className="bg-yellow-100"
                       />
                     </div>
                     <div>
@@ -826,13 +824,9 @@ const InvoiceItems = ({
                         </div>
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-2">Số tiền (VND)</label>
-                          <input
-                            type="number"
-                            step="0.01"
-                            min="0"
+                          <CurrencyInput
                             value={costForm.giathanh}
-                            onChange={(e) => setCostForm({...costForm, giathanh: e.target.value})}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent text-black"
+                            onChange={(value) => setCostForm({...costForm, giathanh: value})}
                             placeholder="Nhập số tiền"
                           />
                         </div>
